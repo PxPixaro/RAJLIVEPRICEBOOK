@@ -1,0 +1,12 @@
+RAJ AGENCIES LIVE PRICE BOOK V21
+
+1. ZIP ko poori tarah download karke Extract All karein.
+2. Extracted RAJ_PRICEBOOK_V21 folder ke andar index.html Chrome/Edge me kholen.
+3. Grid me product rows SUB GROUP ke according divider ke saath dikhengi.
+4. PDF Pricelist me SUB GROUP divider print nahi hoga; sirf product table rahegi.
+5. Segment dropdown me combined values (CAR,HCV) ki jagah single values (CAR, HCV) dikhengi.
+6. CAR select karne par CAR aur CAR,HCV dono rows; HCV select karne par HCV aur CAR,HCV dono rows milengi.
+7. Download Pricelist lightweight print document use karta hai, isliye preview zyada smooth hai.
+8. Saved PDF ka suggested filename selected GROUP name rahega.
+9. Catalog Google Drive links js/catalog-links.js me paste karein.
+10. Purana cache dikhe to Ctrl+F5 karein.
