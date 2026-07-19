@@ -1,0 +1,21 @@
+RAJ AGENCIES — GROUP CATALOG SETUP
+===================================
+
+Option 1: Local PDF
+-------------------
+1. Put the PDF in this folder, for example:
+   Allied.pdf
+2. Open js/catalog-links.js and add:
+   "Allied": "assets/catalogs/Allied.pdf"
+
+Option 2: Google Drive / Website Link
+-------------------------------------
+Open js/catalog-links.js and add:
+   "Allied": "https://drive.google.com/file/d/FILE_ID/view"
+
+Option 3: Excel Column
+----------------------
+You can add one of these columns in the Excel sheet:
+CATALOG LINK | CATALOG URL | CATALOG
+Put the same catalog URL in the rows of that GROUP. After Synchronize Excel,
+the selected group's catalog button will update automatically.
