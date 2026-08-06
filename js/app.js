@@ -49,6 +49,7 @@ let page = 1;
 let pageSize = 50;
 let lastUpdated = new Date();
 let printingAll = false;
+const DATA_CACHE_VERSION='V29_VIEW_BY_HIERARCHY';
 const ORIGINAL_DOCUMENT_TITLE = document.title;
 function safePdfName(value){
   return (clean(value)||'Raj Agencies Pricelist').replace(/[<>:\"/\\|?*]+/g,' ').replace(/\s+/g,' ').trim();
@@ -86,6 +87,15 @@ function getField(row, ...names){
 function dataColumns(){
   if(allData[0] && Array.isArray(allData[0]) && COMPACT_COLUMNS.length)return COMPACT_COLUMNS;
   return allData[0] ? Object.keys(allData[0]) : [];
+}
+function normalizedHeaderList(rawHeaders){
+  const seen=new Map();
+  return rawHeaders.map((header,index)=>{
+    const base=keyOf(header)||`COLUMN ${index+1}`;
+    const count=(seen.get(base)||0)+1;
+    seen.set(base,count);
+    return count===1 ? base : `${base} ${count}`;
+  });
 }
 function unique(rows,key){return [...new Set(rows.map(r=>clean(getField(r,key))).filter(Boolean))].sort(natural)}
 function options(el, values, label){
@@ -293,6 +303,46 @@ function printColumnWeights(columns){
     columns:weights.map(value=>(value*100/total).toFixed(3))
   };
 }
+function printProductRow(row,columns,serial){
+  return `<tr><td class="serial">${serial}</td>${columns.map(column=>`<td class="${printCellClass(column)}">${escapeHtml(getField(row,column))}</td>`).join('')}</tr>`;
+}
+function appendPrintHierarchy(output,rows,contextRows,columns,serialState){
+  const fields=viewByFields(contextRows);
+  const renderProducts=items=>{
+    sortRowsByFields(items,[]).forEach(row=>{
+      serialState.value++;
+      output.push(printProductRow(row,columns,serialState.value));
+    });
+  };
+  const renderLevel=(items,level,path)=>{
+    if(level>=fields.length){renderProducts(items);return}
+    const field=fields[level];
+    groupedEntries(items,field,fields.slice(level+1)).forEach(([title,groupItems])=>{
+      const nextPath=[...path,title];
+      const total=hierarchyCount(contextRows,fields,nextPath);
+      output.push(`<tr class="pdf-group-heading pdf-level-${Math.min(level+1,4)}"><td colspan="${columns.length+1}"><span class="pdf-group-label">${escapeHtml(viewByLabel(field))}</span><span class="pdf-group-title">${escapeHtml(title)}</span><span class="pdf-group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`);
+      renderLevel(groupItems,level+1,nextPath);
+    });
+  };
+  if(fields.length)renderLevel(sortRowsByFields(rows,fields),0,[]);
+  else renderProducts(rows);
+}
+function buildPrintBodyRows(rows,columns){
+  const output=[];
+  const serialState={value:0};
+  const selectedGroup=clean($('#groupFilter').value);
+  if(selectedGroup){
+    appendPrintHierarchy(output,rows,rows,columns,serialState);
+  }else{
+    const brands=[...new Set(rows.map(row=>clean(getField(row,'GROUP'))).filter(Boolean))].sort(natural);
+    brands.forEach(brand=>{
+      const brandRows=rows.filter(row=>clean(getField(row,'GROUP'))===brand);
+      output.push(`<tr class="pdf-brand-heading"><td colspan="${columns.length+1}"><span>${escapeHtml(brand)}</span><span class="pdf-brand-meta">${brandRows.length.toLocaleString('en-IN')} Products · Company List Date: ${escapeHtml(listDateForRows(brandRows))}</span></td></tr>`);
+      appendPrintHierarchy(output,brandRows,brandRows,columns,serialState);
+    });
+  }
+  return output.join('');
+}
 function buildLightweightPrintHtml(){
   const group=clean($('#groupFilter').value)||clean(currentCatalogGroup)||'Raj Agencies Pricelist';
   const rows=sortedRows(filtered);
@@ -303,10 +353,7 @@ function buildLightweightPrintHtml(){
   const widths=printColumnWeights(cols);
   const colgroup=`<colgroup><col style="width:${widths.serial}%">${cols.map((c,index)=>`<col style="width:${widths.columns[index]}%">`).join('')}</colgroup>`;
   const head=cols.map(c=>`<th class="${printCellClass(c)}">${escapeHtml(c)}</th>`).join('');
-  const body=[];
-  rows.forEach((row,index)=>{
-    body.push(`<tr><td class="serial">${index+1}</td>${cols.map(c=>`<td class="${printCellClass(c)}">${escapeHtml(getField(row,c))}</td>`).join('')}</tr>`);
-  });
+  const body=buildPrintBodyRows(rows,cols);
   const base=escapeHtml(document.baseURI);
   const safeTitle=escapeHtml(safePdfName(group));
   const brandLogo=logo?`<img class="brand-logo" src="${escapeHtml(logo)}" alt="">`:'';
@@ -336,6 +383,17 @@ function buildLightweightPrintHtml(){
     .serial{width:24px;text-align:center}
     th.left{text-align:left}th.right,th.price{text-align:right;color:#fff!important}
     td.left{text-align:left}td.right{text-align:right;white-space:nowrap}td.price{text-align:right;color:#0757b8;font-weight:800;white-space:nowrap}
+    .pdf-group-heading{break-after:avoid;page-break-after:avoid}
+    .pdf-group-heading td{font-weight:800;text-align:left!important;white-space:normal!important;border-color:#7a9bc4!important}
+    .pdf-level-1 td{background:#dceeff!important;color:#0e337e;font-size:8.2px;padding:4px 5px}
+    .pdf-level-2 td{background:#fff3bd!important;color:#5a3b00;font-size:7.5px;padding:3.5px 5px 3.5px 12px}
+    .pdf-level-3 td{background:#edf3fb!important;color:#27364a;font-size:7px;padding:3px 5px 3px 20px}
+    .pdf-level-4 td{background:#f7f8fa!important;color:#27364a;font-size:6.8px;padding:3px 5px 3px 28px}
+    .pdf-group-label{display:inline-block;margin-right:6px;padding:1px 4px;border:1px solid currentColor;border-radius:3px;font-size:.82em;letter-spacing:.05em}
+    .pdf-group-title{font-weight:900}
+    .pdf-group-count{float:right;font-size:.85em;font-weight:800}
+    .pdf-brand-heading td{background:#0e337e!important;color:#fff!important;font-size:9px;font-weight:900;padding:5px 6px;text-align:left!important}
+    .pdf-brand-meta{float:right;font-size:6.8px;font-weight:700}
     .footer-note{text-align:center;margin-top:4px;font-size:6.4px;color:#4a5568}
     @media screen{body{padding:10px}}
   </style></head><body>
@@ -346,7 +404,7 @@ function buildLightweightPrintHtml(){
         <div class="title"><div class="kicker">RAJ AGENCIES</div><h1>${escapeHtml(group)}</h1><div class="sub">LIVE PRICE BOOK</div><div class="meta"><span>COMPANY LIST DATE: ${escapeHtml(selectedListDate())}</span><span>LAST UPDATED: ${escapeHtml(lastUpdated.toLocaleDateString('en-GB'))}</span><span>${rows.length.toLocaleString('en-IN')} PRODUCTS</span></div></div>
         ${brandLogo}
       </div>
-      <table>${colgroup}<thead><tr><th class="serial">#</th>${head}</tr></thead><tbody>${body.join('')}</tbody></table>
+      <table>${colgroup}<thead><tr><th class="serial">#</th>${head}</tr></thead><tbody>${body}</tbody></table>
       <div class="footer-note">System-generated pricelist. Please confirm Rate / MRP and all details before use.</div>
     </div>
   </body></html>`;
@@ -417,47 +475,123 @@ function cascade(){
  const catKey=dataColumns().some(c=>keyOf(c)==='CATAGORIES')?'CATAGORIES':'CATEGORIES';options($('#categoryFilter'),unique(r,catKey),'All categories');
 }
 
-function viewByField(rows){
-  // Grid grouping is always SUB GROUP when the selected data has it.
-  // PDF output intentionally omits these subgroup divider rows.
-  if(rows.some(r=>subGroupValue(r)))return 'SUB GROUP';
-  const raw = rows.map(r=>clean(getField(r,'VIEW BY','VIEWBY'))).find(Boolean) || '';
-  const v=raw.toUpperCase().replace(/[^A-Z]/g,'');
-  if(v.includes('VEHICLE'))return 'VEHICLE';
-  if(v.includes('MODEL'))return 'MODEL';
-  if(v.includes('SEGMENT'))return 'SEGMENT';
-  if(v.includes('CATEGORY')||v.includes('CATAGOR'))return 'CATAGORIES';
-  return 'CATAGORIES';
+function compactFieldKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
+function existingColumnByAliases(aliases){
+  const wanted=aliases.map(compactFieldKey);
+  return dataColumns().find(column=>wanted.includes(compactFieldKey(column)))||'';
+}
+function resolveViewByField(title){
+  const token=compactFieldKey(title);
+  if(!token)return '';
+  const exact=dataColumns().find(column=>compactFieldKey(column)===token);
+  if(exact)return exact;
+
+  const aliasGroups=[
+    ['CATAGORIES','CATEGORIES','CATEGORY','CATAGORY','CATAGOIRES','CATAGOREIS','CATAGORIE','CATEGORIE','CATEGORES'],
+    ['SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME'],
+    ['CODE','PART NUMBER','PART NO','PARTNUMBER','PARTNO'],
+    ['PRODUCT NAME','DESCRIPTION','PRODUCT','ITEM NAME'],
+    ['LIST DATE','LISTDATE'],
+    ['VIEW BY','VIEWBY']
+  ];
+  for(const aliases of aliasGroups){
+    if(aliases.map(compactFieldKey).includes(token))return existingColumnByAliases(aliases);
+  }
+  return '';
+}
+function mostCommonViewBy(rows){
+  const counts=new Map();
+  let order=0;
+  rows.forEach(row=>{
+    const value=clean(getField(row,'VIEW BY','VIEWBY'));
+    if(!value)return;
+    const key=value.toUpperCase();
+    if(!counts.has(key))counts.set(key,{value,count:0,order:order++});
+    counts.get(key).count++;
+  });
+  return [...counts.values()].sort((a,b)=>b.count-a.count||a.order-b.order)[0]?.value||'';
+}
+function viewByFields(rows){
+  const raw=mostCommonViewBy(rows);
+  const fields=raw
+    .split(/[,;|>]+/)
+    .map(resolveViewByField)
+    .filter((field,index,list)=>field&&list.indexOf(field)===index);
+  if(fields.length)return fields;
+
+  const subGroup=existingColumnByAliases(['SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME']);
+  if(subGroup&&rows.some(row=>!isEmpty(getField(row,subGroup))))return [subGroup];
+  const category=existingColumnByAliases(['CATAGORIES','CATEGORIES','CATEGORY']);
+  if(category&&rows.some(row=>!isEmpty(getField(row,category))))return [category];
+  return [];
+}
+function viewByField(rows){return viewByFields(rows)[0]||''}
+function viewByLabel(field){
+  const token=compactFieldKey(field);
+  if(['CATAGORIES','CATEGORIES','CATEGORY'].map(compactFieldKey).includes(token))return 'CATEGORIES';
+  if(['SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME'].map(compactFieldKey).includes(token))return 'SUB GROUP';
+  if(['CODE','PART NUMBER','PART NO'].map(compactFieldKey).includes(token))return 'PART NUMBER';
+  return keyOf(field);
 }
 function groupValue(row, field){
-  if(field==='SUB GROUP') return subGroupValue(row) || 'OTHER';
-  if(field==='CATAGORIES') return clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY')) || 'OTHER';
-  return clean(getField(row,field)) || 'OTHER';
+  const token=compactFieldKey(field);
+  if(['SUBGROUP','SUBGROUPNAME'].includes(token))return subGroupValue(row)||'OTHER';
+  if(['CATAGORIES','CATEGORIES','CATEGORY'].includes(token))return clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY'))||'OTHER';
+  return clean(getField(row,field))||'OTHER';
+}
+function partNumberValue(row){return clean(getField(row,'CODE','PART NUMBER','PART NO'))}
+function sortRowsByFields(rows,fields){
+  return [...rows].sort((a,b)=>{
+    for(const field of fields){
+      const compare=natural(groupValue(a,field),groupValue(b,field));
+      if(compare)return compare;
+    }
+    const codeCompare=natural(partNumberValue(a),partNumberValue(b));
+    if(codeCompare)return codeCompare;
+    return natural(getField(a,'PRODUCT NAME','DESCRIPTION'),getField(b,'PRODUCT NAME','DESCRIPTION'));
+  });
 }
 function sortedRows(rows){
-  return [...rows].sort((a,b)=>{
-    const ag=clean(getField(a,'GROUP')), bg=clean(getField(b,'GROUP'));
-    const groupCompare=natural(ag,bg); if(groupCompare)return groupCompare;
-    const as=subGroupValue(a), bs=subGroupValue(b);
-    const subCompare=natural(as,bs); if(subCompare)return subCompare;
-    const ac=clean(getField(a,'CODE','PART NUMBER','PART NO'));
-    const bc=clean(getField(b,'CODE','PART NUMBER','PART NO'));
-    return natural(ac,bc);
+  const groupRows=new Map();
+  rows.forEach(row=>{
+    const group=clean(getField(row,'GROUP'));
+    if(!groupRows.has(group))groupRows.set(group,[]);
+    groupRows.get(group).push(row);
   });
+  const fieldCache=new Map([...groupRows].map(([group,items])=>[group,viewByFields(items)]));
+  return [...rows].sort((a,b)=>{
+    const ag=clean(getField(a,'GROUP')),bg=clean(getField(b,'GROUP'));
+    const groupCompare=natural(ag,bg);if(groupCompare)return groupCompare;
+    const fields=fieldCache.get(ag)||[];
+    for(const field of fields){
+      const compare=natural(groupValue(a,field),groupValue(b,field));
+      if(compare)return compare;
+    }
+    const codeCompare=natural(partNumberValue(a),partNumberValue(b));
+    if(codeCompare)return codeCompare;
+    return natural(getField(a,'PRODUCT NAME','DESCRIPTION'),getField(b,'PRODUCT NAME','DESCRIPTION'));
+  });
+}
+function groupedEntries(rows,field,remainingFields=[]){
+  const map=new Map();
+  sortRowsByFields(rows,[field,...remainingFields]).forEach(row=>{
+    const title=groupValue(row,field);
+    if(!map.has(title))map.set(title,[]);
+    map.get(title).push(row);
+  });
+  return [...map.entries()].sort((a,b)=>natural(a[0],b[0]));
+}
+function hierarchyCount(contextRows,fields,path){
+  return contextRows.filter(row=>path.every((title,index)=>groupValue(row,fields[index])===title)).length;
 }
 function groupedRows(rows){
-  const field=viewByField(rows);
-  const map=new Map();
-  sortedRows(rows).forEach(r=>{
-    const g=groupValue(r,field);
-    if(!map.has(g))map.set(g,[]);
-    map.get(g).push(r);
-  });
-  return {field, groups:[...map.entries()].sort((a,b)=>natural(a[0],b[0]))};
+  const fields=viewByFields(rows);
+  const field=fields[0]||'';
+  return {field,fields,groups:field?groupedEntries(rows,field,fields.slice(1)):[['ALL PRODUCTS',sortRowsByFields(rows,[])]]};
 }
-function totalMiniCount(title, contextRows){
-  const field=viewByField(contextRows);
-  return contextRows.filter(r=>groupValue(r,field)===title).length;
+function totalMiniCount(title,contextRows){
+  const fields=viewByFields(contextRows);
+  return fields.length?hierarchyCount(contextRows,fields,[title]):contextRows.length;
 }
 function formatExcelDate(v){
   if(isEmpty(v))return '—';
@@ -544,25 +678,41 @@ function applyFilters(resetPage=true){
   render();
 }
 
+function gridProductRow(row,serial){
+  return '<tr><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{
+    const value=getField(row,column);
+    const key=keyOf(column);
+    const part=key==='CODE';
+    const price=key==='RATE'||key==='MRP';
+    const left=part||key==='PRODUCT NAME';
+    const cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');
+    return `<td class="${cls}">${escapeHtml(value)}</td>`;
+  }).join('')+`<td class="image-col"><button class="view-image-btn" type="button" data-row-index="${rowSourceIndex(row)}">View Image</button></td></tr>`;
+}
 function miniGroupedBody(rows, startIndex=0, contextRows=rows){
-  const {groups}=groupedRows(rows);
-  let html='', serial=startIndex;
-  groups.forEach(([title,items])=>{
-    const total=totalMiniCount(title,contextRows);
-    html += `<tr class="group-heading"><td colspan="${visibleColumns.length+2}">${escapeHtml(title)}<span class="group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`;
-    items.forEach(r=>{
+  const fields=viewByFields(contextRows);
+  let html='',serial=startIndex;
+
+  const renderProducts=items=>{
+    sortRowsByFields(items,[]).forEach(row=>{
       serial++;
-      html += '<tr><td class="index-col">'+serial+'</td>'+visibleColumns.map(c=>{
-        const v=getField(r,c);
-        const key=keyOf(c);
-        const part=key==='CODE';
-        const price=key==='RATE'||key==='MRP';
-        const left=part||key==='PRODUCT NAME';
-        const cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');
-        return `<td class="${cls}">${escapeHtml(v)}</td>`;
-      }).join('')+`<td class="image-col"><button class="view-image-btn" type="button" data-row-index="${rowSourceIndex(r)}">View Image</button></td></tr>`;
+      html+=gridProductRow(row,serial);
     });
-  });
+  };
+  const renderLevel=(items,level,path)=>{
+    if(level>=fields.length){renderProducts(items);return}
+    const field=fields[level];
+    groupedEntries(items,field,fields.slice(level+1)).forEach(([title,groupItems])=>{
+      const nextPath=[...path,title];
+      const total=hierarchyCount(contextRows,fields,nextPath);
+      const levelClass=`group-level-${Math.min(level+1,4)}`;
+      html+=`<tr class="group-heading ${levelClass}" data-group-level="${level+1}"><td colspan="${visibleColumns.length+2}"><span class="group-field-label">${escapeHtml(viewByLabel(field))}</span><span class="group-title">${escapeHtml(title)}</span><span class="group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`;
+      renderLevel(groupItems,level+1,nextPath);
+    });
+  };
+
+  if(fields.length)renderLevel(sortRowsByFields(rows,fields),0,[]);
+  else renderProducts(rows);
   return {html,serial};
 }
 function makeBody(rows, startIndex=0, contextRows=filtered){
@@ -640,9 +790,9 @@ function reset(){
 }
 function normalizeRows(rows){
   if(!rows.length)return [];
-  const headers=rows[0].map(h=>keyOf(h));
-  return rows.slice(1).filter(r=>r.some(v=>!isEmpty(v))).map(r=>{
-    const o={};headers.forEach((h,i)=>o[h]=r[i]??'');return o;
+  const headers=normalizedHeaderList(rows[0]);
+  return rows.slice(1).filter(row=>row.some(value=>!isEmpty(value))).map(row=>{
+    const record={};headers.forEach((header,index)=>record[header]=row[index]??'');return record;
   });
 }
 async function saveDB(data){
@@ -654,6 +804,7 @@ async function saveDB(data){
       const db=req.result,tx=db.transaction('data','readwrite');
       tx.objectStore('data').put(data,'records');
       tx.objectStore('data').put(new Date().toISOString(),'updated');
+      tx.objectStore('data').put(DATA_CACHE_VERSION,'version');
       tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
     }
   });
@@ -665,8 +816,8 @@ async function loadDB(){
     req.onerror=()=>resolve(null);
     req.onsuccess=()=>{
       const tx=req.result.transaction('data'),store=tx.objectStore('data');
-      const a=store.get('records'),b=store.get('updated');
-      tx.oncomplete=()=>resolve(a.result?{data:a.result,updated:b.result}:null);
+      const a=store.get('records'),b=store.get('updated'),v=store.get('version');
+      tx.oncomplete=()=>resolve(a.result&&v.result===DATA_CACHE_VERSION?{data:a.result,updated:b.result}:null);
     }
   });
 }
