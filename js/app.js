@@ -49,7 +49,7 @@ let page = 1;
 let pageSize = 50;
 let lastUpdated = new Date();
 let printingAll = false;
-const DATA_CACHE_VERSION='V29_VIEW_BY_HIERARCHY';
+const DATA_CACHE_SCHEMA='RAJ_PRICEBOOK_DATA_SCHEMA_1';
 const ORIGINAL_DOCUMENT_TITLE = document.title;
 function safePdfName(value){
   return (clean(value)||'Raj Agencies Pricelist').replace(/[<>:\"/\\|?*]+/g,' ').replace(/\s+/g,' ').trim();
@@ -306,6 +306,15 @@ function printColumnWeights(columns){
 function printProductRow(row,columns,serial){
   return `<tr><td class="serial">${serial}</td>${columns.map(column=>`<td class="${printCellClass(column)}">${escapeHtml(getField(row,column))}</td>`).join('')}</tr>`;
 }
+function hierarchyVisual(level,mode='grid'){
+  const depth=level+1;
+  const step=mode==='pdf'?8:13;
+  const base=mode==='pdf'?5:12;
+  // Keep very deep hierarchies readable without letting headings run off-screen.
+  const indent=Math.min(base+level*step,mode==='pdf'?88:180);
+  const prefix=mode==='pdf'?'pdf-level':'group-level';
+  return {depth,indent,className:depth<=4?`${prefix}-${depth}`:`${prefix}-deep`};
+}
 function appendPrintHierarchy(output,rows,contextRows,columns,serialState){
   const fields=viewByFields(contextRows);
   const renderProducts=items=>{
@@ -320,7 +329,8 @@ function appendPrintHierarchy(output,rows,contextRows,columns,serialState){
     groupedEntries(items,field,fields.slice(level+1)).forEach(([title,groupItems])=>{
       const nextPath=[...path,title];
       const total=hierarchyCount(contextRows,fields,nextPath);
-      output.push(`<tr class="pdf-group-heading pdf-level-${Math.min(level+1,4)}"><td colspan="${columns.length+1}"><span class="pdf-group-label">${escapeHtml(viewByLabel(field))}</span><span class="pdf-group-title">${escapeHtml(title)}</span><span class="pdf-group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`);
+      const visual=hierarchyVisual(level,'pdf');
+      output.push(`<tr class="pdf-group-heading ${visual.className}" data-group-level="${visual.depth}" style="--view-indent:${visual.indent}px"><td colspan="${columns.length+1}"><span class="pdf-group-label">${escapeHtml(viewByLabel(field))}</span><span class="pdf-group-title">${escapeHtml(title)}</span><span class="pdf-group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`);
       renderLevel(groupItems,level+1,nextPath);
     });
   };
@@ -389,6 +399,8 @@ function buildLightweightPrintHtml(){
     .pdf-level-2 td{background:#fff3bd!important;color:#5a3b00;font-size:7.5px;padding:3.5px 5px 3.5px 12px}
     .pdf-level-3 td{background:#edf3fb!important;color:#27364a;font-size:7px;padding:3px 5px 3px 20px}
     .pdf-level-4 td{background:#f7f8fa!important;color:#27364a;font-size:6.8px;padding:3px 5px 3px 28px}
+    .pdf-level-deep td{background:#fafbfc!important;color:#27364a;font-size:6.6px;border-color:#d3d9e1!important}
+    .pdf-group-heading[data-group-level] td{padding-left:var(--view-indent,5px)!important}
     .pdf-group-label{display:inline-block;margin-right:6px;padding:1px 4px;border:1px solid currentColor;border-radius:3px;font-size:.82em;letter-spacing:.05em}
     .pdf-group-title{font-weight:900}
     .pdf-group-count{float:right;font-size:.85em;font-weight:800}
@@ -505,18 +517,26 @@ function mostCommonViewBy(rows){
   rows.forEach(row=>{
     const value=clean(getField(row,'VIEW BY','VIEWBY'));
     if(!value)return;
-    const key=value.toUpperCase();
+    const key=value.toUpperCase().replace(/\s*([,;|>])\s*/g,'$1');
     if(!counts.has(key))counts.set(key,{value,count:0,order:order++});
     counts.get(key).count++;
   });
   return [...counts.values()].sort((a,b)=>b.count-a.count||a.order-b.order)[0]?.value||'';
 }
-function viewByFields(rows){
-  const raw=mostCommonViewBy(rows);
-  const fields=raw
+function parseViewByTitles(raw){
+  // Comma is the main separator. Semicolon, pipe and > remain supported for old files.
+  // No level limit is applied: every valid Excel heading becomes the next nested title.
+  return clean(raw)
     .split(/[,;|>]+/)
-    .map(resolveViewByField)
-    .filter((field,index,list)=>field&&list.indexOf(field)===index);
+    .map(title=>clean(title))
+    .filter(Boolean);
+}
+function viewByFields(rows){
+  const fields=[];
+  parseViewByTitles(mostCommonViewBy(rows)).forEach(title=>{
+    const field=resolveViewByField(title);
+    if(field&&!fields.some(existing=>compactFieldKey(existing)===compactFieldKey(field)))fields.push(field);
+  });
   if(fields.length)return fields;
 
   const subGroup=existingColumnByAliases(['SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME']);
@@ -526,6 +546,17 @@ function viewByFields(rows){
   return [];
 }
 function viewByField(rows){return viewByFields(rows)[0]||''}
+function viewByColumnKeysForRows(rows){
+  const keys=new Set();
+  const groupMap=new Map();
+  rows.forEach(row=>{
+    const group=clean(getField(row,'GROUP'));
+    if(!groupMap.has(group))groupMap.set(group,[]);
+    groupMap.get(group).push(row);
+  });
+  groupMap.forEach(groupRows=>viewByFields(groupRows).forEach(field=>keys.add(keyOf(field))));
+  return keys;
+}
 function viewByLabel(field){
   const token=compactFieldKey(field);
   if(['CATAGORIES','CATEGORIES','CATEGORY'].map(compactFieldKey).includes(token))return 'CATEGORIES';
@@ -661,9 +692,11 @@ function applyFilters(resetPage=true){
   });
 
   const keys=dataColumns();
+  const activeViewByColumns=viewByColumnKeysForRows(filtered);
   visibleColumns=keys.filter(k=>{
     const normalized=keyOf(k);
     if(HIDDEN_COLUMNS.has(normalized))return false;
+    if(!ALWAYS.includes(normalized)&&activeViewByColumns.has(normalized))return false;
     return ALWAYS.includes(normalized)||filtered.some(r=>!isEmpty(getField(r,k)));
   });
   // Keep part number first.
@@ -705,8 +738,8 @@ function miniGroupedBody(rows, startIndex=0, contextRows=rows){
     groupedEntries(items,field,fields.slice(level+1)).forEach(([title,groupItems])=>{
       const nextPath=[...path,title];
       const total=hierarchyCount(contextRows,fields,nextPath);
-      const levelClass=`group-level-${Math.min(level+1,4)}`;
-      html+=`<tr class="group-heading ${levelClass}" data-group-level="${level+1}"><td colspan="${visibleColumns.length+2}"><span class="group-field-label">${escapeHtml(viewByLabel(field))}</span><span class="group-title">${escapeHtml(title)}</span><span class="group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`;
+      const visual=hierarchyVisual(level,'grid');
+      html+=`<tr class="group-heading ${visual.className}" data-group-level="${visual.depth}" style="--view-indent:${visual.indent}px"><td colspan="${visibleColumns.length+2}"><span class="group-field-label">${escapeHtml(viewByLabel(field))}</span><span class="group-title">${escapeHtml(title)}</span><span class="group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`;
       renderLevel(groupItems,level+1,nextPath);
     });
   };
@@ -798,27 +831,45 @@ function normalizeRows(rows){
 async function saveDB(data){
   return new Promise((resolve,reject)=>{
     const req=indexedDB.open('RajPriceBook',1);
-    req.onupgradeneeded=e=>e.target.result.createObjectStore('data');
-    req.onerror=()=>reject(req.error);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('data'))db.createObjectStore('data');
+    };
+    req.onerror=()=>reject(req.error||new Error('Browser storage unavailable'));
     req.onsuccess=()=>{
-      const db=req.result,tx=db.transaction('data','readwrite');
-      tx.objectStore('data').put(data,'records');
-      tx.objectStore('data').put(new Date().toISOString(),'updated');
-      tx.objectStore('data').put(DATA_CACHE_VERSION,'version');
-      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
-    }
+      const db=req.result,tx=db.transaction('data','readwrite'),store=tx.objectStore('data');
+      store.put(data,'records');
+      store.put(new Date().toISOString(),'updated');
+      store.put(DATA_CACHE_SCHEMA,'schema');
+      // Keep the old key for backward compatibility with earlier ZIP versions.
+      store.put(DATA_CACHE_SCHEMA,'version');
+      tx.oncomplete=()=>{db.close();resolve(true)};
+      tx.onerror=()=>{const error=tx.error;db.close();reject(error)};
+      tx.onabort=()=>{const error=tx.error;db.close();reject(error)};
+    };
   });
 }
 async function loadDB(){
   return new Promise(resolve=>{
     const req=indexedDB.open('RajPriceBook',1);
-    req.onupgradeneeded=e=>e.target.result.createObjectStore('data');
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('data'))db.createObjectStore('data');
+    };
     req.onerror=()=>resolve(null);
     req.onsuccess=()=>{
-      const tx=req.result.transaction('data'),store=tx.objectStore('data');
-      const a=store.get('records'),b=store.get('updated'),v=store.get('version');
-      tx.oncomplete=()=>resolve(a.result&&v.result===DATA_CACHE_VERSION?{data:a.result,updated:b.result}:null);
-    }
+      const db=req.result,tx=db.transaction('data'),store=tx.objectStore('data');
+      const records=store.get('records'),updated=store.get('updated');
+      tx.oncomplete=()=>{
+        const data=records.result;
+        db.close();
+        // App releases no longer invalidate synchronized Excel. If valid rows exist,
+        // they are restored automatically on every future start.
+        resolve(Array.isArray(data)&&data.length?{data,updated:updated.result}:null);
+      };
+      tx.onerror=()=>{db.close();resolve(null)};
+      tx.onabort=()=>{db.close();resolve(null)};
+    };
   });
 }
 
@@ -898,9 +949,23 @@ $('#excelFile').onchange=async e=>{
     const sheet=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
     const records=normalizeRows(rows);
     if(!records.length||!('GROUP' in records[0]))throw new Error('GROUP column missing');
-    allData=records;rebuildRowIndexMap();catalogUrlCache.clear();lastUpdated=new Date();await saveDB(allData);buildCatalogMenu();
-    reset();toast(`${records.length.toLocaleString('en-IN')} products synchronized`);
-    $('#syncStatus').innerHTML='<span class="dot"></span> Synced';
+    allData=records;rebuildRowIndexMap();catalogUrlCache.clear();lastUpdated=new Date();
+    let saved=false;
+    try{
+      await saveDB(allData);
+      saved=true;
+      if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+    }catch(storageError){
+      console.error('Pricebook cache save failed',storageError);
+    }
+    buildCatalogMenu();
+    reset();
+    toast(saved
+      ? `${records.length.toLocaleString('en-IN')} products synchronized & saved for next start`
+      : `${records.length.toLocaleString('en-IN')} products synchronized; browser storage is blocked`);
+    $('#syncStatus').innerHTML=saved
+      ? '<span class="dot"></span> Synced & saved'
+      : '<span class="dot"></span> Synced (not saved)';
   }catch(err){
     console.error(err);toast('Could not read Excel. Keep the same headings.');
     $('#syncStatus').innerHTML='<span class="dot"></span> Error';
@@ -926,14 +991,15 @@ $('#nextBtn').onclick=()=>{page++;render()};
   applyFilters();
   $('#syncStatus').innerHTML='<span class="dot"></span> Price data ready';
 
-  // Cached synchronized Excel is hydrated after first paint, so the dashboard never opens blank.
-  const hydrate=()=>loadDB().then(cached=>{
+  // Restore the last synchronized Excel immediately. The bundled data remains visible
+  // during the short IndexedDB read, then the saved rows replace it automatically.
+  loadDB().then(cached=>{
     if(cached && cached.data && cached.data.length){
-      allData=cached.data;rebuildRowIndexMap();catalogUrlCache.clear();lastUpdated=new Date(cached.updated);
-      $('#syncStatus').innerHTML='<span class="dot"></span> Cached data loaded';
+      allData=cached.data;rebuildRowIndexMap();catalogUrlCache.clear();
+      const cachedDate=new Date(cached.updated);
+      if(!isNaN(cachedDate))lastUpdated=cachedDate;
+      $('#syncStatus').innerHTML='<span class="dot"></span> Saved Excel restored';
       buildCatalogMenu();applyFilters();
     }
   });
-  if('requestIdleCallback' in window)requestIdleCallback(hydrate,{timeout:1800});
-  else setTimeout(hydrate,250);
 })();
