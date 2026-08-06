@@ -1513,3 +1513,25 @@ footer{color:#68758d}
   #priceTable .group-heading.group-level-3 td{font-size:9.5px!important;padding:6px 7px 6px 28px!important}
   #priceTable .group-heading .group-field-label{margin-right:5px;padding:1px 4px}
 }
+
+/* =========================================================
+   V30 — unlimited VIEW BY levels + durable Excel sync cache
+   ========================================================= */
+/* V21 had a hard-coded SUB GROUP prefix. The actual Excel VIEW BY field label
+   is now rendered by JavaScript at every hierarchy level. */
+#priceTable .group-heading td::before{content:none!important;display:none!important}
+#priceTable .group-heading[data-group-level] td{
+  padding-left:var(--view-indent,12px)!important;
+}
+#priceTable .group-heading.group-level-deep td{
+  background:#fafbfc!important;
+  color:#27364a!important;
+  border-top:1px solid #d3d9e1!important;
+  border-bottom:1px solid #d3d9e1!important;
+  font-size:10px!important;
+}
+@media (max-width:760px){
+  #priceTable .group-heading[data-group-level] td{
+    padding-left:min(var(--view-indent,12px),110px)!important;
+  }
+}
