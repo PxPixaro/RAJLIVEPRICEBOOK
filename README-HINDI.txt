@@ -247,3 +247,16 @@ FINAL V22 UPDATE
 3. Print table fixed A4 landscape width me fit hoti hai; horizontal overflow kam kiya gaya hai.
 4. Product-name aur long headings safe wrapping ke saath render hote hain.
 5. Print preview trigger fonts aur layout ready hone ke baad hota hai, jisse rendering stable rahe.
+
+V29 DYNAMIC VIEW BY HIERARCHY
+------------------------------
+- Included price-book.xlsx se bundled js/data.js dobara generate kiya gaya hai; Aayub ka VIEW BY = SEGMENT ab direct ZIP open karte hi apply hota hai.
+- VIEW BY ab SUB GROUP se priority leta hai. VIEW BY blank ho tabhi SUB GROUP fallback use hota hai.
+- VIEW BY me comma-separated headings supported hain, jaise: CATAGORIES,SEGMENT.
+  Is example me pehle Category main heading, phir uske andar Segment sub-heading aayegi.
+- Header matching case-insensitive hai aur common spelling variants (Categories/Catagories/Catagoires) supported hain.
+- Excel ka koi bhi exact column title VIEW BY me use kiya ja sakta hai; multiple levels comma se likhein.
+- Grid aur Download Pricelist PDF dono me same hierarchy, product counts aur natural CODE/Part Number order use hota hai.
+- Duplicate Excel headings safe suffix ke saath import hoti hain (example: UNIT, UNIT 2).
+- Purana browser cache V29 par auto-ignore hota hai; next Excel Sync se naya cache save hoga.
+- Data regenerate karne ke liye: python tools/build-data.py
