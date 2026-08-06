@@ -258,5 +258,17 @@ V29 DYNAMIC VIEW BY HIERARCHY
 - Excel ka koi bhi exact column title VIEW BY me use kiya ja sakta hai; multiple levels comma se likhein.
 - Grid aur Download Pricelist PDF dono me same hierarchy, product counts aur natural CODE/Part Number order use hota hai.
 - Duplicate Excel headings safe suffix ke saath import hoti hain (example: UNIT, UNIT 2).
-- Purana browser cache V29 par auto-ignore hota hai; next Excel Sync se naya cache save hoga.
+- V30 se valid synchronized browser cache app-version change par bhi restore hota rahega.
 - Data regenerate karne ke liye: python tools/build-data.py
+
+V30 UNLIMITED VIEW BY + SAVED EXCEL RESTORE
+--------------------------------------------
+- VIEW BY me comma se jitne bhi valid Excel column titles likhen, sab usi order me nested headings banenge.
+  Example: CATAGORIES, SEGMENT, VEHICLE => pehle Category, uske andar Segment, phir Vehicle.
+- 4-level limit hata di gayi hai. 5th, 6th aur aage ke valid titles bhi grid aur Download Pricelist PDF me render honge.
+- Excel heading matching case-insensitive hai; exact custom headings aur Categories/Catagories/Catagoires aliases supported hain.
+- Har level ke andar products natural CODE / Part Number order aur running index ke saath aate hain.
+- Sync Excel ke baad poora synchronized workbook data IndexedDB me save hota hai, jisme VIEW BY hierarchy bhi included hai.
+- App dobara kholne par saved Excel automatically restore hoti hai; har start par Sync Excel chalane ki zarurat nahi.
+- App/ZIP version update hone par valid synchronized data ab version mismatch ki wajah se delete/ignore nahi hota.
+- Browser storage blocked ho to status me “Synced (not saved)” clearly dikhaya jayega.
