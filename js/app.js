@@ -44,6 +44,8 @@ function rowSourceIndex(row){
   return cached===undefined ? allData.indexOf(row) : cached;
 }
 let filtered = [];
+let sortedFilteredSource = null;
+let sortedFilteredCache = [];
 let visibleColumns = [];
 let page = 1;
 let pageSize = 50;
@@ -129,6 +131,19 @@ function productImageCandidates(row){
   })));
   return candidates;
 }
+
+function productThumbnailCandidates(row){
+  const seen=new Set();
+  return productImageCandidates(row).map(path=>{
+    const thumb=path
+      .replace('assets/Products Images/','assets/Products Thumbs/')
+      .replace(/\.(webp|png|jpe?g)$/i,'.webp');
+    if(seen.has(thumb))return '';
+    seen.add(thumb);
+    return thumb;
+  }).filter(Boolean);
+}
+
 let imageZoom=1;
 function closeImageModal(){
   $('#imageModal').classList.remove('open');
@@ -603,6 +618,14 @@ function sortedRows(rows){
     return natural(getField(a,'PRODUCT NAME','DESCRIPTION'),getField(b,'PRODUCT NAME','DESCRIPTION'));
   });
 }
+function currentSortedFiltered(){
+  if(sortedFilteredSource!==filtered){
+    sortedFilteredSource=filtered;
+    sortedFilteredCache=sortedRows(filtered);
+  }
+  return sortedFilteredCache;
+}
+
 function groupedEntries(rows,field,remainingFields=[]){
   const map=new Map();
   sortRowsByFields(rows,[field,...remainingFields]).forEach(row=>{
@@ -798,12 +821,12 @@ function render(){
   }).join('')+'<th class="image-col">IMAGE</th></tr>';
 
   if(printingAll){
-    tbody.innerHTML=makeBody(sortedRows(filtered),0,filtered);
+    tbody.innerHTML=makeBody(currentSortedFiltered(),0,filtered);
   }else{
     pageSize=Number($('#pageSize').value);
     const pages=Math.max(1,Math.ceil(filtered.length/pageSize)); page=Math.min(page,pages);
     const start=(page-1)*pageSize;
-    const slice=sortedRows(filtered).slice(start,start+pageSize);
+    const slice=currentSortedFiltered().slice(start,start+pageSize);
     tbody.innerHTML=makeBody(slice,start,filtered);
     $('#pageInfo').textContent=`Page ${page} of ${pages}`;
     $('#prevBtn').disabled=page<=1; $('#nextBtn').disabled=page>=pages;
@@ -875,12 +898,28 @@ async function loadDB(){
 
 $('#catalogDownloadBtn').onclick=openSelectedCatalog;
 $('#priceListDownloadBtn').onclick=downloadSelectedPriceList;
+
+let filterInputTimer=0;
+function scheduleFilterApply(action,delay=120){
+  clearTimeout(filterInputTimer);
+  filterInputTimer=setTimeout(()=>{
+    filterInputTimer=0;
+    (action||applyFilters)();
+  },delay);
+}
+function flushPendingFilterApply(){
+  if(filterInputTimer){
+    clearTimeout(filterInputTimer);
+    filterInputTimer=0;
+  }
+}
+
 document.querySelectorAll('.filter-search').forEach(inp=>{
   inp.addEventListener('input',()=>{
     // Typed text is a contains-filter; it does not force-select only the first dropdown option.
     const sel=$('#'+inp.dataset.target);
     sel.value='';
-    applyFilters();
+    scheduleFilterApply();
   });
 });
 
@@ -895,7 +934,7 @@ $('#imageModal').onclick=e=>{if(e.target===$('#imageModal'))closeImageModal()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeImageModal()});
 $('#zoomInBtn').onclick=()=>{imageZoom=Math.min(3,imageZoom+.2);$('#productImagePreview').style.transform=`scale(${imageZoom})`};
 $('#zoomOutBtn').onclick=()=>{imageZoom=Math.max(.5,imageZoom-.2);$('#productImagePreview').style.transform=`scale(${imageZoom})`};
-$('#universalSearchInput').addEventListener('input',e=>runUniversalSearch(e.target.value));
+$('#universalSearchInput').addEventListener('input',e=>{const value=e.target.value;scheduleFilterApply(()=>runUniversalSearch(value));});
 $('#voiceSearchBtn').onclick=()=>{
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SpeechRecognition){toast('Voice search is not supported in this browser. Use Chrome or Edge.');return}
@@ -975,8 +1014,8 @@ $('#excelFile').onchange=async e=>{
 
 // Pricelist download uses a dedicated lightweight print iframe above.
 $('#resetBtn').onclick=reset;
-['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).onchange=()=>applyFilters());
-$('#searchInput').oninput=()=>applyFilters();
+['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).onchange=()=>{flushPendingFilterApply();applyFilters()});
+$('#searchInput').oninput=()=>scheduleFilterApply();
 $('#pageSize').onchange=()=>{page=1;render()};
 $('#prevBtn').onclick=()=>{page--;render()};
 $('#nextBtn').onclick=()=>{page++;render()};
