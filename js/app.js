@@ -501,14 +501,20 @@ function renderCatalogCard(group){
   card.classList.toggle('catalog-fallback',!!currentCatalogGroup&&!currentCatalogUrl);
 
   const hasGroup=!!currentCatalogGroup;
+  const hasPricelistRows=Array.isArray(filtered) && filtered.length>0;
   catalogBtn.disabled=!hasGroup || !currentCatalogUrl;
-  priceBtn.disabled=!hasGroup;
+  // Pricelist works for a selected group as well as All Groups.
+  priceBtn.disabled=!hasPricelistRows;
   catalogBtn.title=currentCatalogUrl ? 'Open selected group catalog' : 'Add this group Google Drive link in js/catalog-links.js';
-  priceBtn.title=hasGroup ? 'Download the products currently visible in the selected grid as PDF' : 'Select a group first';
+  priceBtn.title=hasPricelistRows
+    ? (hasGroup ? 'Download the current filtered group as PDF' : 'Download all currently filtered groups as one PDF')
+    : 'Current filters me koi product nahi hai';
 
   if(!hasGroup){
-    title.textContent='Select a group';
-    status.textContent='Group select karte hi Catalog aur current grid Pricelist dono options yahan milenge.';
+    title.textContent='All Groups Pricelist';
+    status.textContent=hasPricelistRows
+      ? 'Current filters ka combined PDF ready hai. Har group apne relevant columns ke saath separate pages me print hoga.'
+      : 'Current filters me koi product nahi hai.';
     return;
   }
 
@@ -639,44 +645,70 @@ function buildPrintBodyRows(rows,columns){
   }
   return output.join('');
 }
-function buildLightweightPrintHtml(){
-  const group=clean($('#groupFilter').value)||clean(currentCatalogGroup)||'Raj Agencies Pricelist';
-  const rows=sortedRows(filtered);
-  const cols=visibleColumns.slice();
-  const logoCandidates=logoCandidatesForBrand(group);
+function buildPrintGroupSection(groupName,groupRows,index){
+  const rows=sortRowsByFields(groupRows,viewByFields(groupRows));
+  const cols=visibleColumnsForRows(groupRows);
   const fontSize=cols.length>15?'6.8px':cols.length>12?'7.3px':cols.length>9?'8px':'8.8px';
   const cellPad=cols.length>15?'2.8px 2.2px':cols.length>12?'3.1px 2.4px':'3.5px 2.8px';
   const widths=printColumnWeights(cols);
-  const colgroup=`<colgroup><col style="width:${widths.serial}%">${cols.map((c,index)=>`<col style="width:${widths.columns[index]}%">`).join('')}</colgroup>`;
+  const colgroup=`<colgroup><col style="width:${widths.serial}%">${cols.map((c,colIndex)=>`<col style="width:${widths.columns[colIndex]}%">`).join('')}</colgroup>`;
   const head=cols.map(c=>`<th class="${printCellClass(c)}">${escapeHtml(c)}</th>`).join('');
-  const body=buildPrintBodyRows(rows,cols);
+  const output=[];
+  appendPrintHierarchy(output,rows,groupRows,cols,{value:0});
+  const logoId=`pdfBrandLogo${index}`;
+  const logoCandidates=logoCandidatesForBrand(groupName);
+  const logoScript=`<script>(function(){var c=${JSON.stringify(logoCandidates)};var i=0;var img=document.getElementById(${JSON.stringify(logoId)});if(!img)return;function next(){if(i>=c.length){img.removeAttribute('src');img.style.visibility='hidden';return}img.src=c[i++];img.style.visibility='visible'}img.onload=function(){img.style.visibility='visible'};img.onerror=next;next()})()<\/script>`;
+  const html=`<section class="print-group-block" style="--pdf-font:${fontSize};--pdf-pad:${cellPad}">
+    <div class="print-head">
+      <img class="company-logo" src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group">
+      <div class="title"><div class="kicker">RAJ AGENCIES</div><h1>${escapeHtml(groupName)}</h1><div class="sub">LIVE PRICE BOOK</div><div class="meta"><span>COMPANY LIST DATE: ${escapeHtml(listDateForRows(groupRows))}</span><span>LAST UPDATED: ${escapeHtml(lastUpdated.toLocaleDateString('en-GB'))}</span><span>${groupRows.length.toLocaleString('en-IN')} PRODUCTS</span><span>${cols.length} COLUMNS</span></div></div>
+      <img id="${logoId}" class="brand-logo" alt="" style="visibility:hidden">
+    </div>
+    <table>${colgroup}<thead><tr><th class="serial">#</th>${head}</tr></thead><tbody>${output.join('')}</tbody></table>
+  </section>`;
+  return {html,logoScript};
+}
+function buildLightweightPrintHtml(){
+  const selectedGroup=clean($('#groupFilter').value);
+  const rows=sortedRows(filtered);
+  const grouped=new Map();
+  rows.forEach(row=>{
+    const group=clean(getField(row,'GROUP'))||'OTHER';
+    if(!grouped.has(group))grouped.set(group,[]);
+    grouped.get(group).push(row);
+  });
+  const groups=selectedGroup
+    ? [[selectedGroup,grouped.get(selectedGroup)||rows]]
+    : [...grouped.entries()].sort((a,b)=>natural(a[0],b[0]));
+  const sections=groups.map(([groupName,groupRows],index)=>buildPrintGroupSection(groupName,groupRows,index));
   const base=escapeHtml(document.baseURI);
-  const safeTitle=escapeHtml(safePdfName(group));
-  const brandLogo=`<img id="pdfBrandLogo" class="brand-logo" alt="" style="visibility:hidden">`;
-  const brandLogoScript=`<script>(function(){var c=${JSON.stringify(logoCandidates)};var i=0;var img=document.getElementById('pdfBrandLogo');function next(){if(i>=c.length){img.removeAttribute('src');img.style.visibility='hidden';return}img.src=c[i++];img.style.visibility='visible'}img.onload=function(){img.style.visibility='visible'};img.onerror=next;next()})()<\/script>`;
+  const documentLabel=selectedGroup||'All Groups Filtered Pricelist';
+  const safeTitle=escapeHtml(safePdfName(documentLabel));
   return `<!doctype html><html><head><meta charset="utf-8"><base href="${base}"><title>${safeTitle}</title><style>
     @page{size:A4 landscape;margin:7mm}
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    body{font-size:${fontSize}}
+    body{font-size:8px}
     .watermark-layer{position:fixed;inset:0;z-index:20;overflow:hidden;pointer-events:none}
     .watermark{position:absolute;left:50%;top:57%;width:78vw;height:68vh;max-width:none;max-height:none;object-fit:contain;opacity:.072;pointer-events:none;transform:translate(-50%,-50%) rotate(-10deg)}
     .page-content{position:relative;z-index:1}
-    .print-head{display:grid;grid-template-columns:95px 1fr 95px;align-items:center;border-bottom:3px solid #f5b00e;padding:0 0 5px;margin:0 0 5px}
+    .print-group-block{font-size:var(--pdf-font,8px)}
+    .print-group-block+.print-group-block{break-before:page;page-break-before:always}
+    .print-head{display:grid;grid-template-columns:95px 1fr 95px;align-items:center;border-bottom:3px solid #f5b00e;padding:0 0 5px;margin:0 0 5px;break-after:avoid;page-break-after:avoid}
     .company-logo,.brand-logo{width:88px;height:50px;object-fit:contain}
     .brand-logo{justify-self:end}
     .title{text-align:center}
     .kicker{font-size:11px;font-weight:900;letter-spacing:.12em;color:#dc6c0b}
     h1{margin:1px 0;color:#0e337e;font-size:18px;line-height:1.05}
     .sub{font-size:8px;letter-spacing:.18em;font-weight:800;color:#0e337e}
-    .meta{display:flex;justify-content:center;gap:5px;margin-top:4px;font-size:6.7px;font-weight:800}
+    .meta{display:flex;justify-content:center;gap:5px;margin-top:4px;font-size:6.7px;font-weight:800;flex-wrap:wrap}
     .meta span{border:1px solid #7bb8ee;border-radius:4px;padding:2px 5px;background:#f3f9ff}
-    table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:${fontSize}}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--pdf-font,8px)}
     thead{display:table-header-group}
     tfoot{display:table-footer-group}
     tr{break-inside:avoid;page-break-inside:avoid}
-    th{background:#0e337e;color:#fff;border:1px solid #355a91;padding:${cellPad};font-size:${fontSize};font-weight:800;white-space:normal;overflow-wrap:anywhere;line-height:1.08}
-    td{border:1px solid #aeb9c7;padding:${cellPad};line-height:1.15;background:rgba(255,255,255,.90);vertical-align:middle;overflow-wrap:anywhere;word-break:normal}
+    th{background:#0e337e;color:#fff;border:1px solid #355a91;padding:var(--pdf-pad,3px);font-size:var(--pdf-font,8px);font-weight:800;white-space:normal;overflow-wrap:anywhere;line-height:1.08}
+    td{border:1px solid #aeb9c7;padding:var(--pdf-pad,3px);line-height:1.15;background:rgba(255,255,255,.90);vertical-align:middle;overflow-wrap:anywhere;word-break:normal}
     tbody tr:nth-child(even) td{background:rgba(245,248,252,.92)}
     .serial{width:24px;text-align:center}
     th.left{text-align:left}th.right,th.price{text-align:right;color:#fff!important}
@@ -692,24 +724,12 @@ function buildLightweightPrintHtml(){
     .pdf-group-label{display:inline-block;margin-right:6px;padding:1px 4px;border:1px solid currentColor;border-radius:3px;font-size:.82em;letter-spacing:.05em}
     .pdf-group-title{font-weight:900}
     .pdf-group-count{float:right;font-size:.85em;font-weight:800}
-    .pdf-brand-heading td{background:#0e337e!important;color:#fff!important;font-size:10px;font-weight:900;padding:5.5px 6px;text-align:left!important}
-    .pdf-brand-meta{float:right;font-size:7.6px;font-weight:700}
     .footer-note{text-align:center;margin-top:4px;font-size:7.2px;color:#4a5568}
     @media screen{body{padding:10px}}
   </style></head><body>
-    <div class="watermark-layer" aria-hidden="true">
-      <img class="watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">
-    </div>
-    <div class="page-content">
-      <div class="print-head">
-        <img class="company-logo" src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group">
-        <div class="title"><div class="kicker">RAJ AGENCIES</div><h1>${escapeHtml(group)}</h1><div class="sub">LIVE PRICE BOOK</div><div class="meta"><span>COMPANY LIST DATE: ${escapeHtml(selectedListDate())}</span><span>LAST UPDATED: ${escapeHtml(lastUpdated.toLocaleDateString('en-GB'))}</span><span>${rows.length.toLocaleString('en-IN')} PRODUCTS</span></div></div>
-        ${brandLogo}
-      </div>
-      <table>${colgroup}<thead><tr><th class="serial">#</th>${head}</tr></thead><tbody>${body}</tbody></table>
-      <div class="footer-note">System-generated pricelist. Please confirm Rate / MRP and all details before use.</div>
-    </div>
-    ${brandLogoScript}
+    <div class="watermark-layer" aria-hidden="true"><img class="watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt=""></div>
+    <div class="page-content">${sections.map(section=>section.html).join('')}<div class="footer-note">System-generated pricelist. Please confirm Rate / MRP and all details before use.</div></div>
+    ${sections.map(section=>section.logoScript).join('')}
   </body></html>`;
 }
 function cleanupPrintFrame(){
@@ -719,15 +739,15 @@ function cleanupPrintFrame(){
     activePrintFrame=null;
   }
   const btn=$('#priceListDownloadBtn');
-  if(btn){btn.disabled=!currentCatalogGroup;btn.textContent='Download Pricelist'}
+  if(btn){btn.disabled=!Array.isArray(filtered)||!filtered.length;btn.textContent='Download Pricelist'}
 }
 function downloadSelectedPriceList(){
-  if(!currentCatalogGroup){toast('Please select a group first');return}
   if(!filtered.length){toast('Current filters me koi product nahi hai');return}
   cleanupPrintFrame();
   const btn=$('#priceListDownloadBtn');
   if(btn){btn.disabled=true;btn.textContent='Preparing PDF…'}
-  const filename=safePdfName(currentCatalogGroup);
+  const selectedGroup=clean($('#groupFilter').value);
+  const filename=safePdfName(selectedGroup||'ALL GROUPS FILTERED PRICELIST');
   document.title=filename;
   const frame=document.createElement('iframe');
   frame.setAttribute('aria-hidden','true');
@@ -942,6 +962,23 @@ function listDateForRows(rows){
 }
 function selectedListDate(){ return listDateForRows(filtered); }
 
+function visibleColumnsForRows(rows){
+  const keys=dataColumns();
+  const activeViewByColumns=viewByColumnKeysForRows(rows);
+  const columns=keys.filter(k=>{
+    const normalized=keyOf(k);
+    if(HIDDEN_COLUMNS.has(normalized))return false;
+    if(!ALWAYS.includes(normalized)&&activeViewByColumns.has(normalized))return false;
+    return ALWAYS.includes(normalized)||rows.some(r=>!isEmpty(getField(r,k)));
+  });
+  columns.sort((a,b)=>{
+    if(keyOf(a)==='CODE')return -1;
+    if(keyOf(b)==='CODE')return 1;
+    return keys.indexOf(a)-keys.indexOf(b);
+  });
+  return columns;
+}
+
 function applyFilters(resetPage=true){
   cascade();
 
@@ -990,20 +1027,7 @@ function applyFilters(resetPage=true){
     return true;
   });
 
-  const keys=dataColumns();
-  const activeViewByColumns=viewByColumnKeysForRows(filtered);
-  visibleColumns=keys.filter(k=>{
-    const normalized=keyOf(k);
-    if(HIDDEN_COLUMNS.has(normalized))return false;
-    if(!ALWAYS.includes(normalized)&&activeViewByColumns.has(normalized))return false;
-    return ALWAYS.includes(normalized)||filtered.some(r=>!isEmpty(getField(r,k)));
-  });
-  // Keep part number first.
-  visibleColumns.sort((a,b)=>{
-    if(keyOf(a)==='CODE')return -1;
-    if(keyOf(b)==='CODE')return 1;
-    return keys.indexOf(a)-keys.indexOf(b);
-  });
+  visibleColumns=visibleColumnsForRows(filtered);
 
   document.body.classList.toggle('table-compact',visibleColumns.length>12);
   if(resetPage)page=1;
