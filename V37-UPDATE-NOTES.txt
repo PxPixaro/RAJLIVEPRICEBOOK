@@ -1,0 +1,31 @@
+RAJLIVEPRICEBOOK V37
+
+1. FAST ALL-GROUP FILTERING
+- Cached GROUP/SUB GROUP/SEGMENT/VEHICLE/MODEL/CATEGORY/CODE/PRODUCT search fields are built once.
+- All-group filter scans reuse the cache instead of repeatedly decoding Excel/dictionary values.
+- Cascade dropdown processing also works from cached filter fields.
+
+2. DIRECT FAST PDF DOWNLOAD
+- Download Pricelist no longer opens the browser Print dialog.
+- A lightweight PDF is generated directly in JavaScript and downloaded as a .pdf Blob.
+- Desktop: a preview tab is prepared from the same generated PDF after download is triggered.
+- Mobile: direct file download is used without opening print preview.
+- All Groups keeps group-wise dynamic columns: every group recalculates its own non-empty/relevant columns and starts on fresh PDF pages.
+- One large RAJGROUP watermark is embedded on every PDF page.
+
+NOTE: Browsers do not expose a reliable event for "download has physically finished". The app triggers the PDF download first, then uses the same ready PDF Blob for desktop preview. Popup/browser download policy can still control whether the preview tab opens.
+
+3. UNIVERSAL / VOICE SEARCH V37
+- Voice recognition uses up to 3 alternatives.
+- Approximate matching threshold is around 80-82% for codes/models and 82%+ for filter values.
+- Group, Segment, Vehicle, Model, Category and Sub Group are searched as filter targets.
+- Spoken 11 09 can match 1109 because spaces/punctuation are ignored for voice similarity.
+- Example KX N 525 can fuzzy-match KX525/KX 525 around the requested tolerance.
+- Built-in local aliases include CHOTA HATHI / S GADI / TATA S -> ACE, BHARAT BENZ -> BHARATBENZ, EARTH MOVER -> EARTHMOVERS.
+
+4. VOICE ALIAS EXCEL
+- assets/data/filter-master.xlsx now also contains VOICE ALIASES sheet.
+- Columns: SPOKEN / LOCAL NAME, SEARCH AS.
+- Put one spoken/local phrase per row and the actual canonical search/filter text in SEARCH AS.
+- Hosted GitHub mode loads this sheet automatically together with FILTER MASTER.
+- Local file mode can use Sync Filter Master to load both filter master and aliases.

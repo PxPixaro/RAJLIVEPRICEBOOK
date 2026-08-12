@@ -1,0 +1,8 @@
+RAJLIVEPRICEBOOK V38
+
+- V37 fast filtering, universal voice search and filter/voice master support retained.
+- PDF/Pricebook output restored to V36 print layout exactly.
+- Group-wise smart visible columns retained.
+- All Groups filtered PDF retained.
+- Large single RAJGROUP watermark retained.
+- Download Pricelist now uses the V36 browser print/PDF rendering path because that is the path that preserves the exact V36 formatting.

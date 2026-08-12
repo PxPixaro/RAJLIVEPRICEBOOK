@@ -1,0 +1,13 @@
+V40 - Hybrid All Groups + Scoped Universal Search
+==================================================
+1. App now opens with All Groups / All filters selected (blank values).
+2. First screen renders only the current 50-row page and skips sorting 40k-60k rows on landing.
+3. SEARCH ANYTHING searches every Excel column.
+   - If upper filters are selected, search stays inside those filters.
+   - If no upper filter is selected, it searches all groups globally.
+4. Universal/voice search follows the same scope rule.
+   - No scope: obvious values such as KBX/Aayub/CAR can auto-select matching filter.
+   - Existing scope: voice/text query does not clear customer filters.
+5. Punctuation/space-insensitive search supports 12-10 vs 1210, 11-09 vs 1109, etc.
+6. Cascading dropdown rebuild is no longer run on every typed search keystroke.
+7. V38/V39 PDF formatting, watermark, filter master and All-Groups PDF logic retained.

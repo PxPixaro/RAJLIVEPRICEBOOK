@@ -1,0 +1,8 @@
+V39 UPDATE
+
+- SEARCH ANYTHING / PRODUCT is now a true global search across EVERY column/value in price-book Excel rows.
+- Contains matching: Group, Sub Group, Segment, Vehicle, Model, Category, Code, Product Name and any other current/future Excel column.
+- Spaces/punctuation-insensitive fallback is included (e.g. KX 525 can match KX525-style content).
+- While SEARCH ANYTHING contains text, it intentionally searches all groups globally and upper dropdown selections do not restrict results.
+- Clear SEARCH ANYTHING to return to normal upper-filter behavior.
+- V38 PDF layout, watermark, voice search, filter master and all-groups smart PDF remain unchanged.
