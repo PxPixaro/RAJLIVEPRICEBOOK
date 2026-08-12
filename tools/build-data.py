@@ -128,7 +128,7 @@ def main() -> int:
     headers, rows = load_rows(SOURCE)
     dictionaries, compact_rows = compact(headers, rows)
     payload = (
-        "/* V30 compact dictionary data generated from assets/data/price-book.xlsx. */\n"
+        "/* V32 compact dictionary data generated from assets/data/price-book.xlsx. */\n"
         f"window.PRICEBOOK_DATA_FORMAT={json.dumps('DICT_V1')};"
         f"window.PRICEBOOK_COLUMNS={json.dumps(headers, ensure_ascii=False, separators=(',', ':'))};"
         f"window.PRICEBOOK_DICTIONARIES={json.dumps(dictionaries, ensure_ascii=False, separators=(',', ':'))};"
