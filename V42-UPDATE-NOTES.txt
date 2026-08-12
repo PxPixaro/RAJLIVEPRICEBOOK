@@ -1,0 +1,8 @@
+V42 UPDATE
+
+1. Universal Search is product/data-centric and searches all Excel row columns except GROUP / BRAND.
+2. Search includes CODE, PRODUCT/DESCRIPTION, MRP, RATE, GST, UNIT, MODEL, VEHICLE, SEGMENT, SIZE, GRADE, PART NO and future columns.
+3. Punctuation-insensitive matching retained: 11-155 can match 11155; 12-10 can match 1210.
+4. Voice natural-command cleanup expanded: phrases like "mujhe KX 525 ka rate do" focus on KX 525.
+5. Voice no longer auto-selects GROUP. It can still recognize Segment, Vehicle, Model, Category and Sub Group.
+6. All V41/V40 performance, scoped-filter behavior, V38 PDF format and watermark features retained.

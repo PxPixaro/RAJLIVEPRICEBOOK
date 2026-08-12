@@ -1,0 +1,8 @@
+V41 VOICE NATURAL PHRASE SEARCH
+- Voice phrases such as "Bharat Benz Gadi" now reduce to meaningful Excel search terms such as BHARATBENZ / BHARAT BENZ.
+- Generic spoken filler words such as gadi/gaadi/vehicle/model/group/brand are ignored when useful.
+- User-defined VOICE ALIASES remain supported and take priority.
+- Global voice search is not trapped by programmatic/default group selections.
+- Only filters manually selected/typed by the customer create a scoped universal-search context.
+- With no manual scope, clear group/segment/vehicle/model names may auto-select the matching filter; otherwise search runs across all Excel rows/columns.
+- V40 performance, V38 PDF format, watermark and all-group PDF logic retained.

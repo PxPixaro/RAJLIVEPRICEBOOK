@@ -419,10 +419,10 @@
         <label><span>Vehicle</span><input class="filter-search" data-target="vehicleFilter" placeholder="Search vehicle…"><select id="vehicleFilter"></select></label>
         <label><span>Model</span><input class="filter-search" data-target="modelFilter" placeholder="Search model…"><select id="modelFilter"></select></label>
         <label><span>Category</span><input class="filter-search" data-target="categoryFilter" placeholder="Search category…"><select id="categoryFilter"></select></label>
-        <label class="search-box"><span>Search Anything / Product</span><input id="searchInput" placeholder="Search anything from entire Excel…"></label>
+        <label class="search-box"><span>Search Anything / Product</span><input id="searchInput" placeholder="Search product, code, description, MRP, rate, model, vehicle or any Excel detail…"></label>
         <label class="universal-search-box"><span>UNIVERSAL SEARCH</span>
           <div class="voice-search-wrap">
-            <input id="universalSearchInput" placeholder="Speak or type any word—group, code, vehicle, model…">
+            <input id="universalSearchInput" placeholder="Speak or type product, code, description, MRP, rate, model, vehicle or other detail…">
             <button id="voiceSearchBtn" type="button" title="Voice Search" aria-label="Voice Search">🎙</button>
           </div>
           <small id="voiceStatus">Type or speak any matching word from Excel</small>
@@ -937,7 +937,15 @@
     function searchBlob(meta){
       if(meta.blob!==null)return meta.blob;
       const values=[];
-      for(let i=0;i<cachedColumns.length;i++)values.push(clean(getField(meta.row,cachedColumns[i])));
+      // V43: both typed search boxes use the same full-row product-data index.
+      // GROUP / BRAND is intentionally excluded; all other current/future Excel
+      // columns remain searchable (code, description, MRP, rate, GST, unit,
+      // segment, vehicle, model, size, grade, part no., etc.).
+      for(let i=0;i<cachedColumns.length;i++){
+        const k=compactFieldKey(cachedColumns[i]);
+        if(k==='GROUP'||k==='GROUPBRAND'||k==='BRANDGROUP')continue;
+        values.push(clean(getField(meta.row,cachedColumns[i])));
+      }
       meta.blob=normalizedSearch(values.join(' '));
       return meta.blob;
     }
@@ -1028,12 +1036,14 @@
       return words.length>0&&words.every(function(word){return haystack.includes(word)});
     }
     function passesSearch(meta,ctx){
+      // V43: SEARCH ANYTHING / PRODUCT now uses the exact same full-row
+      // contains engine as UNIVERSAL SEARCH instead of only CODE + PRODUCT NAME.
+      // This enables typed searches for MRP, RATE, GST, UNIT, model, vehicle,
+      // segment and any future Excel column as well.
       if(ctx.q){
-        if(ctx.exactCode){
-          if(meta.code!==ctx.q)return false;
-        }else if(!meta.code.includes(ctx.q)&&!meta.product.includes(ctx.q)){
-          return false;
-        }
+        const qNormalized=normalizedSearch(ctx.q);
+        const qWords=qNormalized?qNormalized.split(' ').filter(Boolean):[];
+        if(!containsUniversal(meta,qNormalized,qWords))return false;
       }
       if(ctx.universal&&!containsUniversal(meta,ctx.universal,ctx.universalWords))return false;
       return true;

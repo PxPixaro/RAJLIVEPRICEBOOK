@@ -1,0 +1,7 @@
+V43 - Search Anything Full Row Search
+
+1. SEARCH ANYTHING / PRODUCT now uses the same full-row contains search as UNIVERSAL SEARCH.
+2. Searches Product Code, Description, MRP, Rate, GST, Unit, Segment, Vehicle, Model, Size, Grade, Part No. and future Excel columns.
+3. GROUP / BRAND remains excluded from text-search index as requested in V42.
+4. Upper manually selected filters still scope the results exactly as in V42.
+5. Voice/universal logic, PDF format, watermark and performance behavior remain unchanged.

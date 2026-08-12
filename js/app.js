@@ -117,9 +117,18 @@ function rowSourceIndex(row){
 
 let FAST_ROWS=[];
 function normalizeSearchText(v){return clean(v).toUpperCase().replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim()}
+// V42: Universal search intentionally excludes GROUP / BRAND itself. Everything
+// else in the Excel row remains searchable, including future columns added later.
+// This keeps the search product/data-centric while upper GROUP filters still work.
+function universalRowValues(row){
+  return Object.entries(row||{}).filter(([key])=>{
+    const k=compactFieldKey(key);
+    return k!=='GROUP' && k!=='GROUPBRAND' && k!=='BRANDGROUP';
+  }).map(([,value])=>clean(value)).filter(Boolean);
+}
 function buildFastRows(){
   FAST_ROWS=allData.map((row,index)=>{
-    const allValues=Object.values(row||{}).map(v=>clean(v)).filter(Boolean);
+    const allValues=universalRowValues(row);
     const allN=normalizeSearchText(allValues.join(' | '));
     const allCompact=allN.replace(/\s+/g,'');
     return {
@@ -368,27 +377,65 @@ function compactVoice(v){return normalizeSearchText(v).replace(/\s+/g,'')}
 function editDistance(a,b){a=compactVoice(a);b=compactVoice(b);let prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let cur=[i];for(let j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=cur}return prev[b.length]}
 function similarity(a,b){a=compactVoice(a);b=compactVoice(b);if(!a||!b)return 0;if(a.includes(b)||b.includes(a))return Math.min(a.length,b.length)/Math.max(a.length,b.length);return 1-editDistance(a,b)/Math.max(a.length,b.length)}
 function canonicalVoice(term){const n=normalizeSearchText(term);return USER_VOICE_ALIASES[n]||BUILTIN_VOICE_ALIASES[n]||n}
+
+// V41: voice can contain natural filler words ("Bharat Benz gadi", "KBX group",
+// "1109 model"). Build useful candidates instead of forcing the full transcript
+// to match one Excel value. User aliases have priority and can be maintained in Excel.
+const VOICE_FILLER_WORDS=new Set([
+  'GADI','GAADI','GAADIYA','GADIYA','VEHICLE','GAADI','WALA','WALI','WALE','KA','KI','KE',
+  'MODEL','SERIES','GROUP','BRAND','PRODUCT','ITEM','PART','NUMBER','NO',
+  // Natural request/command words: "mujhe KX 525 ka rate do" -> "KX 525".
+  'MUJHE','MUJE','MERE','MERA','MERI','PLEASE','PLS','CHAHIYE','CHAHIE','CHAIYE','DENA','DE','DO',
+  'DIKHAO','DIKHA','BATAO','BATA','SEARCH','FIND','DHOONDO','DHUNDO','NIKALO','LAO','LAAO',
+  'RATE','PRICE','MRP','COST','VALUE','KITNA','KITNE','KYA','HAI','KAHA','KAHAN','WANT','SHOW','GIVE','ME','THE','OF'
+]);
+function voiceCandidates(term){
+  const n=normalizeSearchText(term);
+  const out=[];const add=v=>{v=clean(v);if(v&&!out.some(x=>normalizeSearchText(x)===normalizeSearchText(v)))out.push(v)};
+  add(canonicalVoice(n));
+  const maps=[USER_VOICE_ALIASES,BUILTIN_VOICE_ALIASES];
+  for(const map of maps){for(const [spoken,target] of Object.entries(map||{})){const key=normalizeSearchText(spoken);if(key&&n.includes(key))add(target)}}
+  const words=n.split(/\s+/).filter(Boolean);
+  const useful=words.filter(w=>!VOICE_FILLER_WORDS.has(w));
+  if(useful.length)add(useful.join(' '));
+  // Try contiguous phrases first (BHARAT BENZ), then individual significant words.
+  for(let size=Math.min(4,useful.length);size>=2;size--){for(let i=0;i+size<=useful.length;i++)add(useful.slice(i,i+size).join(' '))}
+  useful.forEach(add);
+  return out;
+}
 function bestVoiceFilter(term){
- const q=canonicalVoice(term), qn=normalizeSearchText(q); let best=null;
- const fields=[['groupFilter','GROUP',FAST_ROWS.map(x=>x.group)],['segmentFilter','SEGMENT',FAST_ROWS.flatMap(x=>segmentTokens(x.segment))],['vehicleFilter','VEHICLE',FAST_ROWS.map(x=>x.vehicle)],['modelFilter','MODEL',FAST_ROWS.map(x=>x.model)],['categoryFilter','CATEGORY',FAST_ROWS.map(x=>x.category)],['subGroupFilter','SUB GROUP',FAST_ROWS.map(x=>x.sub)]];
- for(const [id,name,vals] of fields){for(const v of new Set(vals.filter(Boolean))){const score=similarity(qn,v);if(score>=.82&&(!best||score>best.score))best={id,name,value:v,score};}}
+ const queries=voiceCandidates(term); let best=null;
+ // V42: GROUP is not auto-searched from Universal/Voice. Other filter dimensions
+ // can still be recognized (CAR -> SEGMENT, BHARATBENZ -> VEHICLE, 1109 -> MODEL).
+ const fields=[['segmentFilter','SEGMENT',FAST_ROWS.flatMap(x=>segmentTokens(x.segment))],['vehicleFilter','VEHICLE',FAST_ROWS.map(x=>x.vehicle)],['modelFilter','MODEL',FAST_ROWS.map(x=>x.model)],['categoryFilter','CATEGORY',FAST_ROWS.map(x=>x.category)],['subGroupFilter','SUB GROUP',FAST_ROWS.map(x=>x.sub)]];
+ for(const q of queries){const qn=normalizeSearchText(q);for(const [id,name,vals] of fields){for(const v of new Set(vals.filter(Boolean))){const score=similarity(qn,v);if(score>=.82&&(!best||score>best.score))best={id,name,value:v,score,query:q};}}}
  return best;
+}
+let USER_FILTER_SCOPE_ACTIVE=false;
+function clearUpperFilterScope(){
+  ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).value='');
+  document.querySelectorAll('.filter-search').forEach(x=>x.value='');
+}
+function bestGlobalVoiceQuery(term){
+  const candidates=voiceCandidates(term);
+  // Prefer a candidate that actually occurs in the complete Excel search index.
+  for(const c of candidates){const n=normalizeSearchText(c), compact=n.replace(/\s+/g,'');if(!n)continue;if(FAST_ROWS.some(x=>x.allN.includes(n)||(compact&&x.allCompact.includes(compact))))return c}
+  return candidates[0]||term;
 }
 function runUniversalSearch(term){
  const q=clean(term);$('#universalSearchInput').value=q;
  if(!q){$('#searchInput').value='';applyFilters();return}
  if(FAST_ROWS.length!==allData.length)buildFastRows();
- const scoped=hasActiveUpperFilters();
- const cq=canonicalVoice(q);
- // If the customer already chose Group/Segment/Vehicle/etc., universal/voice search
- // must stay inside that scope instead of clearing their selections.
- if(scoped){$('#searchInput').value=cq;applyFilters();$('#voiceStatus').textContent=`Searching selected filters: ${cq}`;return}
- // With no manual scope, clear nothing (all values are already blank) and allow an
- // obvious spoken filter value such as KBX / Aayub / CAR to auto-select its field.
+ // Only a filter explicitly changed by the customer creates a search scope. Programmatic
+ // defaults/auto-selections must never trap voice search inside one group.
+ const scoped=USER_FILTER_SCOPE_ACTIVE&&hasActiveUpperFilters();
+ if(scoped){const cq=bestGlobalVoiceQuery(q);$('#searchInput').value=cq;applyFilters();$('#voiceStatus').textContent=`Searching selected filters: ${cq}`;return}
+ // Global voice/universal mode: remove any programmatic/default selection, then search
+ // the entire workbook. Clear spoken filter names may auto-select their correct field.
+ clearUpperFilterScope();
  const best=bestVoiceFilter(q);
  if(best&&best.score>=.82){$('#'+best.id).value=best.value;cascade();applyFilters();$('#voiceStatus').textContent=`Matched ${best.name}: ${best.value}`;return}
- // Otherwise perform a true Excel-wide contains search. This is preferred for model,
- // code and product phrases so 1210, 11-09, Swift Dzire, Tata S etc. can match across groups.
+ const cq=bestGlobalVoiceQuery(q);
  $('#searchInput').value=cq;applyFilters();$('#voiceStatus').textContent=`Searching all groups: ${cq}`;
 }
 
@@ -1201,6 +1248,7 @@ function render(){
 }
 
 function reset(){
+  USER_FILTER_SCOPE_ACTIVE=false;
   ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).value='');
   $('#searchInput').value=''; $('#universalSearchInput').value=''; document.querySelectorAll('.filter-search').forEach(x=>x.value='');
   cascade();
@@ -1278,6 +1326,7 @@ function flushPendingFilterApply(){
 
 document.querySelectorAll('.filter-search').forEach(inp=>{
   inp.addEventListener('input',()=>{
+    USER_FILTER_SCOPE_ACTIVE=true;
     // Typed text is a contains-filter; it does not force-select only the first dropdown option.
     const sel=$('#'+inp.dataset.target);
     sel.value='';
@@ -1302,7 +1351,7 @@ $('#voiceSearchBtn').onclick=()=>{
   if(!SpeechRecognition){toast('Voice search is not supported in this browser. Use Chrome or Edge.');return}
   const recognition=new SpeechRecognition();
   recognition.lang='en-IN'; recognition.interimResults=false; recognition.maxAlternatives=3;
-  $('#voiceSearchBtn').classList.add('listening');$('#voiceStatus').textContent='Listening… speak group, part number, vehicle, model or product';
+  $('#voiceSearchBtn').classList.add('listening');$('#voiceStatus').textContent='Listening… speak product, code, description, MRP, rate, vehicle, model or other detail';
   recognition.onresult=e=>{
     const spoken=e.results[0][0].transcript.trim();
     $('#voiceStatus').textContent=`Heard: ${spoken}`;
@@ -1398,7 +1447,7 @@ if(filterMasterSyncBtn&&filterMasterFile){
 
 // Pricelist download uses a dedicated lightweight print iframe above.
 $('#resetBtn').onclick=reset;
-['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).onchange=()=>{flushPendingFilterApply();applyFilters(true,true)});
+['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).onchange=()=>{USER_FILTER_SCOPE_ACTIVE=true;flushPendingFilterApply();applyFilters(true,true)});
 $('#searchInput').oninput=()=>scheduleFilterApply();
 $('#pageSize').onchange=()=>{page=1;render()};
 $('#prevBtn').onclick=()=>{page--;render()};
