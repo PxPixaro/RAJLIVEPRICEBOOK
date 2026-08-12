@@ -600,7 +600,7 @@ main{margin-top:2px}
   --surface-soft:#f7f9fc;
   --focus:#dbeafe;
 }
-html{background:#eef3f8;scroll-behavior:smooth;color-scheme:light}
+html{background:#eef3f8;scroll-behavior:auto;color-scheme:light}
 body{
   min-width:320px;
   background:
@@ -621,7 +621,8 @@ button,select{touch-action:manipulation}
   border-radius:0 0 22px 22px;
   background:rgba(255,255,255,.96);
   box-shadow:0 16px 45px #102a4314;
-  backdrop-filter:blur(10px);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
 }
 .header-top-row{min-height:80px;padding:10px 22px;gap:18px}
 .header-frame .company-logo{width:88px;height:60px}
@@ -1533,5 +1534,96 @@ footer{color:#68758d}
 @media (max-width:760px){
   #priceTable .group-heading[data-group-level] td{
     padding-left:min(var(--view-indent,12px),110px)!important;
+  }
+}
+
+
+/* =========================================================
+   V32 — normal UI + smooth-performance overrides
+   ========================================================= */
+.app-header,.header-frame,.hero-card,.hero-agencies,.filter-panel,.results-card,
+.btn,.link-btn,.data-tools-toggle,.catalog-download-btn,.status-pill,
+.brand-logo-wrap,.screen-list-date,.summary div,.selected-catalog,.image-modal{
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+}
+.header-frame,.filter-panel,.results-card{background:#fff!important}
+.app-header{background:#f4f7fb!important}
+.header-frame{box-shadow:0 8px 24px rgba(14,51,126,.08)!important}
+.filter-panel,.results-card{box-shadow:0 8px 22px rgba(14,51,126,.07)!important}
+.hero-agencies{background:rgba(255,255,255,.10)!important}
+.btn,.link-btn,.data-tools-toggle,.catalog-download-btn,.view-image-btn,.zoom-btn,.image-close,.filter-clear{
+  transition:transform .10s ease,border-color .10s ease,background-color .10s ease!important;
+}
+#priceTable tbody td{transition:none!important}
+#priceTable .product-thumb-btn{transition:transform .10s ease,border-color .10s ease!important}
+.brand-logo-wrap img,.company-logo{filter:none!important}
+@media(max-width:760px){
+  .app-header,.header-frame,.filter-panel,.results-card{box-shadow:none!important}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+
+
+/* =========================================================
+   V33 — protected PDF watermark + larger print readability
+   Uses assets/company-logo/rajgroup-watermark-93kb.png
+   ========================================================= */
+.print-watermark-layer{display:none}
+@media print{
+  /* Fixed foreground watermarks are repeated by Chromium on every printed page.
+     Keeping them above the table makes them visible even over white cell fills. */
+  .print-watermark-layer{
+    display:block!important;
+    position:fixed!important;
+    inset:0!important;
+    z-index:2147483000!important;
+    pointer-events:none!important;
+    overflow:hidden!important;
+  }
+  .print-watermark-layer .print-watermark{
+    display:block!important;
+    position:absolute!important;
+    left:50%!important;
+    width:46vw!important;
+    height:29vh!important;
+    max-width:none!important;
+    max-height:none!important;
+    object-fit:contain!important;
+    opacity:.070!important;
+    z-index:auto!important;
+    pointer-events:none!important;
+    image-rendering:auto!important;
+    transform:translate(-50%,-50%) rotate(-14deg)!important;
+  }
+  .print-watermark-layer .print-watermark-a{top:22%!important}
+  .print-watermark-layer .print-watermark-b{top:53%!important;transform:translate(-50%,-50%) rotate(12deg)!important}
+  .print-watermark-layer .print-watermark-c{top:83%!important}
+
+  /* Ctrl+P fallback readability. Dedicated Download Pricelist has its own
+     optimized print document in app.js, but direct printing should also be legible. */
+  #priceTable{font-size:7.6px!important}
+  #priceTable th{font-size:7.4px!important;padding:4.4px 3.4px!important;line-height:1.18!important}
+  #priceTable td{font-size:7.6px!important;padding:4px 3.4px!important;line-height:1.22!important}
+  .print-head h2{font-size:25px!important}
+}
+
+/* =========================================================
+   V35 — one large full-data watermark per printed PDF page
+   ========================================================= */
+@media print{
+  .print-watermark-layer .print-watermark{
+    display:block!important;
+    position:absolute!important;
+    left:50%!important;
+    top:57%!important;
+    width:78vw!important;
+    height:68vh!important;
+    max-width:none!important;
+    max-height:none!important;
+    object-fit:contain!important;
+    opacity:.072!important;
+    transform:translate(-50%,-50%) rotate(-10deg)!important;
   }
 }
