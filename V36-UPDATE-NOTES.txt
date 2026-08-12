@@ -1,0 +1,17 @@
+RAJ LIVE PRICEBOOK V36 — ALL GROUPS FILTERED PDF
+=================================================
+
+1. Download Pricelist now works when GROUP / BRAND = All groups.
+2. The PDF uses the CURRENT filtered rows only. MODEL / SEGMENT / VEHICLE / CATEGORY / search filters are respected.
+3. All matching groups are combined into ONE print/PDF job.
+4. Each group starts on a new PDF page.
+5. Each group recalculates its own visible columns from that group's filtered products:
+   - Excel/system hidden columns stay hidden.
+   - VIEW BY hierarchy columns stay as headings instead of duplicate table columns.
+   - Extra columns that are blank for that group are hidden.
+   - Standard essential columns follow the same rules as the existing single-group PDF.
+6. Each group keeps its own VIEW BY hierarchy, product count, company list date and brand logo.
+7. Large RAJGROUP watermark from V35 remains on every printed page.
+8. Example: if filtered Aayub rows need 5 table columns and Allied rows need 8, Aayub prints with 5 and Allied begins on the next page with 8.
+
+Use Chrome/Edge Print > Save as PDF after clicking Download Pricelist.
