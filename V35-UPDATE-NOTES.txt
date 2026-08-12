@@ -1,0 +1,32 @@
+RAJ LIVE PRICEBOOK — V35 UPDATE
+================================
+
+1) FILTER MASTER EXCEL
+- New file: assets/data/filter-master.xlsx
+- FILTER MASTER sheet columns:
+  GROUP / BRAND | SUB GROUP | SEGMENT | VEHICLE | MODEL | CATEGORY
+- Keep one canonical filter item per cell/row, for example MODEL: 407, 709, 1109.
+- You may also write aliases in one cell: 407,709,1109. This is treated as OR.
+- Blank master columns automatically fall back to values from price-book.xlsx.
+
+2) SMART ANYWHERE MATCH
+- MODEL / SEGMENT / VEHICLE master values are searched anywhere in the related price-book field.
+- Example selection 407,709,1109 returns rows containing 407 OR 709 OR 1109.
+- 407 does NOT match 1407 or 4070.
+- Common small spelling mistakes are tolerated conservatively (example SCORPIO vs SCORPIOO, ALLWYN vs ALWYN).
+- The same matcher works in filter search boxes.
+
+3) GITHUB AUTO UPDATE
+- Replace assets/data/filter-master.xlsx on GitHub and refresh the hosted site.
+- The app auto-loads the current master workbook with no hard-coded row count.
+- price-book.xlsx remains independently replaceable as before.
+
+4) LOCAL FILE MODE
+- Open index.html.
+- Use Data Options > Sync Filter Master to load your edited filter-master.xlsx locally.
+- The selected local master is saved in browser localStorage for the next local start.
+
+5) PDF WATERMARK
+- One large RAJGROUP watermark is repeated once per printed PDF page.
+- It is centered over the product data area at low transparency so text remains readable.
+- The V33/V34 larger PDF text remains enabled.

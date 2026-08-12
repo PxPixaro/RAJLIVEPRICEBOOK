@@ -1,0 +1,41 @@
+RAJ AGENCIES LIVE PRICE BOOK — V32 NORMAL + SMOOTH
+===================================================
+
+DONE
+----
+1. Liquid / glass / backdrop-blur UI removed.
+2. Large panels use normal solid surfaces and lighter shadows/transitions.
+3. Excel-synced object lookup optimized for faster filtering on large data.
+4. Background universal-search warmup made less aggressive.
+5. Brand logo matching fixed:
+   - exact normalized match first
+   - safe known spelling aliases
+   - conservative fuzzy match only for long names
+   - short GROUP names do not cross-match (example: KD will not use RKD logo)
+   - future logo named exactly like Excel GROUP can be .webp/.png/.jpg/.jpeg without app.js edits
+6. GitHub/HTTP hosted mode now automatically reads assets/data/price-book.xlsx.
+   Replace that XLSX on GitHub and refresh the site.
+7. Local file:// mode keeps bundled data + manual Sync Price Excel because browsers
+   do not allow a page opened directly from disk to auto-read another local file.
+8. Excel rows and columns are dynamic; there is no fixed row/column count.
+9. VIEW BY accepts comma-separated Excel headings in order, with no level limit.
+   Example: CATAGORIES,SEGMENT,MODEL -> CATAGORIES -> SEGMENT -> MODEL.
+   CATEGORIES is accepted as an alias for the existing CATAGORIES spelling.
+10. Current bundled js/data.js regenerated from assets/data/price-book.xlsx.
+
+CURRENT EXCEL CHECK
+-------------------
+First sheet dimension: A1:AZ44640
+Data rows: 44,639 products
+Columns: 52
+Existing VIEW BY examples found:
+- Aayub: CATAGORIES, SEGMENT, VEHICLE
+- Allied: SEGMENT, CATAGORIES
+- Bravo: VEHICLE, MODEL
+
+BRAND LOGO NOTE
+---------------
+The current ZIP has 60 image files in assets/brand-logos, but it does NOT contain
+an AAYUB/Aayub logo file. Because Aayub is the first/default Excel GROUP, its brand
+logo area will remain empty until a file such as AAYUB.jpg, AAYUB.png or AAYUB.webp
+is placed in assets/brand-logos. No app.js edit is needed after that.

@@ -1,0 +1,16 @@
+RAJLIVEPRICEBOOK V33 UPDATE
+
+1. PDF watermark uses exactly:
+   assets/company-logo/rajgroup-watermark-93kb.png
+
+2. Download Pricelist PDF now prints 3 repeated RAJ GROUP watermarks on every page.
+   Watermarks are rendered above the table with controlled transparency so they remain visible.
+
+3. Direct browser Ctrl+P also uses the same repeated watermark layout.
+
+4. PDF product/table font sizes and hierarchy headings were increased for better readability.
+   More columns may produce more pages, but text is intentionally larger than V32.
+
+5. Important limitation: no browser-generated PDF can be made mathematically impossible to edit/remove
+   with professional PDF editing software. Repeated foreground watermarks make ordinary removal/cropping
+   substantially harder while keeping product text readable.

@@ -272,3 +272,15 @@ V30 UNLIMITED VIEW BY + SAVED EXCEL RESTORE
 - App dobara kholne par saved Excel automatically restore hoti hai; har start par Sync Excel chalane ki zarurat nahi.
 - App/ZIP version update hone par valid synchronized data ab version mismatch ki wajah se delete/ignore nahi hota.
 - Browser storage blocked ho to status me “Synced (not saved)” clearly dikhaya jayega.
+
+
+V32 NORMAL UI + DYNAMIC GITHUB EXCEL
+-------------------------------------
+- Glass / backdrop blur effect पूरी तरह हटाया गया है ताकि scrolling और filtering smooth रहे।
+- GitHub Pages / http(s) पर assets/data/price-book.xlsx replace करने के बाद page refresh करें; नई Excel पहली sheet से automatic load होगी।
+- Column count और row count hard-coded नहीं हैं। नई rows/columns अपने-आप import होंगी।
+- VIEW BY में comma-separated headings किसी भी count में दे सकते हैं।
+  Example: CATAGORIES,SEGMENT,MODEL = पहले CATAGORIES, फिर SEGMENT, फिर MODEL hierarchy.
+- Excel में CATEGORIES लिखा हो तो भी CATAGORIES alias के रूप में काम करेगा।
+- नया brand logo GROUP के same नाम से assets/brand-logos में .webp/.png/.jpg/.jpeg रखें; common naming के लिए app manifest edit जरूरी नहीं।
+- file:// local opening में browser Excel file को folder से auto-fetch नहीं कर सकता; वहाँ Sync Price Excel button use करें।

@@ -1,0 +1,22 @@
+RAJLIVEPRICEBOOK V34 UPDATE
+
+1. MODEL multi-value OR filtering
+   Example selected value: 407, 709, 1109 O/M
+   Result: every product whose MODEL contains 407 OR 709 OR 1109 is included.
+   Numeric matching is boundary-aware so 407 does not accidentally match 1407/4070.
+
+2. VEHICLE multi-value OR filtering
+   Example selected value: ALLWYN NISSAN, DUSTER
+   Result: products containing ALLWYN NISSAN OR DUSTER are included.
+
+3. SEGMENT uses the same multi-value matching while preserving UNIVERSAL segment behaviour.
+
+4. No fixed number of values is assumed. Common separators supported:
+   comma, semicolon, pipe, slash, &, +, >, colon, tilde, equals, underscore, newline,
+   and safe dash-separated values such as 407-709 or ALTO-DUSTER.
+
+5. The search boxes above SEGMENT / VEHICLE / MODEL use the same OR-search engine.
+
+6. Performance: parsed filter matchers are cached so the 44k+ row dataset stays responsive.
+
+7. V33 PDF watermark and larger print text are retained unchanged.

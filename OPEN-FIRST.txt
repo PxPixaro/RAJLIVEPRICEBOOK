@@ -1,4 +1,4 @@
-RAJ AGENCIES LIVE PRICE BOOK V30
+RAJ AGENCIES LIVE PRICE BOOK V34
 
 1. ZIP ko poori tarah download karke Extract All karein.
 2. Extracted folder ke andar index.html Chrome/Edge me kholen.
@@ -7,3 +7,25 @@ RAJ AGENCIES LIVE PRICE BOOK V30
 4. Sync Excel ek baar chalane ke baad data browser me save rahega aur next start par automatic restore hoga.
 5. Grid aur Download Pricelist PDF dono me same nested headings aur Part Number order aayega.
 6. Browser status “Synced & saved” confirm karega ki next start ke liye data store ho gaya hai.
+
+
+V32 NORMAL + SMOOTH UPDATE
+---------------------------
+- Liquid/glass/backdrop blur effects removed for smoother scrolling and filtering.
+- GitHub/HTTP: replace assets/data/price-book.xlsx and refresh the page; the app automatically reads the new first sheet.
+- Rows and columns are dynamic. New columns are imported automatically; no fixed column/row count is used.
+- VIEW BY accepts comma-separated Excel headings in exact order, e.g. CATAGORIES,SEGMENT,MODEL.
+  The hierarchy is applied as CATAGORIES -> SEGMENT -> MODEL. CATEGORIES is also accepted as an alias for CATAGORIES.
+- Brand logos: existing manifest logos are matched safely. New logos named exactly like the Excel GROUP can use .webp/.png/.jpg/.jpeg without editing app.js.
+- Local file:// mode cannot auto-fetch price-book.xlsx because of browser restrictions; use Sync Price Excel there.
+
+
+V34 MULTI-VALUE FILTER UPDATE
+-----------------------------
+- MODEL, VEHICLE and SEGMENT dropdown selections now use OR/contains matching for multi-value Excel cells.
+- Example MODEL: selecting "407, 709, 1109 O/M" finds products containing 407 OR 709 OR 1109 anywhere in MODEL.
+- Example VEHICLE: selecting "ALLWYN NISSAN, DUSTER" finds ALLWYN NISSAN products and DUSTER products, not only exact combined cells.
+- Common separators are supported without a fixed token count: comma, semicolon, pipe, slash, &, +, >, colon, tilde, equals, underscore, new line and safe dash-separated values.
+- MODEL numeric aliases are boundary-aware: 407 matches 407 TURBO / 407DI but does not accidentally match 1407 or 4070.
+- Search boxes above SEGMENT / VEHICLE / MODEL use the same OR-search logic.
+- V33 repeated PDF watermark and larger PDF text remain unchanged.
