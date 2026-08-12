@@ -1,0 +1,18 @@
+RAJ LIVE PRICEBOOK V44
+======================
+
+1. Voice search accuracy improved for natural sentences.
+   Example: "Muje Aayub Group ka AA 1002 Product" -> AA 1002 is prioritized.
+2. Known GROUP/BRAND names in a longer voice query are treated as context and removed
+   from the product-data search phrase, because GROUP itself remains excluded from
+   Universal Search as requested in V42.
+3. Command/filler words such as group, product, rate, price, mujhe, dikhao, batao etc.
+   are ignored when extracting the useful search phrase.
+4. Compact/fuzzy fallback supports speech spacing/errors such as:
+   AA 1000 2 -> AA1002 (approximate)
+   KX N 525 -> KX525 (approximate)
+5. SEARCH ANYTHING / PRODUCT also uses the tolerant full-row matcher. Extra words,
+   punctuation and spacing mistakes can still return matching product data.
+6. Strong numeric/code matches are weighted higher so useful part/model/code results
+   are not rejected only because one extra spoken word was recognized.
+7. V43 PDF, watermark, filters, Filter Master and other behavior retained.

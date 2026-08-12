@@ -141,6 +141,10 @@ function buildFastRows(){
       category:clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY')), categoryN:normalizeSearchText(getField(row,'CATAGORIES','CATEGORIES','CATEGORY')),
       code:clean(getField(row,'CODE','PART NUMBER','PART NO')), codeN:normalizeSearchText(getField(row,'CODE','PART NUMBER','PART NO')),
       product:clean(getField(row,'PRODUCT NAME','DESCRIPTION')), productN:normalizeSearchText(getField(row,'PRODUCT NAME','DESCRIPTION')),
+      codeCompact:normalizeSearchText(getField(row,'CODE','PART NUMBER','PART NO')).replace(/\s+/g,''),
+      productCompact:normalizeSearchText(getField(row,'PRODUCT NAME','DESCRIPTION')).replace(/\s+/g,''),
+      modelCompact:normalizeSearchText(getField(row,'MODEL')).replace(/\s+/g,''),
+      vehicleCompact:normalizeSearchText(getField(row,'VEHICLE')).replace(/\s+/g,''),
       allN, allCompact
     };
   });
@@ -416,11 +420,37 @@ function clearUpperFilterScope(){
   ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).value='');
   document.querySelectorAll('.filter-search').forEach(x=>x.value='');
 }
+// V44: remove known group/brand names from a longer natural query before searching
+// product data. GROUP itself stays excluded from Universal Search, but spoken phrases like
+// "Aayub group ka AA 1002 product" become "AA 1002" instead of failing on AAYUB.
+function stripKnownGroupWords(term){
+  let n=normalizeSearchText(term);
+  if(!n)return '';
+  const groups=[...new Set(FAST_ROWS.map(x=>x.groupN).filter(Boolean))].sort((a,b)=>b.length-a.length);
+  for(const g of groups){
+    const re=new RegExp(`(^|\\s)${g.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?=\\s|$)`,'g');
+    const reduced=n.replace(re,' ').replace(/\s+/g,' ').trim();
+    if(reduced)n=reduced;
+  }
+  return n;
+}
+function smartSearchPhrase(term){
+  let n=stripKnownGroupWords(term);
+  if(!n)n=normalizeSearchText(term);
+  const words=n.split(/\s+/).filter(Boolean);
+  const useful=words.filter(w=>!VOICE_FILLER_WORDS.has(w));
+  return useful.length?useful.join(' '):n;
+}
 function bestGlobalVoiceQuery(term){
   const candidates=voiceCandidates(term);
-  // Prefer a candidate that actually occurs in the complete Excel search index.
-  for(const c of candidates){const n=normalizeSearchText(c), compact=n.replace(/\s+/g,'');if(!n)continue;if(FAST_ROWS.some(x=>x.allN.includes(n)||(compact&&x.allCompact.includes(compact))))return c}
-  return candidates[0]||term;
+  const smart=smartSearchPhrase(term);
+  if(smart)candidates.unshift(smart);
+  // Prefer the longest candidate that already occurs, so product codes/models win over
+  // generic one-word fragments. Compact comparison ignores spaces and punctuation.
+  let found=[];
+  for(const c of candidates){const n=normalizeSearchText(c), compact=n.replace(/\s+/g,'');if(!n)continue;if(FAST_ROWS.some(x=>x.allN.includes(n)||(compact&&x.allCompact.includes(compact))))found.push(c)}
+  if(found.length)return found.sort((a,b)=>normalizeSearchText(b).length-normalizeSearchText(a).length)[0];
+  return smart||candidates[0]||term;
 }
 function runUniversalSearch(term){
  const q=clean(term);$('#universalSearchInput').value=q;
@@ -1121,6 +1151,51 @@ function visibleColumnsForRows(rows){
   return columns;
 }
 
+// V44 tolerant full-row matcher. Exact/contains remains first and fastest. If speech/text
+// contains an extra word or spacing mistake, meaningful tokens and compact code/model
+// similarity are used as fallback. Numeric/code tokens are weighted strongly.
+function smartUniversalRowMatch(x,rawQuery){
+  const q=normalizeSearchText(rawQuery);
+  if(!q)return true;
+  const compact=q.replace(/\s+/g,'');
+  if(x.allN.includes(q)||(compact&&x.allCompact.includes(compact)))return true;
+
+  const cleaned=smartSearchPhrase(q);
+  const cq=normalizeSearchText(cleaned);
+  const cc=cq.replace(/\s+/g,'');
+  if(cq&&(x.allN.includes(cq)||(cc&&x.allCompact.includes(cc))))return true;
+
+  // Compact fuzzy matching catches AA 1000 2 -> AA1002 / KX N 525 -> KX525.
+  if(cc.length>=5){
+    const targets=[x.codeCompact,x.modelCompact,x.vehicleCompact,x.productCompact].filter(v=>v&&v.length>=3);
+    for(const t of targets){
+      if(t.includes(cc)||cc.includes(t))return true;
+      const maxLen=Math.max(cc.length,t.length);
+      if(maxLen<=24 && similarity(cc,t)>=0.84)return true;
+    }
+  }
+
+  const tokens=cq.split(/\s+/).filter(w=>w.length>=2||/\d/.test(w));
+  if(!tokens.length)return false;
+  let matched=0,strongMatched=false,longMatched=false;
+  for(const tok of tokens){
+    const tc=tok.replace(/\s+/g,'');
+    let ok=x.allN.includes(tok)||(tc&&x.allCompact.includes(tc));
+    if(!ok && tc.length>=4){
+      const targets=[x.codeCompact,x.modelCompact,x.vehicleCompact,x.productCompact].filter(Boolean);
+      ok=targets.some(t=>{
+        if(t.includes(tc))return true;
+        if(Math.max(t.length,tc.length)>24)return false;
+        return similarity(tc,t)>=0.86;
+      });
+    }
+    if(ok){matched++;if(/\d/.test(tok))strongMatched=true;if(tok.length>=5)longMatched=true;}
+  }
+  if(strongMatched)return true;
+  if(longMatched && matched>=1 && matched/tokens.length>=0.5)return true;
+  return matched/tokens.length>=0.72;
+}
+
 function applyFilters(resetPage=true,doCascade=false){
   if(doCascade)cascade();
   if(FAST_ROWS.length!==allData.length)buildFastRows();
@@ -1145,7 +1220,7 @@ function applyFilters(resetPage=true,doCascade=false){
     if(segmentText&&!multiValueMatch(x.segment,segmentText,'SEGMENT'))continue;if(vehicleText&&!multiValueMatch(x.vehicle,vehicleText,'VEHICLE'))continue;if(modelText&&!multiValueMatch(x.model,modelText,'MODEL'))continue;if(categoryText&&!x.categoryN.includes(categoryText))continue;
     // SEARCH ANYTHING checks every Excel column, but only after the optional upper
     // filter scope above. Space/punctuation-insensitive fallback supports 12-10 / 1210.
-    if(q && !x.allN.includes(q) && !(qCompact && x.allCompact.includes(qCompact)))continue;
+    if(q && !smartUniversalRowMatch(x,q))continue;
     out.push(x.row);
   }
   filtered=out;sortedFilteredSource=null;
