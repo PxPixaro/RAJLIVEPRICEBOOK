@@ -1,17 +1,87 @@
 
 const $ = s => document.querySelector(s);
 const BRAND_LOGOS = {};
+const BRAND_LOGO_EXTENSIONS=['webp','png','jpg','jpeg'];
+const BRAND_LOGO_ALIASES={
+  APPOLO:'APPOLLO', APRISTIC:'APARSTIC', MONROE:'MOEROE', PIONEER:'PIONNER',
+  PLATINUM:'PLATIUAM', NEOLITE:'NEOLIGHT'
+};
+const brandLogoCandidateCache=new Map();
 function logoKey(v){return clean(v).toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/LIMITED|PVT|LTD|INDIA/g,'')}
-function logoForBrand(brand){
-  const wanted=logoKey(brand);
-  if(!wanted || wanted==='ALLPRODUCTS') return '';
+function logoDistance(a,b){
+  a=logoKey(a);b=logoKey(b);
+  if(!a||!b)return Math.max(a.length,b.length);
+  let previous=Array.from({length:b.length+1},(_,index)=>index);
+  for(let i=1;i<=a.length;i++){
+    const current=[i];
+    for(let j=1;j<=b.length;j++)current[j]=Math.min(current[j-1]+1,previous[j]+1,previous[j-1]+(a[i-1]===b[j-1]?0:1));
+    previous=current;
+  }
+  return previous[b.length];
+}
+function encodedLogoPath(filename){return 'assets/brand-logos/'+encodeURIComponent(filename).replace(/%2F/gi,'/')}
+function logoCandidatesForBrand(brand){
+  const raw=clean(brand);
+  const wanted=logoKey(raw);
+  if(!wanted || wanted==='ALLPRODUCTS')return [];
+  const cached=brandLogoCandidateCache.get(wanted);
+  if(cached)return cached.slice();
+
   const files=window.BRAND_LOGO_FILES||[];
-  let best=files.find(f=>logoKey(f.replace(/\.[^.]+$/,''))===wanted);
-  if(!best)best=files.find(f=>{
-    const k=logoKey(f.replace(/\.[^.]+$/,''));
-    return k && (k.includes(wanted)||wanted.includes(k));
+  const byKey=new Map();
+  files.forEach(file=>{
+    const key=logoKey(file.replace(/\.[^.]+$/,''));
+    if(key&&!byKey.has(key))byKey.set(key,file);
   });
-  return best ? 'assets/brand-logos/'+encodeURIComponent(best).replace(/%2F/g,'/') : '';
+  const output=[];
+  const add=file=>{if(file&&!output.includes(file))output.push(file)};
+
+  // Exact filename match first. Known spelling variants are explicit and safe.
+  add(byKey.get(wanted));
+  const alias=BRAND_LOGO_ALIASES[wanted];
+  if(alias)add(byKey.get(alias));
+
+  // Conservative fuzzy match only for longer names. Short names such as KD/RKD
+  // must never cross-match. Require a unique close result.
+  if(!output.length && wanted.length>=5){
+    const ranked=[];
+    byKey.forEach((file,key)=>{
+      if(key.length<5)return;
+      const distance=logoDistance(wanted,key);
+      const limit=wanted.length>=8?2:1;
+      if(distance<=limit)ranked.push({file,distance,key});
+    });
+    ranked.sort((a,b)=>a.distance-b.distance||a.key.length-b.key.length||natural(a.key,b.key));
+    if(ranked.length && (ranked.length===1 || ranked[0].distance<ranked[1].distance))add(ranked[0].file);
+  }
+
+  // Future logos do not need a JS manifest update when the file is named after
+  // the Excel GROUP. The browser simply tries common image extensions.
+  const directNames=[raw,raw.toUpperCase(),raw.toLowerCase()].filter((v,i,a)=>v&&a.indexOf(v)===i);
+  directNames.forEach(name=>BRAND_LOGO_EXTENSIONS.forEach(ext=>add(name+'.'+ext)));
+
+  const paths=output.map(encodedLogoPath);
+  brandLogoCandidateCache.set(wanted,paths);
+  return paths.slice();
+}
+function logoForBrand(brand){return logoCandidatesForBrand(brand)[0]||''}
+function setBrandLogoImage(img,brand){
+  if(!img)return;
+  const key=logoKey(brand);
+  if(img.dataset.logoBrand===key && img.dataset.logoResolved==='1')return;
+  const candidates=logoCandidatesForBrand(brand);
+  img.dataset.logoBrand=key;
+  img.dataset.logoResolved='0';
+  let position=0;
+  const hide=()=>{img.removeAttribute('src');img.style.visibility='hidden';img.dataset.logoResolved='1'};
+  const next=()=>{
+    if(position>=candidates.length){hide();return}
+    img.src=candidates[position++];
+    img.style.visibility='visible';
+  };
+  img.onload=()=>{img.style.visibility='visible';img.dataset.logoResolved='1'};
+  img.onerror=next;
+  if(candidates.length)next();else hide();
 }
 
 const CATALOG_LINKS = window.CATALOG_LINKS || {};
@@ -81,6 +151,9 @@ function getField(row, ...names){
   }
   for(const n of names){
     const wanted=keyOf(n);
+    // Excel-synchronized rows are normalized to uppercase keys. Fast direct
+    // lookup avoids Object.keys(...).find(...) millions of times while filtering.
+    if(row && Object.prototype.hasOwnProperty.call(row,wanted))return row[wanted];
     const found=Object.keys(row||{}).find(k=>keyOf(k)===wanted);
     if(found!==undefined)return row[found];
   }
@@ -106,6 +179,92 @@ function options(el, values, label){
   if(values.includes(current))el.value=current;
 }
 
+// V35 FILTER MASTER ---------------------------------------------------------
+// assets/data/filter-master.xlsx is an optional canonical filter list.
+// Each column is independent: GROUP / BRAND, SUB GROUP, SEGMENT, VEHICLE,
+// MODEL and CATEGORY. If a column is blank the app falls back to values found
+// directly in price-book.xlsx. A master cell may contain one value (407) or
+// several OR aliases (407,709,1109).
+const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V35';
+const FILTER_MASTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'];
+let filterMasterLists=Object.fromEntries(FILTER_MASTER_IDS.map(id=>[id,[]]));
+function masterHeaderKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
+function masterFilterIdForHeader(header){
+  const key=masterHeaderKey(header);
+  if(['GROUPBRAND','GROUP','BRAND','GROUPNAME','BRANDNAME'].includes(key))return 'groupFilter';
+  if(['SUBGROUP','SUBGROUPNAME'].includes(key))return 'subGroupFilter';
+  if(['SEGMENT','SEGMENTS'].includes(key))return 'segmentFilter';
+  if(['VEHICLE','VEHICLES'].includes(key))return 'vehicleFilter';
+  if(['MODEL','MODELS','SERIES','MODELSERIES'].includes(key))return 'modelFilter';
+  if(['CATEGORY','CATEGORIES','CATAGORIES','CATAGORY'].includes(key))return 'categoryFilter';
+  return '';
+}
+function normalizeMasterLists(input){
+  const out=Object.fromEntries(FILTER_MASTER_IDS.map(id=>[id,[]]));
+  FILTER_MASTER_IDS.forEach(id=>{
+    const seen=new Set();
+    (input&&Array.isArray(input[id])?input[id]:[]).forEach(value=>{
+      const item=clean(value);
+      const key=looseFieldText(item);
+      if(!item||!key||seen.has(key))return;
+      seen.add(key);out[id].push(item);
+    });
+    out[id].sort(natural);
+  });
+  return out;
+}
+function masterValuesForFilter(id){return (filterMasterLists[id]||[]).slice()}
+function filterMasterHasValues(id){return !!(filterMasterLists[id]&&filterMasterLists[id].length)}
+function filterMasterItemCount(){return FILTER_MASTER_IDS.reduce((sum,id)=>sum+(filterMasterLists[id]?.length||0),0)}
+function setFilterMasterLists(input,{persist=false,rerender=true}={}){
+  filterMasterLists=normalizeMasterLists(input);
+  multiValueMatcherCache.clear();
+  if(persist){
+    try{localStorage.setItem(FILTER_MASTER_STORAGE,JSON.stringify(filterMasterLists))}catch(error){}
+  }
+  if(rerender&&typeof applyFilters==='function')applyFilters();
+}
+function restoreSavedFilterMaster(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(FILTER_MASTER_STORAGE)||'null');
+    if(saved)setFilterMasterLists(saved,{persist:false,rerender:false});
+  }catch(error){}
+}
+function parseFilterMasterRows(rows){
+  const result=Object.fromEntries(FILTER_MASTER_IDS.map(id=>[id,[]]));
+  if(!Array.isArray(rows)||!rows.length)return result;
+  const headers=(rows[0]||[]).map(masterFilterIdForHeader);
+  headers.forEach((id,index)=>{
+    if(!id)return;
+    for(let rowIndex=1;rowIndex<rows.length;rowIndex++){
+      const value=clean((rows[rowIndex]||[])[index]);
+      if(value)result[id].push(value);
+    }
+  });
+  return normalizeMasterLists(result);
+}
+async function readFilterMasterWorkbookBuffer(buffer){
+  const ready=await ensureExcelReader();
+  if(!ready)throw new Error('Excel reader unavailable');
+  const wb=XLSX.read(buffer,{type:'array',cellDates:false});
+  const sheetName=wb.SheetNames.find(name=>masterHeaderKey(name)==='FILTERMASTER')||wb.SheetNames[0];
+  const sheet=wb.Sheets[sheetName];
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
+  return parseFilterMasterRows(rows);
+}
+async function refreshHostedFilterMaster(){
+  if(!/^https?:$/.test(location.protocol))return false;
+  try{
+    const response=await fetch('assets/data/filter-master.xlsx?ts='+Date.now(),{cache:'no-store'});
+    if(!response.ok)throw new Error('filter-master.xlsx not found');
+    const lists=await readFilterMasterWorkbookBuffer(await response.arrayBuffer());
+    setFilterMasterLists(lists,{persist:false,rerender:true});
+    return true;
+  }catch(error){
+    console.warn('Filter Master refresh skipped',error);
+    return false;
+  }
+}
 
 function safePathPart(v){return clean(v).replace(/[<>:"/\\|?*]/g,'_').trim()}
 function productImageCandidates(row){
@@ -193,6 +352,116 @@ function containsField(row, term, ...fieldNames){
   if(!term)return true;
   return clean(getField(row,...fieldNames)).toLowerCase().includes(term);
 }
+
+// V35: canonical master filtering + OR aliases + conservative typo tolerance.
+// Numeric codes use whole-number boundaries: 407 matches "407 TURBO" / "T-407"
+// but never 1407 or 4070. Text master values use contains matching first, then
+// small edit-distance tolerance for common spelling mistakes.
+function looseFieldText(value){
+  return clean(value).toUpperCase().replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function addLooseTerm(list,seen,value){
+  const term=clean(value);
+  const key=looseFieldText(term);
+  if(!key || seen.has(key))return;
+  if(key.length===1)return;
+  seen.add(key);list.push(term);
+}
+function filterSelectionTerms(value,fieldName=''){
+  const raw=clean(value);
+  if(!raw)return [];
+  const terms=[];const seen=new Set();
+  // Strong separators mean OR. The original full cell is intentionally NOT
+  // required, so "407,709,1109" behaves exactly as 407 OR 709 OR 1109.
+  const pieces=raw.split(/[,;|\/\\&+>:~=_\n\r]+/).map(clean).filter(Boolean);
+  (pieces.length?pieces:[raw]).forEach(part=>{
+    addLooseTerm(terms,seen,part);
+    const dashParts=part.split(/\s*[-–—]\s*/).map(clean).filter(Boolean);
+    if(dashParts.length>1 && dashParts.every(piece=>looseFieldText(piece).length>=2))dashParts.forEach(piece=>addLooseTerm(terms,seen,piece));
+  });
+  // Also expose every multi-digit number found in any filter field. This makes
+  // mixed labels such as "TATA 407 / 709 / 1109 O/M" searchable by each series.
+  (raw.match(/\d{2,}/g)||[]).forEach(code=>addLooseTerm(terms,seen,code));
+  return terms;
+}
+function fuzzyLimit(length){
+  if(length<5)return 0;
+  if(length<=7)return 1;
+  if(length<=14)return 2;
+  return 2;
+}
+function editDistanceWithin(a,b,limit){
+  if(a===b)return true;
+  if(!limit||Math.abs(a.length-b.length)>limit)return false;
+  let previous=Array.from({length:b.length+1},(_,i)=>i);
+  for(let i=1;i<=a.length;i++){
+    const current=[i];let rowMin=current[0];
+    for(let j=1;j<=b.length;j++){
+      current[j]=Math.min(current[j-1]+1,previous[j]+1,previous[j-1]+(a[i-1]===b[j-1]?0:1));
+      if(current[j]<rowMin)rowMin=current[j];
+    }
+    if(rowMin>limit)return false;
+    previous=current;
+  }
+  return previous[b.length]<=limit;
+}
+function fuzzyTextMatch(normalizedRaw,wanted){
+  if(!normalizedRaw||!wanted)return false;
+  if(normalizedRaw.includes(wanted))return true;
+  const selectedWords=wanted.split(' ').filter(Boolean);
+  const rawWords=normalizedRaw.split(' ').filter(Boolean);
+  // Each significant master word may occur anywhere in the raw Excel field.
+  // Example ALLWYN NISSAN also matches ALWYN NISSAN, DUSTER.
+  if(selectedWords.length){
+    const allWords=selectedWords.every(selected=>{
+      if(/^\d+$/.test(selected)){
+        const escaped=selected.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        return new RegExp(`(^|\\D)${escaped}(?=\\D|$)`).test(normalizedRaw);
+      }
+      const limit=fuzzyLimit(selected.length);
+      return rawWords.some(rawWord=>rawWord===selected || (limit>0&&editDistanceWithin(selected,rawWord,limit)));
+    });
+    if(allWords)return true;
+  }
+  // Phrase-level typo fallback, only when lengths are close enough.
+  const compactWanted=wanted.replace(/\s+/g,'');
+  const compactRaw=normalizedRaw.replace(/\s+/g,'');
+  const limit=fuzzyLimit(compactWanted.length);
+  return limit>0 && Math.abs(compactRaw.length-compactWanted.length)<=limit && editDistanceWithin(compactWanted,compactRaw,limit);
+}
+const multiValueMatcherCache=new Map();
+function compiledFilterMatchers(selectedValue,fieldName=''){
+  const cacheKey=keyOf(fieldName)+'\u0000'+clean(selectedValue).toUpperCase();
+  if(multiValueMatcherCache.has(cacheKey))return multiValueMatcherCache.get(cacheKey);
+  const matchers=filterSelectionTerms(selectedValue,fieldName).map(term=>{
+    const wanted=looseFieldText(term);
+    if(/^\d+$/.test(wanted)){
+      const escaped=wanted.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      return {numeric:true,regex:new RegExp(`(^|\\D)${escaped}(?=\\D|$)`),text:wanted};
+    }
+    return {numeric:false,text:wanted};
+  });
+  if(multiValueMatcherCache.size>400)multiValueMatcherCache.clear();
+  multiValueMatcherCache.set(cacheKey,matchers);
+  return matchers;
+}
+function multiValueMatch(rawValue,selectedValue,fieldName=''){
+  if(!selectedValue)return true;
+  const raw=clean(rawValue);
+  if(!raw)return false;
+  const matchers=compiledFilterMatchers(selectedValue,fieldName);
+  if(!matchers.length)return true;
+  const rawUpper=raw.toUpperCase();
+  const normalizedRaw=looseFieldText(raw);
+  return matchers.some(matcher=>matcher.numeric?matcher.regex.test(rawUpper):fuzzyTextMatch(normalizedRaw,matcher.text));
+}
+function multiFieldMatch(row,selectedValue,...fieldNames){
+  const fieldName=fieldNames.some(name=>keyOf(name)==='MODEL')?'MODEL':(fieldNames[0]||'');
+  return multiValueMatch(getField(row,...fieldNames),selectedValue,fieldName);
+}
+
+// Matcher cache is initialized now, so restoring a saved local master is safe.
+restoreSavedFilterMaster();
 
 function subGroupValue(row){return clean(getField(row,'SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME'))}
 function catalogKey(v){return clean(v).toUpperCase().replace(/[^A-Z0-9]/g,'')}
@@ -291,10 +560,12 @@ function uniqueSegments(rows){
 }
 function segmentMatch(row, selected){
   if(!selected)return true;
+  const raw=getField(row,'SEGMENT');
   const wanted=normalizeSegmentToken(selected);
-  const tokens=segmentTokens(getField(row,'SEGMENT'));
-  if(wanted==='UNIVERSAL')return tokens.includes('UNIVERSAL');
-  return tokens.includes(wanted) || tokens.includes('UNIVERSAL');
+  if(wanted==='UNIVERSAL')return multiValueMatch(raw,selected,'SEGMENT');
+  // Preserve the old UNIVERSAL behaviour while allowing combined segment
+  // selections such as "LCV/HCV" or "2 WHEELERS, 3 WHEELERS" to work as OR.
+  return multiValueMatch(raw,selected,'SEGMENT') || multiValueMatch(raw,'UNIVERSAL','SEGMENT');
 }
 function printCellClass(column){
   const key=keyOf(column);
@@ -372,22 +643,24 @@ function buildLightweightPrintHtml(){
   const group=clean($('#groupFilter').value)||clean(currentCatalogGroup)||'Raj Agencies Pricelist';
   const rows=sortedRows(filtered);
   const cols=visibleColumns.slice();
-  const logo=logoForBrand(group);
-  const fontSize=cols.length>12?'5.8px':cols.length>9?'6.6px':'7.4px';
-  const cellPad=cols.length>12?'2.2px 2px':'3px 2.5px';
+  const logoCandidates=logoCandidatesForBrand(group);
+  const fontSize=cols.length>15?'6.8px':cols.length>12?'7.3px':cols.length>9?'8px':'8.8px';
+  const cellPad=cols.length>15?'2.8px 2.2px':cols.length>12?'3.1px 2.4px':'3.5px 2.8px';
   const widths=printColumnWeights(cols);
   const colgroup=`<colgroup><col style="width:${widths.serial}%">${cols.map((c,index)=>`<col style="width:${widths.columns[index]}%">`).join('')}</colgroup>`;
   const head=cols.map(c=>`<th class="${printCellClass(c)}">${escapeHtml(c)}</th>`).join('');
   const body=buildPrintBodyRows(rows,cols);
   const base=escapeHtml(document.baseURI);
   const safeTitle=escapeHtml(safePdfName(group));
-  const brandLogo=logo?`<img class="brand-logo" src="${escapeHtml(logo)}" alt="">`:'';
+  const brandLogo=`<img id="pdfBrandLogo" class="brand-logo" alt="" style="visibility:hidden">`;
+  const brandLogoScript=`<script>(function(){var c=${JSON.stringify(logoCandidates)};var i=0;var img=document.getElementById('pdfBrandLogo');function next(){if(i>=c.length){img.removeAttribute('src');img.style.visibility='hidden';return}img.src=c[i++];img.style.visibility='visible'}img.onload=function(){img.style.visibility='visible'};img.onerror=next;next()})()<\/script>`;
   return `<!doctype html><html><head><meta charset="utf-8"><base href="${base}"><title>${safeTitle}</title><style>
     @page{size:A4 landscape;margin:7mm}
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     body{font-size:${fontSize}}
-    .watermark{position:fixed;z-index:0;left:50%;top:52%;transform:translate(-50%,-50%);width:86vw;height:78vh;object-fit:contain;opacity:.024;pointer-events:none}
+    .watermark-layer{position:fixed;inset:0;z-index:20;overflow:hidden;pointer-events:none}
+    .watermark{position:absolute;left:50%;top:57%;width:78vw;height:68vh;max-width:none;max-height:none;object-fit:contain;opacity:.072;pointer-events:none;transform:translate(-50%,-50%) rotate(-10deg)}
     .page-content{position:relative;z-index:1}
     .print-head{display:grid;grid-template-columns:95px 1fr 95px;align-items:center;border-bottom:3px solid #f5b00e;padding:0 0 5px;margin:0 0 5px}
     .company-logo,.brand-logo{width:88px;height:50px;object-fit:contain}
@@ -410,21 +683,23 @@ function buildLightweightPrintHtml(){
     td.left{text-align:left}td.right{text-align:right;white-space:nowrap}td.price{text-align:right;color:#0757b8;font-weight:800;white-space:nowrap}
     .pdf-group-heading{break-after:avoid;page-break-after:avoid}
     .pdf-group-heading td{font-weight:800;text-align:left!important;white-space:normal!important;border-color:#7a9bc4!important}
-    .pdf-level-1 td{background:#dceeff!important;color:#0e337e;font-size:8.2px;padding:4px 5px}
-    .pdf-level-2 td{background:#fff3bd!important;color:#5a3b00;font-size:7.5px;padding:3.5px 5px 3.5px 12px}
-    .pdf-level-3 td{background:#edf3fb!important;color:#27364a;font-size:7px;padding:3px 5px 3px 20px}
-    .pdf-level-4 td{background:#f7f8fa!important;color:#27364a;font-size:6.8px;padding:3px 5px 3px 28px}
-    .pdf-level-deep td{background:#fafbfc!important;color:#27364a;font-size:6.6px;border-color:#d3d9e1!important}
+    .pdf-level-1 td{background:#dceeff!important;color:#0e337e;font-size:9.4px;padding:4.6px 5px}
+    .pdf-level-2 td{background:#fff3bd!important;color:#5a3b00;font-size:8.7px;padding:4px 5px 4px 12px}
+    .pdf-level-3 td{background:#edf3fb!important;color:#27364a;font-size:8.2px;padding:3.7px 5px 3.7px 20px}
+    .pdf-level-4 td{background:#f7f8fa!important;color:#27364a;font-size:7.9px;padding:3.5px 5px 3.5px 28px}
+    .pdf-level-deep td{background:#fafbfc!important;color:#27364a;font-size:7.6px;border-color:#d3d9e1!important}
     .pdf-group-heading[data-group-level] td{padding-left:var(--view-indent,5px)!important}
     .pdf-group-label{display:inline-block;margin-right:6px;padding:1px 4px;border:1px solid currentColor;border-radius:3px;font-size:.82em;letter-spacing:.05em}
     .pdf-group-title{font-weight:900}
     .pdf-group-count{float:right;font-size:.85em;font-weight:800}
-    .pdf-brand-heading td{background:#0e337e!important;color:#fff!important;font-size:9px;font-weight:900;padding:5px 6px;text-align:left!important}
-    .pdf-brand-meta{float:right;font-size:6.8px;font-weight:700}
-    .footer-note{text-align:center;margin-top:4px;font-size:6.4px;color:#4a5568}
+    .pdf-brand-heading td{background:#0e337e!important;color:#fff!important;font-size:10px;font-weight:900;padding:5.5px 6px;text-align:left!important}
+    .pdf-brand-meta{float:right;font-size:7.6px;font-weight:700}
+    .footer-note{text-align:center;margin-top:4px;font-size:7.2px;color:#4a5568}
     @media screen{body{padding:10px}}
   </style></head><body>
-    <img class="watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">
+    <div class="watermark-layer" aria-hidden="true">
+      <img class="watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">
+    </div>
     <div class="page-content">
       <div class="print-head">
         <img class="company-logo" src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group">
@@ -434,6 +709,7 @@ function buildLightweightPrintHtml(){
       <table>${colgroup}<thead><tr><th class="serial">#</th>${head}</tr></thead><tbody>${body}</tbody></table>
       <div class="footer-note">System-generated pricelist. Please confirm Rate / MRP and all details before use.</div>
     </div>
+    ${brandLogoScript}
   </body></html>`;
 }
 function cleanupPrintFrame(){
@@ -497,8 +773,8 @@ function cascade(){
  options($('#subGroupFilter'),[...new Set(r.map(subGroupValue).filter(Boolean))].sort(natural),'All sub groups');
  if($('#subGroupFilter').value)r=r.filter(x=>subGroupValue(x)===$('#subGroupFilter').value);
  options($('#segmentFilter'),uniqueSegments(r),'All segments');if($('#segmentFilter').value)r=r.filter(x=>segmentMatch(x,$('#segmentFilter').value));
- options($('#vehicleFilter'),unique(r,'VEHICLE'),'All vehicles');if($('#vehicleFilter').value)r=r.filter(x=>clean(getField(x,'VEHICLE'))===$('#vehicleFilter').value);
- options($('#modelFilter'),unique(r,'MODEL'),'All models');if($('#modelFilter').value)r=r.filter(x=>clean(getField(x,'MODEL'))===$('#modelFilter').value);
+ options($('#vehicleFilter'),unique(r,'VEHICLE'),'All vehicles');if($('#vehicleFilter').value)r=r.filter(x=>multiFieldMatch(x,$('#vehicleFilter').value,'VEHICLE'));
+ options($('#modelFilter'),unique(r,'MODEL'),'All models');if($('#modelFilter').value)r=r.filter(x=>multiFieldMatch(x,$('#modelFilter').value,'MODEL'));
  const catKey=dataColumns().some(c=>keyOf(c)==='CATAGORIES')?'CATAGORIES':'CATEGORIES';options($('#categoryFilter'),unique(r,catKey),'All categories');
 }
 
@@ -542,8 +818,8 @@ function parseViewByTitles(raw){
   // Comma is the main separator. Semicolon, pipe and > remain supported for old files.
   // No level limit is applied: every valid Excel heading becomes the next nested title.
   return clean(raw)
-    .split(/[,;|>]+/)
-    .map(title=>clean(title))
+    .split(/[,;|>\n]+/)
+    .map(title=>clean(title).replace(/^[\s\"'([{]+|[\s\"')\]}]+$/g,''))
     .filter(Boolean);
 }
 function viewByFields(rows){
@@ -685,8 +961,8 @@ function applyFilters(resetPage=true){
     if($('#groupFilter').value && clean(getField(r,'GROUP'))!==$('#groupFilter').value)return false;
     if($('#subGroupFilter').value && subGroupValue(r)!==$('#subGroupFilter').value)return false;
     if($('#segmentFilter').value && !segmentMatch(r,$('#segmentFilter').value))return false;
-    if($('#vehicleFilter').value && clean(getField(r,'VEHICLE'))!==$('#vehicleFilter').value)return false;
-    if($('#modelFilter').value && clean(getField(r,'MODEL'))!==$('#modelFilter').value)return false;
+    if($('#vehicleFilter').value && !multiFieldMatch(r,$('#vehicleFilter').value,'VEHICLE'))return false;
+    if($('#modelFilter').value && !multiFieldMatch(r,$('#modelFilter').value,'MODEL'))return false;
 
     const cat=clean(getField(r,'CATAGORIES','CATEGORIES','CATEGORY'));
     if($('#categoryFilter').value && cat!==$('#categoryFilter').value)return false;
@@ -694,9 +970,9 @@ function applyFilters(resetPage=true){
     // Search boxes above dropdowns use partial/contains matching.
     if(!containsField(r,groupText,'GROUP'))return false;
     if(subGroupText && !subGroupValue(r).toLowerCase().includes(subGroupText))return false;
-    if(!containsField(r,segmentText,'SEGMENT'))return false;
-    if(!containsField(r,vehicleText,'VEHICLE'))return false;
-    if(!containsField(r,modelText,'MODEL'))return false;
+    if(segmentText && !multiFieldMatch(r,segmentText,'SEGMENT'))return false;
+    if(vehicleText && !multiFieldMatch(r,vehicleText,'VEHICLE'))return false;
+    if(modelText && !multiFieldMatch(r,modelText,'MODEL'))return false;
     if(categoryText && !cat.toLowerCase().includes(categoryText))return false;
 
     // CODE / PRODUCT search:
@@ -792,17 +1068,7 @@ function makeBody(rows, startIndex=0, contextRows=filtered){
 function render(){
   const selected=$('#groupFilter').value||'ALL PRODUCTS';
   renderCatalogCard(selected==='ALL PRODUCTS'?'':selected);
-  const logo=logoForBrand(selected);
-  [$('#brandLogo'), $('#printBrandLogo')].forEach(img=>{
-    if(logo){
-      img.src=logo;
-      img.style.visibility='visible';
-      img.onerror=()=>{img.removeAttribute('src');img.style.visibility='hidden'};
-    }else{
-      img.removeAttribute('src');
-      img.style.visibility='hidden';
-    }
-  });
+  [$('#brandLogo'), $('#printBrandLogo')].forEach(img=>setBrandLogoImage(img,selected));
   $('#selectedBrand').textContent=selected==='ALL PRODUCTS'?'All Products':selected;
   $('#printTitle').textContent=selected;
   const listDate=selectedListDate();
@@ -988,7 +1254,7 @@ $('#excelFile').onchange=async e=>{
     const sheet=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
     const records=normalizeRows(rows);
     if(!records.length||!('GROUP' in records[0]))throw new Error('GROUP column missing');
-    allData=records;rebuildRowIndexMap();catalogUrlCache.clear();lastUpdated=new Date();
+    allData=records;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     let saved=false;
     try{
       await saveDB(allData);
@@ -1006,11 +1272,33 @@ $('#excelFile').onchange=async e=>{
       ? '<span class="dot"></span> Synced & saved'
       : '<span class="dot"></span> Synced (not saved)';
   }catch(err){
-    console.error(err);toast('Could not read Excel. Keep the same headings.');
+    console.error(err);toast('Could not read Excel. GROUP heading is required; other rows/columns may change.');
     $('#syncStatus').innerHTML='<span class="dot"></span> Error';
   }
   e.target.value='';
 };
+
+// Optional local Filter Master sync. Hosted GitHub mode auto-loads
+// assets/data/filter-master.xlsx; file:// mode can use this button after editing it.
+const filterMasterSyncBtn=$('#syncFilterMasterBtn');
+const filterMasterFile=$('#filterMasterFile');
+if(filterMasterSyncBtn&&filterMasterFile){
+  filterMasterSyncBtn.onclick=async()=>{
+    const ready=await ensureExcelReader();
+    if(!ready){toast('Filter Master reader needs internet once. Reconnect and try again.');return}
+    filterMasterFile.click();
+  };
+  filterMasterFile.onchange=async event=>{
+    const file=event.target.files&&event.target.files[0];if(!file)return;
+    filterMasterSyncBtn.disabled=true;filterMasterSyncBtn.textContent='Loading Master…';
+    try{
+      const lists=await readFilterMasterWorkbookBuffer(await file.arrayBuffer());
+      setFilterMasterLists(lists,{persist:true,rerender:true});
+      toast(`${filterMasterItemCount().toLocaleString('en-IN')} master filter values loaded`);
+    }catch(error){console.error(error);toast('Filter Master read nahi hua. Template headings same rakhein.');}
+    finally{filterMasterSyncBtn.disabled=false;filterMasterSyncBtn.textContent='↻ Sync Filter Master';filterMasterFile.value='';}
+  };
+}
 
 // Pricelist download uses a dedicated lightweight print iframe above.
 $('#resetBtn').onclick=reset;
@@ -1019,6 +1307,40 @@ $('#searchInput').oninput=()=>scheduleFilterApply();
 $('#pageSize').onchange=()=>{page=1;render()};
 $('#prevBtn').onclick=()=>{page--;render()};
 $('#nextBtn').onclick=()=>{page++;render()};
+
+async function readPriceWorkbookBuffer(buffer){
+  const ready=await ensureExcelReader();
+  if(!ready)throw new Error('Excel reader unavailable');
+  const wb=XLSX.read(buffer,{type:'array',cellDates:true});
+  const sheet=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
+  const records=normalizeRows(rows);
+  if(!records.length||!Object.prototype.hasOwnProperty.call(records[0],'GROUP'))throw new Error('GROUP column missing');
+  return records;
+}
+async function refreshHostedPriceWorkbook(){
+  if(!/^https?:$/.test(location.protocol))return false;
+  try{
+    $('#syncStatus').innerHTML='<span class="dot"></span> Checking GitHub Excel…';
+    const response=await fetch('assets/data/price-book.xlsx',{cache:'no-cache'});
+    if(!response.ok)throw new Error('Hosted price-book.xlsx not found');
+    const records=await readPriceWorkbookBuffer(await response.arrayBuffer());
+    const previousGroup=clean($('#groupFilter').value);
+    allData=records;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    buildCatalogMenu();
+    const masterGroups=masterValuesForFilter('groupFilter');
+    const groups=masterGroups.length?masterGroups:unique(allData,'GROUP');
+    options($('#groupFilter'),groups,'All groups');
+    $('#groupFilter').value=groups.includes(previousGroup)?previousGroup:(groups[0]||'');
+    applyFilters();
+    $('#syncStatus').innerHTML='<span class="dot"></span> GitHub Excel loaded';
+    return true;
+  }catch(error){
+    console.warn('Hosted Excel refresh skipped',error);
+    $('#syncStatus').innerHTML='<span class="dot"></span> Price data ready';
+    return false;
+  }
+}
 
 (function init(){
   rebuildRowIndexMap();
@@ -1032,13 +1354,22 @@ $('#nextBtn').onclick=()=>{page++;render()};
 
   // Restore the last synchronized Excel immediately. The bundled data remains visible
   // during the short IndexedDB read, then the saved rows replace it automatically.
-  loadDB().then(cached=>{
+  const hosted=/^https?:$/.test(location.protocol);
+  const restoreLocal=hosted?Promise.resolve(null):loadDB();
+  restoreLocal.then(cached=>{
     if(cached && cached.data && cached.data.length){
-      allData=cached.data;rebuildRowIndexMap();catalogUrlCache.clear();
+      allData=cached.data;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();
       const cachedDate=new Date(cached.updated);
       if(!isNaN(cachedDate))lastUpdated=cachedDate;
       $('#syncStatus').innerHTML='<span class="dot"></span> Saved Excel restored';
       buildCatalogMenu();applyFilters();
     }
+  }).finally(()=>{
+    // On GitHub/HTTP hosting, assets/data/price-book.xlsx is authoritative.
+    // Replacing that file is enough; no js/data.js rebuild and no fixed row/column count.
+    if(!hosted)return;
+    const run=()=>{refreshHostedPriceWorkbook();refreshHostedFilterMaster();};
+    if('requestIdleCallback' in window)window.requestIdleCallback(run,{timeout:1200});
+    else setTimeout(run,350);
   });
 })();
