@@ -1,0 +1,20 @@
+V74
+
+CUSTOMER OPEN FLOW
+- Link open -> Preparing RAJ Live Price Book splash appears immediately.
+- Moving progress line gives a clean professional waiting experience.
+- Splash stays about 4.8 seconds minimum.
+- Aayub quick-cache is the only technical readiness requirement.
+- Hard cap around 6.2 seconds: customer is not kept waiting for full 44k cache.
+- Dashboard opens in public mode with Aayub first.
+- Full cache / other brands continue silently in small background chunks.
+- Full-cache completion never forces an automatic full-grid refresh.
+
+PERFORMANCE
+- Aayub quick scan gets higher priority during splash.
+- Full V27/app indexes use smaller background chunks to reduce later UI freezes.
+- Hosted/full-data work is not allowed to block first customer view.
+
+ADMIN
+- V73 5-second Raj Group logo circular hold animation retained.
+- Pixaro admin login and all admin-only controls retained.

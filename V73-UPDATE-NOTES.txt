@@ -1,0 +1,17 @@
+V73
+
+1. PUBLIC OPEN PERFORMANCE
+- Link open hote hi Aayub quick-cache ko first priority milti hai.
+- Boot/public dashboard full 44k cache ka wait nahi karta.
+- Aayub ready hote hi dashboard open ho jata hai.
+- Full data indexes small idle chunks me background me continue hote hain.
+- Full cache complete hone par automatic full 44k applyFilters refresh REMOVED, because wahi later 3-5 second freeze ka major source tha.
+- Other brands / All Groups ke liye full cache background me ready hota rahega.
+
+2. PIXARO ADMIN LOGO HOLD
+- Raj Group logo ko press/hold karte hi circular progress ring animation start hoti hai.
+- 5 seconds complete hone par pulse effect aata hai aur Pixaro Admin Login khulta hai.
+- Hold early release karne par ring cancel ho jati hai.
+- Already admin ho to 5-sec hold Edit Mode open karta hai.
+
+3. V72 public/open admin model and all business features retained.

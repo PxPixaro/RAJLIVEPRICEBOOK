@@ -65,6 +65,34 @@ async function downloadHtml(){
   a.href=URL.createObjectURL(blob);a.download='RAJLIVEPRICEBOOK-V71-UPDATED.html';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
 }
 
-function bind(){applyContent();$('#v49RightsBtn')?.addEventListener('click',rightsPanel);$('#v49EditBtn')?.addEventListener('click',enterEdit);let timer=0,logo=$('#v49AdminLogo');if(logo){const start=()=>{if(current()?.role!=='admin')return;clearTimeout(timer);timer=setTimeout(enterEdit,5000)},cancel=()=>clearTimeout(timer);['pointerdown','touchstart'].forEach(e=>logo.addEventListener(e,start,{passive:true}));['pointerup','pointercancel','pointerleave','touchend','touchcancel'].forEach(e=>logo.addEventListener(e,cancel,{passive:true}))}}
+function bind(){
+  applyContent();
+  $('#v49RightsBtn')?.addEventListener('click',rightsPanel);
+  $('#v49EditBtn')?.addEventListener('click',enterEdit);
+  let timer=0,logo=$('#v49AdminLogo');
+  if(logo){
+    logo.title='Hold 5 seconds for Pixaro Admin';
+    const holder=logo.closest('.brand-lockup')||logo.parentElement;
+    const start=()=>{
+      clearTimeout(timer);
+      holder?.classList.remove('v73-admin-hold-complete');
+      holder?.classList.add('v73-admin-holding');
+      timer=setTimeout(()=>{
+        holder?.classList.remove('v73-admin-holding');
+        holder?.classList.add('v73-admin-hold-complete');
+        setTimeout(()=>holder?.classList.remove('v73-admin-hold-complete'),650);
+        if(current()?.role==='admin')enterEdit();
+        else if(typeof window.RAJ_OPEN_ADMIN_LOGIN==='function')window.RAJ_OPEN_ADMIN_LOGIN();
+      },5000);
+    };
+    const cancel=()=>{
+      clearTimeout(timer);
+      holder?.classList.remove('v73-admin-holding');
+    };
+    ['pointerdown','touchstart'].forEach(e=>logo.addEventListener(e,start,{passive:true}));
+    ['pointerup','pointercancel','pointerleave','touchend','touchcancel'].forEach(e=>logo.addEventListener(e,cancel,{passive:true}));
+  }
+  window.addEventListener('raj-admin-login',()=>setTimeout(enterEdit,80));
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();

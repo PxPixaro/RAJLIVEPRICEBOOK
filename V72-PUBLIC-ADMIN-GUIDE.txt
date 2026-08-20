@@ -1,0 +1,22 @@
+V72 PUBLIC OPEN + PIXARO ADMIN
+
+PUBLIC CUSTOMER FLOW
+- No customer ID/password login.
+- Link opens, existing preload finishes, then dashboard opens directly.
+- Default Aayub and all current filters/cart/order/offer viewing remain available.
+- Data Options hidden.
+- Offer/Scheme upload/delete controls hidden.
+- Admin profile hidden.
+
+PIXARO ADMIN
+- Hold top-left Raj Group logo for 5 seconds.
+- Admin login popup opens.
+- User: Pixaro
+- Password: 123
+- Successful login enables body admin mode:
+  Data Options, admin Offer Upload/Delete, admin profile and rights.
+- After login, website Edit Mode opens automatically so text/title/note editing remains available.
+- Hold logo again while already admin to reopen Edit Mode.
+- Admin logout returns to public dashboard; no customer login screen appears.
+
+Everything else is inherited from V71 unchanged.

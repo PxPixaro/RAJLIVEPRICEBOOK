@@ -151,7 +151,7 @@ function addToCart(row,qty){qty=Math.max(1,Math.floor(Number(qty)||1));const cod
 function drawer(html){q('#v45DrawerContent').innerHTML=html;q('#v45Drawer').classList.add('open');q('#v45Drawer').setAttribute('aria-hidden','false')}
 function closeDrawer(){q('#v45Drawer').classList.remove('open');q('#v45Drawer').setAttribute('aria-hidden','true')}
 function escAttr(v){return escapeHtml(v).replace(/`/g,'&#96;')}
-function customerText(){return V45.customer?V45.customer.name+' · '+V45.customer.mobile:'Not logged in'}
+function customerText(){return V45.customer?V45.customer.name+' · '+V45.customer.mobile:'Customer'}
 function openCart(){
   const rows=V45.cart.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+escapeHtml(x.group)+'</b><br>'+escapeHtml(x.code)+'</td><td>'+escapeHtml(x.description)+'</td><td><div class="v45-product-actions"><button class="v45-qbtn" data-cart-act="minus" data-key="'+escAttr(x.key)+'">−</button><input class="v45-cart-qty" data-key="'+escAttr(x.key)+'" type="number" min="1" value="'+x.qty+'"><button class="v45-qbtn" data-cart-act="plus" data-key="'+escAttr(x.key)+'">+</button></div></td><td><input class="v45-cart-remark" data-key="'+escAttr(x.key)+'" value="'+escAttr(x.remark||'')+'" placeholder="Item remark"></td><td><button class="v45-danger" data-cart-act="delete" data-key="'+escAttr(x.key)+'">Delete</button></td></tr>').join('');
   const total=V45.cart.reduce((s,x)=>s+(Number(x.qty)||0),0);
@@ -469,7 +469,8 @@ function setCustomer(c){
     window.RAJ_AUTH_READY=true;
     setTimeout(()=>window.dispatchEvent(new CustomEvent('raj-auth-ready',{detail:{customer:c}})),0);
   }else{
-    window.RAJ_AUTH_READY=false;
+    // V72 public mode stays active even when Pixaro logs out.
+    window.RAJ_AUTH_READY=true;
   }
   try{if(c)sessionStorage.setItem('rajCustomerV45',JSON.stringify(c));else sessionStorage.removeItem('rajCustomerV45')}catch(e){}
   document.body.classList.toggle('v46-admin',c?.role==='admin');if(typeof window.RAJ_V49_APPLY_ACCESS==='function')setTimeout(()=>window.RAJ_V49_APPLY_ACCESS(c),0);
@@ -484,41 +485,92 @@ function openUserProfile(){
   q('#v55ProfileRemove')?.addEventListener('click',()=>{try{localStorage.removeItem(profileStorageKey())}catch(e){}refreshProfileChip();openUserProfile()});
   q('#v55ProfileLogout')?.addEventListener('click',logoutV46);
 }
-function loginGateHtml(){return '<div id="v46LoginGate" class="v46-login-gate" aria-hidden="true"><div class="v46-login-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Live Price Book Login</h2><p>Authorized customers: use your registered mobile number and password.</p><label><span>User Name / Mobile Number</span><input id="v46LoginUser" autocomplete="username" placeholder="Registered mobile number"></label><label><span>Password</span><input id="v46LoginPassword" type="password" autocomplete="current-password" placeholder="Password"></label><button id="v46LoginGo" type="button">LOGIN</button><div id="v46LoginMsg" class="v46-login-msg">Customer access is matched with Customer Master. Admin user: Pixaro.</div></div></div>'}
-function v70BootGateHtml(){return '<div id="v70BootGate" class="v70-boot-gate open"><div class="v70-boot-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Preparing Live Price Book</h2><p>Loading latest product data and search index…</p><div class="v70-boot-bar"><i></i></div><small>Please wait a moment</small></div></div>'}
+
+function loginGateHtml(){return '<div id="v46LoginGate" class="v46-login-gate" aria-hidden="true"><div class="v46-login-card v72-admin-login-card"><button id="v72AdminLoginClose" class="v72-admin-login-close" type="button" aria-label="Close">×</button><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Pixaro Admin Login</h2><p>Administrator access only.</p><label><span>ADMIN USER</span><input id="v46LoginUser" autocomplete="username" placeholder="Pixaro"></label><label><span>PASSWORD</span><input id="v46LoginPassword" type="password" autocomplete="current-password" placeholder="Password"></label><button id="v46LoginGo" type="button">ADMIN LOGIN</button><div id="v46LoginMsg" class="v46-login-msg">Hold the Raj Group logo for 5 seconds to open this admin login.</div></div></div>'}
+function v72ShowAdminLogin(){
+  if(V45.customer?.role==='admin'){notify('Pixaro admin is already logged in.');return}
+  const gate=q('#v46LoginGate');if(!gate)return;
+  gate.classList.add('open');gate.setAttribute('aria-hidden','false');
+  const u=q('#v46LoginUser'),p=q('#v46LoginPassword'),m=q('#v46LoginMsg');
+  if(u)u.value='';if(p)p.value='';if(m)m.textContent='Pixaro administrator credentials enter karein.';
+  setTimeout(()=>u?.focus(),40);
+}
+function v72CloseAdminLogin(){
+  const gate=q('#v46LoginGate');if(!gate)return;
+  gate.classList.remove('open');gate.setAttribute('aria-hidden','true');
+}
+window.RAJ_OPEN_ADMIN_LOGIN=v72ShowAdminLogin;
+
 function initAuthGate(){
-  document.body.insertAdjacentHTML('beforeend',v70BootGateHtml()+loginGateHtml());
+  document.body.insertAdjacentHTML('beforeend',loginGateHtml());
   const actions=q('.header-actions');
-  if(actions&&!q('#v46UserChip'))actions.insertAdjacentHTML('beforeend','<button id="v46UserChip" class="v46-user-chip v55-top-profile" type="button" hidden title="Open Profile"><span class="v55-profile-media"><img class="v55-profile-avatar" alt="" hidden><span class="v55-profile-fallback">👤</span></span><span class="v55-profile-copy"><small>Customer</small><b>User</b></span><span class="v55-profile-chevron">⌄</span></button>');
-  const gate=q('#v46LoginGate'),go=q('#v46LoginGo');
-  go.onclick=doGateLogin;q('#v46LoginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doGateLogin()});q('#v46LoginUser').addEventListener('keydown',e=>{if(e.key==='Enter')q('#v46LoginPassword').focus()});
+  if(actions&&!q('#v46UserChip'))actions.insertAdjacentHTML('beforeend','<button id="v46UserChip" class="v46-user-chip v55-top-profile" type="button" hidden title="Open Admin Profile"><span class="v55-profile-media"><img class="v55-profile-avatar" alt="" hidden><span class="v55-profile-fallback">👤</span></span><span class="v55-profile-copy"><small>Administrator</small><b>PIXARO</b></span><span class="v55-profile-chevron">⌄</span></button>');
+  const go=q('#v46LoginGo');
+  if(go)go.onclick=doGateLogin;
+  q('#v46LoginPassword')?.addEventListener('keydown',e=>{if(e.key==='Enter')doGateLogin()});
+  q('#v46LoginUser')?.addEventListener('keydown',e=>{if(e.key==='Enter')q('#v46LoginPassword')?.focus()});
+  q('#v72AdminLoginClose')?.addEventListener('click',v72CloseAdminLogin);
+  q('#v46LoginGate')?.addEventListener('click',e=>{if(e.target?.id==='v46LoginGate')v72CloseAdminLogin()});
   q('#v46UserChip')?.addEventListener('click',openUserProfile);
-  const reveal=()=>{
-    q('#v70BootGate')?.classList.remove('open');
-    if(V45.customer){gate.classList.remove('open');gate.setAttribute('aria-hidden','true');setCustomer(V45.customer)}
-    else{gate.classList.add('open');gate.setAttribute('aria-hidden','false');setTimeout(()=>q('#v46LoginUser')?.focus(),30)}
-    refreshProfileChip();
+
+  // V74 customer-facing preparation splash.
+  if(!q('#v74BootSplash')){
+    document.body.insertAdjacentHTML('beforeend','<div id="v74BootSplash" class="v74-boot-splash open"><div class="v74-boot-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Preparing RAJ Live Price Book</h2><p>Loading product data for a faster experience…</p><div class="v74-progress-track"><span></span></div><small>Opening in a few seconds</small></div></div>');
+  }
+
+  const splash=q('#v74BootSplash');
+  const started=performance.now();
+  let quickReady=!!window.RAJ_BOOT_STATE?.quick;
+  let opened=false;
+
+  const openPublicDashboard=()=>{
+    if(opened)return;
+    const elapsed=performance.now()-started;
+    // Keep splash for at least ~4.8 sec, but do not wait for full data.
+    if(elapsed<4800){setTimeout(openPublicDashboard,4800-elapsed);return}
+    if(!quickReady){
+      // Hard cap ~6.2 sec so customer is never trapped behind loading.
+      if(elapsed<6200){setTimeout(openPublicDashboard,180);return}
+    }
+    opened=true;
+    splash?.classList.remove('open');
+    setTimeout(()=>splash?.remove(),350);
+    if(!V45.customer?.role){
+      V45.customer=null;
+      document.body.classList.remove('v46-admin');
+      refreshProfileChip();
+    }
+    if(!window.RAJ_AUTH_READY){
+      window.RAJ_AUTH_READY=true;
+      setTimeout(()=>window.dispatchEvent(new CustomEvent('raj-auth-ready',{detail:{customer:null,public:true}})),0);
+    }
   };
-  if(window.RAJ_BOOT_STATE?.ready)reveal();
-  else window.addEventListener('raj-boot-ready',reveal,{once:true});
+
+  window.addEventListener('raj-boot-ready',()=>{quickReady=true;openPublicDashboard()},{once:true});
+  if(quickReady)openPublicDashboard();
+  setTimeout(openPublicDashboard,4800);
 }
 async function doGateLogin(){
-  const rawUser=clean(q('#v46LoginUser').value),password=q('#v46LoginPassword').value,msg=q('#v46LoginMsg');
-  if(!rawUser||!password){msg.textContent='User name/mobile number and password दोनों डालें.';return}
-  if(rawUser.toUpperCase()==='PIXARO'&&String(password)==='123'){
-    const c={name:'PIXARO',mobile:'ADMIN',customerId:'ADMIN',role:'admin'};setCustomer(c);q('#v46LoginGate').classList.remove('open');q('#v46LoginGate').setAttribute('aria-hidden','true');notify('Admin login successful');return;
+  const rawUser=clean(q('#v46LoginUser')?.value),password=q('#v46LoginPassword')?.value||'',msg=q('#v46LoginMsg');
+  if(rawUser.toUpperCase()!=='PIXARO'||String(password)!=='123'){
+    if(msg)msg.textContent='Invalid admin ID or password.';
+    return;
   }
-  try{
-    let c=null;const mobile=rawUser.replace(/\D/g,'').slice(-10);
-    if(!mobile)throw new Error('Customer user name must be the registered mobile number.');
-    if(CFG.LIVE_API_BASE){
-      const r=await fetch(CFG.LIVE_API_BASE.replace(/\/$/,'')+CFG.LOGIN_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mobile,password})});if(!r.ok)throw new Error('Invalid mobile number or password');const data=await r.json();c={name:data.name||data.customerName||mobile,mobile:data.mobile||mobile,customerId:data.customerId||'',city:data.city||data.customerCity||'',role:'customer',accessGroup:data.accessGroup||data.group||'customer'};
-    }else{
-      const match=customerMaster().find(x=>clean(x.mobile).replace(/\D/g,'').slice(-10)===mobile&&String(x.password)===String(password));if(!match)throw new Error('Mobile number/password Customer Master में match नहीं हुआ.');c={name:match.name||match.customerName||mobile,mobile:match.mobile||mobile,customerId:match.customerId||'',city:match.city||'',role:'customer',accessGroup:match.accessGroup||match.group||match.userType||'customer'};
-    }
-    setCustomer(c);q('#v46LoginGate').classList.remove('open');q('#v46LoginGate').setAttribute('aria-hidden','true');notify('Welcome '+c.name);
-  }catch(e){msg.textContent=e.message||'Login failed'}
+  const c={name:'PIXARO',mobile:'ADMIN',customerId:'ADMIN',role:'admin',accessGroup:'admin'};
+  setCustomer(c);
+  v72CloseAdminLogin();
+  notify('Pixaro admin login successful');
+  setTimeout(()=>window.dispatchEvent(new CustomEvent('raj-admin-login',{detail:{customer:c}})),0);
 }
+window.RAJ_ADMIN_LOGOUT=function(){
+  setCustomer(null);
+  window.RAJ_AUTH_READY=true; // public dashboard remains active
+  document.body.classList.remove('v46-admin');
+  refreshProfileChip();
+  notify('Admin logged out. Public mode active.');
+};
+function logoutV46(){window.RAJ_ADMIN_LOGOUT()}
+
 window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK=function(wb){
   try{
     const name=wb.SheetNames.find(n=>String(n).replace(/[^A-Z0-9]/gi,'').toUpperCase()==='CUSTOMERMASTER');if(!name)return 0;

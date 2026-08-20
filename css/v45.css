@@ -404,3 +404,83 @@ body.v46-admin .header-actions.controls-open>.admin-only{display:inline-flex!imp
 .v70-boot-bar{height:8px;background:#e8f0f7;border-radius:999px;overflow:hidden}
 .v70-boot-bar i{display:block;width:38%;height:100%;border-radius:inherit;background:#0b66c3;animation:v70boot 1.05s ease-in-out infinite}
 @keyframes v70boot{0%{transform:translateX(-105%)}100%{transform:translateX(365%)}}
+
+/* ================= V72 PUBLIC OPEN / PIXARO ADMIN HOLD ================= */
+#v49AdminLogo{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.v72-admin-login-card{position:relative}
+.v72-admin-login-close{
+  position:absolute;right:14px;top:14px;width:34px;height:34px;border:0;border-radius:50%;
+  background:#123f70;color:#fff;font-size:23px;line-height:1;cursor:pointer;font-weight:800
+}
+body:not(.v46-admin) .data-tools-toggle{display:none!important}
+body:not(.v46-admin) #v46UserChip{display:none!important}
+
+/* ================= V73 ADMIN LOGO HOLD FEEDBACK ================= */
+.brand-lockup{position:relative}
+.brand-lockup.v73-admin-holding::before{
+  content:"";
+  position:absolute;
+  left:-8px;
+  top:-8px;
+  width:calc(70px + 16px);
+  height:calc(70px + 16px);
+  border-radius:50%;
+  background:conic-gradient(#0b66c3 var(--v73p,0deg),rgba(11,102,195,.13) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));
+  pointer-events:none;
+  z-index:2;
+  animation:v73hold 5s linear forwards;
+}
+.brand-lockup.v73-admin-holding #v49AdminLogo{
+  transform:scale(1.04);
+  filter:drop-shadow(0 0 8px rgba(11,102,195,.28));
+}
+.brand-lockup.v73-admin-hold-complete #v49AdminLogo{
+  animation:v73done .55s ease;
+}
+@keyframes v73hold{
+  from{--v73p:0deg}
+  to{--v73p:360deg}
+}
+@property --v73p{
+  syntax:"<angle>";
+  inherits:false;
+  initial-value:0deg;
+}
+@keyframes v73done{
+  0%{transform:scale(1)}
+  45%{transform:scale(1.12)}
+  100%{transform:scale(1)}
+}
+@media(max-width:700px){
+  .brand-lockup.v73-admin-holding::before{
+    left:-6px;top:-6px;width:calc(58px + 12px);height:calc(58px + 12px);
+  }
+}
+
+/* ================= V74 CUSTOMER PREPARING SPLASH ================= */
+.v74-boot-splash{
+  position:fixed;inset:0;z-index:10040;display:none;align-items:center;justify-content:center;
+  padding:20px;background:linear-gradient(135deg,#123b68,#0c5a91 58%,#176fa3);
+}
+.v74-boot-splash.open{display:flex}
+.v74-boot-card{
+  width:min(380px,92vw);padding:30px 28px 26px;border-radius:22px;background:#fff;text-align:center;
+  box-shadow:0 28px 80px rgba(0,0,0,.28);
+}
+.v74-boot-card img{width:100px;height:auto;margin-bottom:7px}
+.v74-boot-card h2{margin:7px 0;color:#123f70;font-size:23px;line-height:1.15}
+.v74-boot-card p{margin:0 0 18px;color:#687e94;font-size:11px;font-weight:700}
+.v74-boot-card small{display:block;margin-top:11px;color:#8293a3;font-size:9px;font-weight:800}
+.v74-progress-track{
+  position:relative;height:8px;overflow:hidden;border-radius:999px;background:#e7eff7;
+}
+.v74-progress-track span{
+  position:absolute;inset:0 auto 0 0;width:42%;border-radius:inherit;background:linear-gradient(90deg,#0b66c3,#1a8ad5);
+  animation:v74move 1.05s ease-in-out infinite;
+}
+@keyframes v74move{
+  0%{transform:translateX(-110%)}
+  100%{transform:translateX(340%)}
+}

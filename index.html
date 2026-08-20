@@ -21,11 +21,11 @@
     }
   } catch (error) {}
   </script>
-  <script defer src="js/app.js?v=71-fast-boot-offer"></script>
+  <script defer src="js/app.js?v=74-preparing-splash"></script>
   <script defer src="js/v45-config.js?v=50"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
-  <script defer src="js/v45.js?v=71-fast-boot-offer"></script>
+  <script defer src="js/v45.js?v=74-preparing-splash"></script>
   <link rel="stylesheet" href="css/v45.css?v=49">
 
   <style id="v25-smart-filter-styles">
@@ -1019,6 +1019,7 @@
       return {row:row,values:values,lowers:lowers,segments:segments,code:code,product:product,blob:null,nonEmptyMask:null};
     }
     function v69StartAayubQuickWarmup(){
+      window.RAJ_BOOT_MARK?.('quick',false);
       if(v69QuickBuilding||(v69QuickReady&&v69QuickSource===allData))return;
       if(!cachedColumns.length){
         cachedColumns=dataColumns();
@@ -1028,9 +1029,9 @@
       const run=function(deadline){
         if(v69QuickSource!==allData){v69QuickBuilding=false;return v69StartAayubQuickWarmup()}
         const started=performance.now();let processed=0;
-        while(v69QuickIndex<allData.length&&processed<700){
-          if(processed>80&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<2)break;
-          if(processed>80&&!deadline&&performance.now()-started>5)break;
+        while(v69QuickIndex<allData.length&&processed<1600){
+          if(processed>180&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<2)break;
+          if(processed>180&&!deadline&&performance.now()-started>7)break;
           const row=allData[v69QuickIndex++];processed++;
           const g=normalizedSearch(clean(getField(row,'GROUP','GROUP / BRAND','BRAND')));
           if(g==='aayub'){
@@ -1044,7 +1045,7 @@
           else setTimeout(function(){run(null)},5);
         }else{
           v69QuickBuilding=false;v69QuickReady=true;
-          window.dispatchEvent(new CustomEvent('raj-v69-aayub-ready'));
+          window.RAJ_BOOT_MARK?.('quick',true);window.dispatchEvent(new CustomEvent('raj-v69-aayub-ready'));
         }
       };
       if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:70});
@@ -1060,9 +1061,9 @@
       const run=function(deadline){
         if(v68CacheSource!==allData){v68CacheBuilding=false;return v68StartFastCacheWarmup()}
         const started=performance.now();let processed=0;
-        while(v68CacheBuildIndex<allData.length&&processed<180){
-          if(processed>20&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<3)break;
-          if(processed>20&&!deadline&&performance.now()-started>4)break;
+        while(v68CacheBuildIndex<allData.length&&processed<90){
+          if(processed>14&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<4)break;
+          if(processed>14&&!deadline&&performance.now()-started>2.5)break;
           const i=v68CacheBuildIndex++,row=allData[i],values=FAST_FILTERS.map(function(def){return fieldValue(row,def)}),lowers=values.map(function(value){return value.toLowerCase()}),segments=segmentTokens(values[2]),code=clean(getField(row,'CODE','PART NUMBER','PART NO')).toLowerCase(),product=clean(getField(row,'PRODUCT NAME','DESCRIPTION')).toLowerCase();
           if(code)exactCodes.add(code);
           cachedRows[i]={row:row,values:values,lowers:lowers,segments:segments,code:code,product:product,blob:null,nonEmptyMask:null};processed++;
@@ -1071,7 +1072,6 @@
           if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(function(){run(null)},8);
         }else{
           cacheData=allData;cacheLength=allData.length;blobWarmIndex=0;v68CacheBuilding=false;v68CacheReady=true;scheduleSearchWarmup();window.RAJ_BOOT_MARK?.('v27',true);window.dispatchEvent(new CustomEvent('raj-v27-cache-ready'));
-          if(window.RAJ_AUTH_READY)setTimeout(function(){fastApplyNow(false)},0);
         }
       };
       if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(function(){run(null)},8);
@@ -1434,7 +1434,7 @@
   });
   </script>
 
-  <script src="js/v49.js?v=71-fast-boot-offer"></script>
+  <script src="js/v49.js?v=74-preparing-splash"></script>
   <script src="js/v50.js?v=65-special-engine"></script>
 </body>
 </html>

@@ -1,12 +1,15 @@
 
 
-window.RAJ_BOOT_STATE=window.RAJ_BOOT_STATE||{v27:false,special:false,ready:false};
+window.RAJ_BOOT_STATE=window.RAJ_BOOT_STATE||{quick:false,hosted:false,app:false,v27:false,ready:false,openedAt:Date.now()};
 window.RAJ_BOOT_MARK=window.RAJ_BOOT_MARK||function(key,value=true){
-  const s=window.RAJ_BOOT_STATE||(window.RAJ_BOOT_STATE={v27:false,special:false,ready:false});
+  const s=window.RAJ_BOOT_STATE||(window.RAJ_BOOT_STATE={quick:false,hosted:false,app:false,v27:false,ready:false,openedAt:Date.now()});
   s[key]=!!value;
-  const ready=!!(s.v27&&s.special);
-  if(ready&&!s.ready){s.ready=true;window.dispatchEvent(new CustomEvent('raj-boot-ready',{detail:{...s}}))}
-  else if(!ready){s.ready=false}
+  // V74: customer never waits for the full 44k cache or hosted refresh.
+  // Aayub quick cache is the only technical readiness requirement.
+  if(s.quick&&!s.ready){
+    s.ready=true;
+    window.dispatchEvent(new CustomEvent('raj-boot-ready',{detail:{...s}}));
+  }
 };
 const $ = s => document.querySelector(s);
 const BRAND_LOGOS = {};
@@ -177,21 +180,21 @@ function v68StartBackgroundPreload(){
   const run=(deadline)=>{
     if(V68_PRELOAD.data!==allData){V68_PRELOAD.running=false;return v68StartBackgroundPreload()}
     const started=performance.now();let processed=0;
-    while(V68_PRELOAD.fast<allData.length&&processed<120){
-      if(processed>12&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<3)break;
-      if(processed>12&&!deadline&&performance.now()-started>4)break;
+    while(V68_PRELOAD.fast<allData.length&&processed<28){
+      if(processed>6&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<5)break;
+      if(processed>6&&!deadline&&performance.now()-started>2)break;
       const i=V68_PRELOAD.fast++,row=allData[i];processed++;
       if(row&&(typeof row==='object'||typeof row==='function'))rowIndexMap.set(row,i);
       FAST_ROWS[i]=v68FastMeta(row,i);
     }
     if(V68_PRELOAD.fast<allData.length){
-      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(()=>run(null),8);
+      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(()=>run(null),18);
     }else{
       V68_PRELOAD.ready=true;V68_PRELOAD.running=false;
       window.dispatchEvent(new CustomEvent('raj-data-preloaded'));
     }
   };
-  if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(()=>run(null),8);
+  if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(()=>run(null),18);
 }
 
 let filtered = [];
@@ -1641,7 +1644,7 @@ async function refreshHostedPriceWorkbook(){
     }
     v65HeavyStarted=true;
     // Full app indexes are ready now; refresh silently behind the already-visible Aayub view.
-    cascade();setDefaultGroupBrand(true);cascade();buildCatalogMenu();applyFilters(false);
+    buildCatalogMenu();
   };
   const v65StartAfterAuth=()=>{
     // Do not block the dashboard. V27 shows Aayub first; full app cache finishes invisibly.
