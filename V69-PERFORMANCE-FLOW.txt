@@ -1,0 +1,16 @@
+V69 PERFORMANCE FLOW
+
+Only performance/loading behavior changed. Business functions remain V68.
+
+NEW FLOW
+1. Login screen stays responsive.
+2. While customer is on login, Aayub-only quick cache gets FIRST priority.
+3. Full 44k product cache also loads in small idle background chunks.
+4. Successful login does not wait for full cache.
+5. Aayub products appear immediately from the small Aayub quick cache.
+6. Customer does not see a full-data loading screen.
+7. When full cache finishes, the same selected Aayub view silently switches to the full engine.
+8. No visible jump, Group reset or 3-5 second main-thread full-index block is intended.
+9. If user later selects All Groups/another brand, full cache is normally already prepared in background.
+
+V68 Offer/Scheme IndexedDB fix and all New/DS/FSN/order/cart/profile functions are retained.

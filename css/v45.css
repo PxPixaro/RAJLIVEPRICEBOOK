@@ -390,3 +390,17 @@ body.v46-admin .header-actions.controls-open>.admin-only{display:inline-flex!imp
 .v67-expired-card{background:#fff8f8!important;border-color:#efb0b0!important}
 .v67-expired-card .v50-offer-copy strong{color:#a91e1e!important}
 .v67-publish-note{margin-top:10px!important;padding:8px 10px!important;border:1px solid #cfe1f2;border-radius:8px;background:#f6faff}
+
+/* V68: offer storage moved to IndexedDB; existing V67 offer visuals retained. */
+
+/* V70 preload-before-login */
+.v70-boot-gate{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;background:linear-gradient(135deg,#123b68,#0c5a91 60%,#176fa3);padding:20px}
+.v70-boot-gate.open{display:flex}
+.v70-boot-card{width:min(360px,92vw);padding:28px 26px;border-radius:20px;background:#fff;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.v70-boot-card img{width:92px;height:auto;margin-bottom:8px}
+.v70-boot-card h2{margin:6px 0;color:#123f70;font-size:22px}
+.v70-boot-card p{margin:0 0 16px;color:#667d94;font-size:11px;font-weight:650}
+.v70-boot-card small{display:block;margin-top:10px;color:#7a8da0;font-size:9px;font-weight:700}
+.v70-boot-bar{height:8px;background:#e8f0f7;border-radius:999px;overflow:hidden}
+.v70-boot-bar i{display:block;width:38%;height:100%;border-radius:inherit;background:#0b66c3;animation:v70boot 1.05s ease-in-out infinite}
+@keyframes v70boot{0%{transform:translateX(-105%)}100%{transform:translateX(365%)}}

@@ -21,11 +21,11 @@
     }
   } catch (error) {}
   </script>
-  <script defer src="js/app.js?v=66-login-performance-only"></script>
+  <script defer src="js/app.js?v=70-preload-login-offer"></script>
   <script defer src="js/v45-config.js?v=50"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
-  <script defer src="js/v45.js?v=67-offer-static-publish"></script>
+  <script defer src="js/v45.js?v=70-preload-login-offer"></script>
   <link rel="stylesheet" href="css/v45.css?v=49">
 
   <style id="v25-smart-filter-styles">
@@ -1008,26 +1008,78 @@
       if(def.subgroup)return subGroupValue(row);
       return clean(getField.apply(null,[row].concat(def.fields)));
     }
-    function rebuildFastCache(){
-      cachedColumns=dataColumns();
-      cachedColumnBits=cachedColumns.map(function(_,index){return 1n<<BigInt(index)});
-      exactCodes=new Set();
-      cachedRows=allData.map(function(row){
-        const values=FAST_FILTERS.map(function(def){return fieldValue(row,def)});
-        const lowers=values.map(function(value){return value.toLowerCase()});
-        const segments=segmentTokens(values[2]);
-        const code=clean(getField(row,'CODE','PART NUMBER','PART NO')).toLowerCase();
-        const product=clean(getField(row,'PRODUCT NAME','DESCRIPTION')).toLowerCase();
-        if(code)exactCodes.add(code);
-        return {row:row,values:values,lowers:lowers,segments:segments,code:code,product:product,blob:null,nonEmptyMask:null};
-      });
-      cacheData=allData;
-      cacheLength=allData.length;
-      blobWarmIndex=0;
-      scheduleSearchWarmup();
+
+    let v69QuickRows=[],v69QuickReady=false,v69QuickBuilding=false,v69QuickIndex=0,v69QuickSource=null;
+    function v69MakeMeta(row){
+      const values=FAST_FILTERS.map(function(def){return fieldValue(row,def)});
+      const lowers=values.map(function(value){return value.toLowerCase()});
+      const segments=segmentTokens(values[2]);
+      const code=clean(getField(row,'CODE','PART NUMBER','PART NO')).toLowerCase();
+      const product=clean(getField(row,'PRODUCT NAME','DESCRIPTION')).toLowerCase();
+      return {row:row,values:values,lowers:lowers,segments:segments,code:code,product:product,blob:null,nonEmptyMask:null};
     }
+    function v69StartAayubQuickWarmup(){
+      if(v69QuickBuilding||(v69QuickReady&&v69QuickSource===allData))return;
+      if(!cachedColumns.length){
+        cachedColumns=dataColumns();
+        cachedColumnBits=cachedColumns.map(function(_,index){return 1n<<BigInt(index)});
+      }
+      v69QuickRows=[];v69QuickIndex=0;v69QuickBuilding=true;v69QuickReady=false;v69QuickSource=allData;
+      const run=function(deadline){
+        if(v69QuickSource!==allData){v69QuickBuilding=false;return v69StartAayubQuickWarmup()}
+        const started=performance.now();let processed=0;
+        while(v69QuickIndex<allData.length&&processed<700){
+          if(processed>80&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<2)break;
+          if(processed>80&&!deadline&&performance.now()-started>5)break;
+          const row=allData[v69QuickIndex++];processed++;
+          const g=normalizedSearch(clean(getField(row,'GROUP','GROUP / BRAND','BRAND')));
+          if(g==='aayub'){
+            const meta=v69MakeMeta(row);
+            if(meta.code)exactCodes.add(meta.code);
+            v69QuickRows.push(meta);
+          }
+        }
+        if(v69QuickIndex<allData.length){
+          if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:70});
+          else setTimeout(function(){run(null)},5);
+        }else{
+          v69QuickBuilding=false;v69QuickReady=true;
+          window.dispatchEvent(new CustomEvent('raj-v69-aayub-ready'));
+        }
+      };
+      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:70});
+      else setTimeout(function(){run(null)},5);
+    }
+
+    let v68CacheBuildIndex=0,v68CacheBuilding=false,v68CacheReady=false,v68CacheSource=null;
+    function v68StartFastCacheWarmup(){
+      if(v68CacheBuilding||v68CacheReady&&v68CacheSource===allData)return;
+      window.RAJ_BOOT_MARK?.('v27',false);
+      cachedColumns=dataColumns();cachedColumnBits=cachedColumns.map(function(_,index){return 1n<<BigInt(index)});
+      exactCodes=new Set();cachedRows=new Array(allData.length);v68CacheBuildIndex=0;v68CacheBuilding=true;v68CacheReady=false;v68CacheSource=allData;
+      const run=function(deadline){
+        if(v68CacheSource!==allData){v68CacheBuilding=false;return v68StartFastCacheWarmup()}
+        const started=performance.now();let processed=0;
+        while(v68CacheBuildIndex<allData.length&&processed<180){
+          if(processed>20&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<3)break;
+          if(processed>20&&!deadline&&performance.now()-started>4)break;
+          const i=v68CacheBuildIndex++,row=allData[i],values=FAST_FILTERS.map(function(def){return fieldValue(row,def)}),lowers=values.map(function(value){return value.toLowerCase()}),segments=segmentTokens(values[2]),code=clean(getField(row,'CODE','PART NUMBER','PART NO')).toLowerCase(),product=clean(getField(row,'PRODUCT NAME','DESCRIPTION')).toLowerCase();
+          if(code)exactCodes.add(code);
+          cachedRows[i]={row:row,values:values,lowers:lowers,segments:segments,code:code,product:product,blob:null,nonEmptyMask:null};processed++;
+        }
+        if(v68CacheBuildIndex<allData.length){
+          if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(function(){run(null)},8);
+        }else{
+          cacheData=allData;cacheLength=allData.length;blobWarmIndex=0;v68CacheBuilding=false;v68CacheReady=true;scheduleSearchWarmup();window.RAJ_BOOT_MARK?.('v27',true);window.dispatchEvent(new CustomEvent('raj-v27-cache-ready'));
+          if(window.RAJ_AUTH_READY)setTimeout(function(){fastApplyNow(false)},0);
+        }
+      };
+      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(function(){run(null)},8);
+    }
+    function rebuildFastCache(){v68CacheReady=false;v68CacheBuilding=false;v68StartFastCacheWarmup()}
     function ensureFastCache(){
-      if(cacheData!==allData || cacheLength!==allData.length)rebuildFastCache();
+      if(cacheData!==allData||cacheLength!==allData.length||!v68CacheReady){v68StartFastCacheWarmup();return false}
+      return true;
     }
     function searchBlob(meta){
       if(meta.blob!==null)return meta.blob;
@@ -1175,13 +1227,19 @@
       select.value=current;
     }
     function fastApplyNow(resetPage){
-      ensureFastCache();
+      const fullReady=ensureFastCache();
+      if(!fullReady&&!v69QuickReady){
+        v69StartAayubQuickWarmup();
+        window.addEventListener('raj-v69-aayub-ready',function(){fastApplyNow(resetPage)},{once:true});
+        return;
+      }
+      const rowsSource=fullReady?cachedRows:v69QuickRows;
       const ctx=currentContext();
       const facets=FAST_FILTERS.map(function(){return new Set()});
       const result=[];
       let activeMask=0n;
 
-      cachedRows.forEach(function(meta){
+      rowsSource.forEach(function(meta){
         if(!passesSpecial(meta,ctx))return;
         if(!passesSearch(meta,ctx))return;
         let failures=0;
@@ -1204,8 +1262,20 @@
 
       FAST_FILTERS.forEach(function(def,index){
         const masterValues=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
-        refreshSelect(def,masterValues.length?masterValues:Array.from(facets[index]),ctx.selected[index]);
+        let vals=masterValues.length?masterValues:Array.from(facets[index]);
+        if(!fullReady&&def.id==='groupFilter'){
+          const a=vals.find(function(x){return normalizedSearch(x)==='aayub'});
+          vals=a?[a]:['Aayub'];
+        }
+        refreshSelect(def,vals,ctx.selected[index]);
       });
+      if(!fullReady){
+        const gf=document.getElementById('groupFilter');
+        if(gf){
+          const a=[...gf.options].find(function(o){return normalizedSearch(o.value)==='aayub'});
+          if(a)gf.value=a.value;
+        }
+      }
       filtered=result;
 
       const keys=cachedColumns;
@@ -1295,6 +1365,11 @@
     reset=clearToDefaultGroup;
     document.getElementById('resetBtn').onclick=clearToDefaultGroup;
 
+    // V69: Aayub gets priority so the first dashboard view is instant.
+    v69StartAayubQuickWarmup();
+    // Full 44k cache continues quietly in the background.
+    v68StartFastCacheWarmup();
+
     // V65: do not build/filter 44k rows while the user is typing login credentials.
     let v65FastStarted=false;
     function startFastEngineAfterLogin(){
@@ -1302,8 +1377,8 @@
       v65FastStarted=true;
       const masterGroups=typeof masterValuesForFilter==='function'?masterValuesForFilter('groupFilter'):[];
       const firstGroups=masterGroups.length?masterGroups:unique(allData,'GROUP');
-      const aayub=firstGroups.find(function(x){return normalizedSearch(x)==='aayub'});
-      if(firstGroups.length)document.getElementById('groupFilter').value=aayub||firstGroups[0];
+      const aayub=firstGroups.find(function(x){return normalizedSearch(x)==='aayub'})||'Aayub';
+      document.getElementById('groupFilter').value=aayub;
       setTimeout(function(){fastApplyNow(true)},0);
     }
     window.addEventListener('raj-auth-ready',startFastEngineAfterLogin,{once:true});
@@ -1359,7 +1434,7 @@
   });
   </script>
 
-  <script src="js/v49.js?v=67-offer-static-publish"></script>
+  <script src="js/v49.js?v=70-preload-login-offer"></script>
   <script src="js/v50.js?v=65-special-engine"></script>
 </body>
 </html>

@@ -1,4 +1,17 @@
 
+
+window.RAJ_BOOT_STATE=window.RAJ_BOOT_STATE||{app:false,v27:false,hosted:false,ready:false};
+window.RAJ_BOOT_MARK=window.RAJ_BOOT_MARK||function(key,value=true){
+  const s=window.RAJ_BOOT_STATE||(window.RAJ_BOOT_STATE={app:false,v27:false,hosted:false,ready:false});
+  s[key]=!!value;
+  const ready=!!(s.app&&s.v27&&s.hosted);
+  if(ready&&!s.ready){
+    s.ready=true;
+    window.dispatchEvent(new CustomEvent('raj-boot-ready',{detail:{...s}}));
+  }else if(!ready){
+    s.ready=false;
+  }
+};
 const $ = s => document.querySelector(s);
 const BRAND_LOGOS = {};
 const BRAND_LOGO_EXTENSIONS=['webp','png','jpg','jpeg'];
@@ -156,6 +169,37 @@ function buildFastRows(){
     };
   });
 }
+let V68_PRELOAD={index:0,fast:0,running:false,ready:false,data:null};
+function v68FastMeta(row,index){
+  const allValues=universalRowValues(row),allN=normalizeSearchText(allValues.join(' | '));
+  return {row,index,group:clean(getField(row,'GROUP')),groupN:normalizeSearchText(getField(row,'GROUP')),sub:subGroupValue(row),subN:normalizeSearchText(subGroupValue(row)),segment:clean(getField(row,'SEGMENT')),segmentN:normalizeSearchText(getField(row,'SEGMENT')),vehicle:clean(getField(row,'VEHICLE')),vehicleN:normalizeSearchText(getField(row,'VEHICLE')),model:clean(getField(row,'MODEL')),modelN:normalizeSearchText(getField(row,'MODEL')),category:clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY')),categoryN:normalizeSearchText(getField(row,'CATAGORIES','CATEGORIES','CATEGORY')),code:clean(getField(row,'CODE','PART NUMBER','PART NO')),codeN:normalizeSearchText(getField(row,'CODE','PART NUMBER','PART NO')),product:clean(getField(row,'PRODUCT NAME','DESCRIPTION')),productN:normalizeSearchText(getField(row,'PRODUCT NAME','DESCRIPTION')),codeCompact:normalizeSearchText(getField(row,'CODE','PART NUMBER','PART NO')).replace(/\s+/g,''),productCompact:normalizeSearchText(getField(row,'PRODUCT NAME','DESCRIPTION')).replace(/\s+/g,''),modelCompact:normalizeSearchText(getField(row,'MODEL')).replace(/\s+/g,''),vehicleCompact:normalizeSearchText(getField(row,'VEHICLE')).replace(/\s+/g,''),allN,allCompact:allN.replace(/\s+/g,'')};
+}
+function v68StartBackgroundPreload(){
+  if(V68_PRELOAD.running||V68_PRELOAD.ready)return;
+  window.RAJ_BOOT_MARK?.('app',false);
+  V68_PRELOAD={index:0,fast:0,running:true,ready:false,data:allData};
+  rowIndexMap=new WeakMap();FAST_ROWS=new Array(allData.length);
+  const run=(deadline)=>{
+    if(V68_PRELOAD.data!==allData){V68_PRELOAD.running=false;return v68StartBackgroundPreload()}
+    const started=performance.now();let processed=0;
+    while(V68_PRELOAD.fast<allData.length&&processed<120){
+      if(processed>12&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<3)break;
+      if(processed>12&&!deadline&&performance.now()-started>4)break;
+      const i=V68_PRELOAD.fast++,row=allData[i];processed++;
+      if(row&&(typeof row==='object'||typeof row==='function'))rowIndexMap.set(row,i);
+      FAST_ROWS[i]=v68FastMeta(row,i);
+    }
+    if(V68_PRELOAD.fast<allData.length){
+      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(()=>run(null),8);
+    }else{
+      V68_PRELOAD.ready=true;V68_PRELOAD.running=false;
+      window.RAJ_BOOT_MARK?.('app',true);
+      window.dispatchEvent(new CustomEvent('raj-data-preloaded'));
+    }
+  };
+  if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(()=>run(null),8);
+}
+
 let filtered = [];
 let sortedFilteredSource = null;
 let sortedFilteredCache = [];
@@ -1478,6 +1522,7 @@ $('#syncBtn').onclick=async()=>{
   if(!ready){
     xlsxLoaderPromise=null;
     $('#syncStatus').innerHTML='<span class="dot"></span> Price data ready';
+  v68StartBackgroundPreload();
     toast('Excel sync reader needs internet. Reconnect and try Sync Excel again.');
     return;
   }
@@ -1493,7 +1538,7 @@ $('#excelFile').onchange=async e=>{
     if(typeof window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK==='function')window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK(wb);
     const records=normalizeRows(rows);
     if(!records.length||!('GROUP' in records[0]))throw new Error('GROUP column missing');
-    allData=records;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;window.RAJ_BOOT_MARK?.('app',false);window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     let saved=false;
     try{
@@ -1566,7 +1611,7 @@ async function refreshHostedPriceWorkbook(){
     if(!response.ok)throw new Error('Hosted price-book.xlsx not found');
     const records=await readPriceWorkbookBuffer(await response.arrayBuffer());
     const previousGroup=clean($('#groupFilter').value);
-    allData=records;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;window.RAJ_BOOT_MARK?.('app',false);window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     buildCatalogMenu();
     const masterGroups=masterValuesForFilter('groupFilter');
@@ -1595,45 +1640,44 @@ async function refreshHostedPriceWorkbook(){
   let v65HeavyStarted=false;
   const v65HeavyInit=()=>{
     if(v65HeavyStarted)return;
+    if(!V68_PRELOAD.ready){
+      v68StartBackgroundPreload();
+      window.addEventListener('raj-data-preloaded',v65HeavyInit,{once:true});
+      return;
+    }
     v65HeavyStarted=true;
-    rebuildRowIndexMap();
-    buildFastRows();
-    cascade();
-    setDefaultGroupBrand(true);
-    cascade();
-    buildCatalogMenu();
-    applyFilters();
+    // Full app indexes are ready now; refresh silently behind the already-visible Aayub view.
+    cascade();setDefaultGroupBrand(true);cascade();buildCatalogMenu();applyFilters(false);
   };
   const v65StartAfterAuth=()=>{
-    if('requestAnimationFrame' in window)requestAnimationFrame(()=>setTimeout(v65HeavyInit,0));
-    else setTimeout(v65HeavyInit,0);
+    // Do not block the dashboard. V27 shows Aayub first; full app cache finishes invisibly.
+    v68StartBackgroundPreload();
+    if(V68_PRELOAD.ready)v65HeavyInit();
+    else window.addEventListener('raj-data-preloaded',v65HeavyInit,{once:true});
   };
   window.addEventListener('raj-auth-ready',v65StartAfterAuth,{once:true});
   if(window.RAJ_AUTH_READY)v65StartAfterAuth();
 
-  const v66StartDataRestore=()=>{
-      // Restore the last synchronized Excel immediately. The bundled data remains visible
-      // during the short IndexedDB read, then the saved rows replace it automatically.
-      const hosted=/^https?:$/.test(location.protocol);
-      const restoreLocal=hosted?Promise.resolve(null):loadDB();
-      restoreLocal.then(cached=>{
-        if(cached && cached.data && cached.data.length){
-          allData=cached.data;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();
+  const v70StartDataRestore=async()=>{
+    window.RAJ_BOOT_MARK?.('hosted',false);
+    const hosted=/^https?:$/.test(location.protocol);
+    try{
+      if(!hosted){
+        const cached=await loadDB();
+        if(cached&&cached.data&&cached.data.length){
+          allData=cached.data;
+          window.RAJ_BOOT_MARK?.('app',false);window.RAJ_BOOT_MARK?.('v27',false);
+          V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();
+          catalogUrlCache.clear();brandLogoCandidateCache.clear();
           if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
-          const cachedDate=new Date(cached.updated);
-          if(!isNaN(cachedDate))lastUpdated=cachedDate;
-          $('#syncStatus').innerHTML='<span class="dot"></span> Saved Excel restored';
-          buildCatalogMenu();applyFilters();
+          const cachedDate=new Date(cached.updated);if(!isNaN(cachedDate))lastUpdated=cachedDate;
         }
-      }).finally(()=>{
-        // On GitHub/HTTP hosting, assets/data/price-book.xlsx is authoritative.
-        // Replacing that file is enough; no js/data.js rebuild and no fixed row/column count.
-        if(!hosted)return;
-        const run=()=>{refreshHostedPriceWorkbook();refreshHostedFilterMaster();};
-        if('requestIdleCallback' in window)window.requestIdleCallback(run,{timeout:1200});
-        else setTimeout(run,350);
-      });
+      }else{
+        await refreshHostedPriceWorkbook();
+        await refreshHostedFilterMaster();
+      }
+    }catch(e){console.warn('V70 preload data refresh skipped',e)}
+    finally{window.RAJ_BOOT_MARK?.('hosted',true)}
   };
-  window.addEventListener('raj-auth-ready',v66StartDataRestore,{once:true});
-  if(window.RAJ_AUTH_READY)v66StartDataRestore();
+  v70StartDataRestore();
 })();

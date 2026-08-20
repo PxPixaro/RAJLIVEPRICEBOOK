@@ -484,15 +484,23 @@ function openUserProfile(){
   q('#v55ProfileRemove')?.addEventListener('click',()=>{try{localStorage.removeItem(profileStorageKey())}catch(e){}refreshProfileChip();openUserProfile()});
   q('#v55ProfileLogout')?.addEventListener('click',logoutV46);
 }
-function loginGateHtml(){return '<div id="v46LoginGate" class="v46-login-gate open" aria-hidden="false"><div class="v46-login-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Live Price Book Login</h2><p>Authorized customers: use your registered mobile number and password.</p><label><span>User Name / Mobile Number</span><input id="v46LoginUser" autocomplete="username" placeholder="Registered mobile number"></label><label><span>Password</span><input id="v46LoginPassword" type="password" autocomplete="current-password" placeholder="Password"></label><button id="v46LoginGo" type="button">LOGIN</button><div id="v46LoginMsg" class="v46-login-msg">Customer access is matched with Customer Master. Admin user: Pixaro.</div></div></div>'}
+function loginGateHtml(){return '<div id="v46LoginGate" class="v46-login-gate" aria-hidden="true"><div class="v46-login-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Live Price Book Login</h2><p>Authorized customers: use your registered mobile number and password.</p><label><span>User Name / Mobile Number</span><input id="v46LoginUser" autocomplete="username" placeholder="Registered mobile number"></label><label><span>Password</span><input id="v46LoginPassword" type="password" autocomplete="current-password" placeholder="Password"></label><button id="v46LoginGo" type="button">LOGIN</button><div id="v46LoginMsg" class="v46-login-msg">Customer access is matched with Customer Master. Admin user: Pixaro.</div></div></div>'}
+function v70BootGateHtml(){return '<div id="v70BootGate" class="v70-boot-gate open"><div class="v70-boot-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Preparing Live Price Book</h2><p>Loading latest product data and search index…</p><div class="v70-boot-bar"><i></i></div><small>Please wait a moment</small></div></div>'}
 function initAuthGate(){
-  document.body.insertAdjacentHTML('beforeend',loginGateHtml());
+  document.body.insertAdjacentHTML('beforeend',v70BootGateHtml()+loginGateHtml());
   const actions=q('.header-actions');
   if(actions&&!q('#v46UserChip'))actions.insertAdjacentHTML('beforeend','<button id="v46UserChip" class="v46-user-chip v55-top-profile" type="button" hidden title="Open Profile"><span class="v55-profile-media"><img class="v55-profile-avatar" alt="" hidden><span class="v55-profile-fallback">👤</span></span><span class="v55-profile-copy"><small>Customer</small><b>User</b></span><span class="v55-profile-chevron">⌄</span></button>');
   const gate=q('#v46LoginGate'),go=q('#v46LoginGo');
   go.onclick=doGateLogin;q('#v46LoginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doGateLogin()});q('#v46LoginUser').addEventListener('keydown',e=>{if(e.key==='Enter')q('#v46LoginPassword').focus()});
   q('#v46UserChip')?.addEventListener('click',openUserProfile);
-  if(V45.customer){gate.classList.remove('open');gate.setAttribute('aria-hidden','true');setCustomer(V45.customer)}else refreshProfileChip();
+  const reveal=()=>{
+    q('#v70BootGate')?.classList.remove('open');
+    if(V45.customer){gate.classList.remove('open');gate.setAttribute('aria-hidden','true');setCustomer(V45.customer)}
+    else{gate.classList.add('open');gate.setAttribute('aria-hidden','false');setTimeout(()=>q('#v46LoginUser')?.focus(),30)}
+    refreshProfileChip();
+  };
+  if(window.RAJ_BOOT_STATE?.ready)reveal();
+  else window.addEventListener('raj-boot-ready',reveal,{once:true});
 }
 async function doGateLogin(){
   const rawUser=clean(q('#v46LoginUser').value),password=q('#v46LoginPassword').value,msg=q('#v46LoginMsg');
@@ -525,90 +533,72 @@ window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK=function(wb){
 };
 
 
+
+
 function offerType(file){
   const x=clean(file).toLowerCase();
   if(x.startsWith('data:application/pdf')||x.endsWith('.pdf'))return 'pdf';
   if(x.startsWith('data:image/'))return 'image';
   return x.includes('pdf')?'pdf':'image';
 }
-const V67_OFFER_STORAGE='RAJ_OFFERS_V67';
-function v67LocalOffers(){try{return JSON.parse(localStorage.getItem(V67_OFFER_STORAGE)||'[]')||[]}catch(e){return []}}
-function v67EmbeddedOffers(){return Array.isArray(window.RAJ_EMBEDDED_OFFERS_V67)?window.RAJ_EMBEDDED_OFFERS_V67:[]}
-function v67OfferKey(o){return clean(o?.id)||[o?.brand,o?.title,o?.validTill,o?.fileName,o?.file].join('|')}
-function v67AllOffers(){
-  const out=[],seen=new Set();
-  [...v67LocalOffers(),...v67EmbeddedOffers()].forEach(o=>{
-    const k=v67OfferKey(o);if(!k||seen.has(k))return;seen.add(k);out.push(o)
-  });
-  return out;
+const V70_OFFER_DB='RAJ_OFFERS_DB_V70',V70_OFFER_STORE='offers';
+let V70_OFFERS=[];
+function v70Db(){return new Promise((resolve,reject)=>{const r=indexedDB.open(V70_OFFER_DB,1);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(V70_OFFER_STORE))db.createObjectStore(V70_OFFER_STORE,{keyPath:'id'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('Offer database unavailable'))})}
+async function v70DbAll(){try{const db=await v70Db();return await new Promise((resolve,reject)=>{const tx=db.transaction(V70_OFFER_STORE,'readonly'),r=tx.objectStore(V70_OFFER_STORE).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error)})}catch(e){console.warn(e);return []}}
+async function v70DbPut(o){const db=await v70Db();return new Promise((resolve,reject)=>{const tx=db.transaction(V70_OFFER_STORE,'readwrite');tx.objectStore(V70_OFFER_STORE).put(o);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)})}
+async function v70DbDelete(id){try{const db=await v70Db();await new Promise((resolve,reject)=>{const tx=db.transaction(V70_OFFER_STORE,'readwrite');tx.objectStore(V70_OFFER_STORE).delete(id);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)})}catch(e){}}
+function v70Embedded(){return Array.isArray(window.RAJ_EMBEDDED_OFFERS_V70)?window.RAJ_EMBEDDED_OFFERS_V70:(Array.isArray(window.RAJ_EMBEDDED_OFFERS_V68)?window.RAJ_EMBEDDED_OFFERS_V68:[])}
+function v70Key(o){return clean(o?.id)||[o?.brand,o?.title,o?.validTill,o?.fileName].join('|')}
+function v70Expired(o){if(!o?.validTill)return false;const d=new Date(o.validTill+'T23:59:59');return !isNaN(d)&&Date.now()>d.getTime()}
+function v70PreviewUrl(o){if(o.previewUrl)return o.previewUrl;if(o.fileBlob instanceof Blob){o.previewUrl=URL.createObjectURL(o.fileBlob);return o.previewUrl}return o.file||''}
+async function v70Load(){
+  const local=await v70DbAll(),embedded=v70Embedded(),out=[],seen=new Set();
+  [...local,...embedded].forEach(o=>{const k=v70Key(o);if(!k||seen.has(k))return;seen.add(k);out.push(o)});
+  V70_OFFERS=out;return out;
 }
-function v67SaveLocal(list){try{localStorage.setItem(V67_OFFER_STORAGE,JSON.stringify(list||[]))}catch(e){}}
-function v67IsExpired(o){
-  if(!o?.validTill)return false;
-  const d=new Date(o.validTill+'T23:59:59');
-  return !isNaN(d)&&Date.now()>d.getTime();
+function v70Card(o,admin){
+  const url=v70PreviewUrl(o),pdf=(o.mime||'').includes('pdf')||offerType(url)==='pdf',expired=v70Expired(o);
+  const poster=pdf?'<div class="v50-pdf-poster"><b>PDF</b><span>OFFER / SCHEME</span></div>':'<button class="v52-offer-preview" type="button" data-offer-view="'+escAttr(url)+'"><img src="'+escAttr(url)+'" alt="'+escAttr(o.title||'Offer')+'"></button>';
+  return '<article class="v45-offer v50-offer-card '+(expired?'v67-expired-card':'')+'">'+poster+'<div class="v50-offer-copy"><div class="v67-offer-topline"><span class="v50-offer-brand">'+escapeHtml(o.brand||'ALL BRANDS')+'</span><span class="'+(expired?'v67-expired':'v67-active')+'">'+(expired?'EXPIRED':'ACTIVE')+'</span></div><strong>'+escapeHtml(o.title||'Offer Scheme')+'</strong>'+(o.narration?'<p>'+escapeHtml(o.narration)+'</p>':'')+'<small>'+(o.validTill?'Valid till '+escapeHtml(o.validTill):'Current scheme / offer')+'</small></div><div class="v45-actions v52-offer-actions"><a class="v45-secondary" target="_blank" rel="noopener" href="'+escAttr(url)+'">'+(pdf?'Open PDF':'View Poster')+'</a><a class="v45-primary" download="'+escAttr(o.fileName||'RAJ-Offer')+'" href="'+escAttr(url)+'">Download</a>'+(admin?'<button class="v45-danger v70-offer-delete" data-offer-id="'+escAttr(o.id)+'" type="button">Delete Offer</button>':'')+'</div></article>';
 }
-function v67ReadFile(file){
-  return new Promise((resolve,reject)=>{
-    const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(new Error('Poster file could not be read'));r.readAsDataURL(file)
-  })
-}
-function v67OfferCard(o,admin){
-  const pdf=offerType(o.file)==='pdf',expired=v67IsExpired(o);
-  const poster=pdf
-    ?'<div class="v50-pdf-poster"><b>PDF</b><span>OFFER / SCHEME</span></div>'
-    :'<button class="v52-offer-preview" type="button" data-offer-view="'+escAttr(o.file)+'"><img src="'+escAttr(o.file)+'" alt="'+escAttr(o.title||'Offer')+'"></button>';
-  return '<article class="v45-offer v50-offer-card '+(expired?'v67-expired-card':'')+'">'
-    +poster
-    +'<div class="v50-offer-copy">'
-    +'<div class="v67-offer-topline"><span class="v50-offer-brand">'+escapeHtml(o.brand||'ALL BRANDS')+'</span><span class="'+(expired?'v67-expired':'v67-active')+'">'+(expired?'EXPIRED':'ACTIVE')+'</span></div>'
-    +'<strong>'+escapeHtml(o.title||'Offer Scheme')+'</strong>'
-    +(o.narration?'<p>'+escapeHtml(o.narration)+'</p>':'')
-    +'<small>'+(o.validTill?'Valid till '+escapeHtml(o.validTill):'Current scheme / offer')+'</small>'
-    +'</div><div class="v45-actions v52-offer-actions">'
-    +'<a class="v45-secondary" target="_blank" rel="noopener" href="'+escAttr(o.file)+'">'+(pdf?'Open PDF':'View Poster')+'</a>'
-    +'<a class="v45-primary" download="'+escAttr((o.title||'RAJ-Offer').replace(/[^a-z0-9_-]+/gi,'-'))+'" href="'+escAttr(o.file)+'">Download</a>'
-    +(admin?'<button class="v45-danger v67-offer-delete" data-offer-key="'+escAttr(v67OfferKey(o))+'" type="button">Delete Offer</button>':'')
-    +'</div></article>';
-}
-function v67RenderOffers(admin){
-  const list=v67AllOffers(),grid=q('#v67OfferGrid'),cnt=q('#v67OfferCount');
-  if(cnt)cnt.textContent=list.length+' Offer'+(list.length===1?'':'s');
-  if(grid)grid.innerHTML=list.length?list.map(o=>v67OfferCard(o,admin)).join(''):'<div class="v45-empty">No offer / scheme published yet.</div>';
+function v70Render(admin){
+  const grid=q('#v70OfferGrid'),cnt=q('#v70OfferCount');
+  if(cnt)cnt.textContent=V70_OFFERS.length+' Offer'+(V70_OFFERS.length===1?'':'s');
+  if(grid)grid.innerHTML=V70_OFFERS.length?V70_OFFERS.map(o=>v70Card(o,admin)).join(''):'<div class="v45-empty">No offer / scheme published yet.</div>';
   qa('.v52-offer-preview').forEach(b=>b.addEventListener('click',()=>window.open(b.dataset.offerView,'_blank','noopener')));
-  qa('.v67-offer-delete').forEach(b=>b.addEventListener('click',()=>{
-    const key=b.dataset.offerKey;
-    const remaining=v67AllOffers().filter(o=>v67OfferKey(o)!==key);
-    window.RAJ_EMBEDDED_OFFERS_V67=remaining.map(o=>({...o,source:'embedded'}));
-    v67SaveLocal(remaining.map(o=>({...o,source:'admin'})));
-    v67RenderOffers(admin);
-    notify('Offer deleted. Download Updated HTML and replace index.html on GitHub to publish deletion.');
-  }));
+  qa('.v70-offer-delete').forEach(b=>b.addEventListener('click',async()=>{const id=b.dataset.offerId;V70_OFFERS=V70_OFFERS.filter(o=>String(o.id)!==String(id));await v70DbDelete(id);window.RAJ_EMBEDDED_OFFERS_V70=V70_OFFERS.map(o=>({...o,fileBlob:undefined,previewUrl:undefined,source:'embedded'}));v70Render(admin);notify('Offer deleted. Download Updated HTML to publish this change.')}))
 }
-function openOffers(){
+async function openOffers(){
   const admin=V45.customer?.role==='admin'&&normalizeSearchText(V45.customer?.name)==='PIXARO';
-  const upload=admin?'<section class="v50-offer-admin"><div class="v50-offer-admin-title"><span>PIXARO ADMIN ONLY</span><h3>Pixaro Offer Upload</h3><p>Brand-wise JPG, PNG, WEBP ya PDF poster add karein. Title aur narration customer ko card par dikhega.</p></div><div class="v50-offer-form"><label>BRAND NAME<input id="v50OfferBrand" placeholder="Example: BRAVO"></label><label>SCHEME TITLE<input id="v50OfferTitle" placeholder="Example: New Gift Scheme"></label><label class="v50-offer-wide">NARRATION / DETAILS<textarea id="v50OfferNarration" placeholder="Example: ₹10,000 purchase par selected gift scheme..."></textarea></label><label>VALID TILL (OPTIONAL)<input id="v50OfferValid" type="date"></label><label>POSTER FILE<input id="v50OfferFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label></div><button id="v50OfferAdd" class="v45-primary" type="button">Add Offer / Scheme</button><p class="v45-sub v67-publish-note">Add karte hi preview niche dikhega. Public GitHub publish ke liye Edit Website → Download Updated HTML karke <b>index.html</b> replace karein.</p></section>':'';
-  drawer('<section class="v45-panel v50-offer-panel"><div class="v50-offer-head"><div><h2>Offer / Scheme</h2><p class="v45-sub">Latest brand offers, scheme posters and customer downloads.</p></div><span id="v67OfferCount" class="v50-offer-count">0 Offers</span></div>'+upload+'<div id="v67OfferGrid" class="v45-offer-grid"></div></section>');
-  v67RenderOffers(admin);
-  if(admin)q('#v50OfferAdd')?.addEventListener('click',async()=>{
-    const brand=clean(q('#v50OfferBrand')?.value),title=clean(q('#v50OfferTitle')?.value),narration=clean(q('#v50OfferNarration')?.value),validTill=clean(q('#v50OfferValid')?.value),file=q('#v50OfferFile')?.files?.[0];
-    if(!brand||!title){notify('Brand Name aur Scheme Title required hai.');return}
-    if(!file){notify('Poster image ya PDF choose karein.');return}
-    if(file.size>8*1024*1024){notify('Poster file 8 MB se chhoti rakhein.');return}
-    const btn=q('#v50OfferAdd');if(btn){btn.disabled=true;btn.textContent='Adding Offer...'}
-    try{
-      const data=await v67ReadFile(file);
-      const offer={id:'offer_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),brand,title,narration,validTill,file:data,fileName:file.name,source:'admin',createdAt:new Date().toISOString()};
-      const local=v67LocalOffers();local.unshift(offer);v67SaveLocal(local);
-      v67RenderOffers(admin);
-      ['v50OfferBrand','v50OfferTitle','v50OfferNarration','v50OfferValid'].forEach(id=>{const el=q('#'+id);if(el)el.value=''});
-      if(q('#v50OfferFile'))q('#v50OfferFile').value='';
-      notify('Offer added. Preview ready. Download Updated HTML to publish on GitHub.');
-    }catch(e){console.error(e);notify(e.message||'Offer could not be added')}
-    finally{if(btn){btn.disabled=false;btn.textContent='Add Offer / Scheme'}}
-  });
+  const upload=admin?'<section class="v50-offer-admin"><div class="v50-offer-admin-title"><span>PIXARO ADMIN ONLY</span><h3>Pixaro Offer Upload</h3><p>Brand-wise JPG, PNG, WEBP ya PDF poster add karein.</p></div><div class="v50-offer-form"><label>BRAND NAME<input id="v50OfferBrand" placeholder="Example: BRAVO"></label><label>SCHEME TITLE<input id="v50OfferTitle" placeholder="Example: New Gift Scheme"></label><label class="v50-offer-wide">NARRATION / DETAILS<textarea id="v50OfferNarration" placeholder="Offer details..."></textarea></label><label>VALID TILL (OPTIONAL)<input id="v50OfferValid" type="date"></label><label>POSTER FILE<input id="v50OfferFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label></div><button id="v50OfferAdd" class="v45-primary" type="button">Add Offer / Scheme</button><div id="v70OfferAdminMsg" class="v45-api-note">Image/PDF select karke Add karein. Card turant niche dikhega.</div></section>':'';
+  drawer('<section class="v45-panel v50-offer-panel"><div class="v50-offer-head"><div><h2>Offer / Scheme</h2><p class="v45-sub">Latest brand offers, scheme posters and customer downloads.</p></div><span id="v70OfferCount" class="v50-offer-count">Loading…</span></div>'+upload+'<div id="v70OfferGrid" class="v45-offer-grid"><div class="v45-empty">Loading offers…</div></div></section>');
+  await v70Load();v70Render(admin);
+  if(admin){
+    const btn=q('#v50OfferAdd');
+    btn?.addEventListener('click',async()=>{
+      const brand=clean(q('#v50OfferBrand')?.value),title=clean(q('#v50OfferTitle')?.value),narration=clean(q('#v50OfferNarration')?.value),validTill=clean(q('#v50OfferValid')?.value),file=q('#v50OfferFile')?.files?.[0],msg=q('#v70OfferAdminMsg');
+      if(!brand||!title){msg.textContent='Brand Name aur Scheme Title required hai.';return}
+      if(!file){msg.textContent='Poster image ya PDF choose karein.';return}
+      if(file.size>15*1024*1024){msg.textContent='Poster file 15 MB se chhoti rakhein.';return}
+      btn.disabled=true;btn.textContent='Adding…';msg.textContent='Adding offer…';
+      const offer={id:'offer_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),brand,title,narration,validTill,fileBlob:file,fileName:file.name,mime:file.type,previewUrl:URL.createObjectURL(file),createdAt:new Date().toISOString(),source:'admin'};
+      V70_OFFERS.unshift(offer);v70Render(admin);msg.textContent='Offer added. Preview ready below.';
+      try{await v70DbPut({...offer,previewUrl:''});msg.textContent='Offer saved. Download Updated HTML to publish on GitHub.'}
+      catch(e){console.error(e);msg.textContent='Preview ready, but browser storage failed. Keep this page open and export HTML now.'}
+      finally{btn.disabled=false;btn.textContent='Add Offer / Scheme'}
+    });
+  }
 }
-window.RAJ_V67_EXPORT_OFFERS=function(){return v67AllOffers().map(o=>({...o,source:'embedded'}))};
+function v70BlobToDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)})}
+window.RAJ_V70_EXPORT_OFFERS=async function(){
+  const out=[];
+  for(const o of V70_OFFERS){
+    let file=o.file||'';
+    if(!file&&o.fileBlob instanceof Blob)file=await v70BlobToDataUrl(o.fileBlob);
+    out.push({id:o.id,brand:o.brand,title:o.title,narration:o.narration,validTill:o.validTill,file,fileName:o.fileName,mime:o.mime,createdAt:o.createdAt,source:'embedded'});
+  }
+  return out;
+};
 
 function openImageSearch(){q('#v45ImageFile').click()}
 q('#v45ImageFile')?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;const src=URL.createObjectURL(file);drawer('<section class="v45-panel"><h2>Image Search</h2><p class="v45-sub">Photo selected from camera/gallery.</p><img class="v45-preview" src="'+src+'"><div id="v45ImageMsg" class="v45-api-note">Preparing image search…</div><div id="v45ImageHits" class="v45-result-list"></div></section>');const msg=q('#v45ImageMsg'),url=apiUrl(CFG.IMAGE_SEARCH_ENDPOINT);if(!url){const stem=normalizeSearchText(file.name.replace(/\.[^.]+$/,''));const hit=stem&&FAST_ROWS.find(x=>x.codeN&&stem.replace(/\s/g,'').includes(x.codeN.replace(/\s/g,'')));if(hit){msg.textContent='API not connected; filename matched '+hit.code+'. Click result.';q('#v45ImageHits').innerHTML='<div class="v45-result-hit" data-image-code="'+escAttr(hit.code)+'"><b>'+escapeHtml(hit.code)+'</b> '+escapeHtml(hit.product)+'</div>'}else msg.textContent='True image similarity needs the image-search backend/model. Endpoint hook is ready in js/v45-config.js.';return}try{const fd=new FormData();fd.append('image',file);const r=await fetch(url,{method:'POST',body:fd});if(!r.ok)throw new Error('Image search failed');const d=await r.json(),hits=d.results||d.products||[];msg.textContent=hits.length?hits.length+' matching products found.':'No similar product found.';q('#v45ImageHits').innerHTML=hits.slice(0,20).map(h=>'<div class="v45-result-hit" data-image-code="'+escAttr(h.code||h.partNumber||'')+'"><b>'+escapeHtml(h.code||h.partNumber||'')+'</b> '+escapeHtml(h.description||h.productName||'')+' '+(h.score!=null?'('+Math.round(h.score*100)+'%)':'')+'</div>').join('')}catch(err){msg.textContent=err.message}}); 
@@ -656,7 +646,33 @@ function bindMain(){
 }
 
 loadCart();restoreCustomer();bindMain();enhanceVoice();initAuthGate();
-const v63StartFilters=()=>{rebuildSpecialIndex();refreshSpecialFacets(false);applyFilters(false,false)};
-if('requestAnimationFrame' in window)requestAnimationFrame(()=>setTimeout(v63StartFilters,0));else setTimeout(v63StartFilters,0);
+let v68SpecialWarmIndex=0,v68SpecialWarming=false,v68SpecialReady=false;
+function v68WarmSpecialIndex(){
+  if(v68SpecialReady||v68SpecialWarming)return;
+  v68SpecialWarming=true;
+  SPECIAL_INDEX.newRows=new WeakSet();SPECIAL_INDEX.deadRows=new WeakSet();SPECIAL_INDEX.fsnByRow=new WeakMap();
+  SPECIAL_INDEX.newCount=0;SPECIAL_INDEX.deadCount=0;SPECIAL_INDEX.fsnCount=0;const classes=new Set();
+  const run=(deadline)=>{
+    const started=performance.now();let n=0;
+    while(v68SpecialWarmIndex<allData.length&&n<350){
+      if(n>30&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<3)break;
+      if(n>30&&!deadline&&performance.now()-started>4)break;
+      const row=allData[v68SpecialWarmIndex++];n++;
+      if(!row||typeof row!=='object')continue;
+      const nv=valByAliases(row,aliases.new),dv=valByAliases(row,aliases.dead),fv=clean(valByAliases(row,aliases.fsn));
+      if(flag(nv,'new')){SPECIAL_INDEX.newRows.add(row);SPECIAL_INDEX.newCount++}
+      if(flag(dv,'dead')){SPECIAL_INDEX.deadRows.add(row);SPECIAL_INDEX.deadCount++}
+      if(fv){SPECIAL_INDEX.fsnByRow.set(row,fv);SPECIAL_INDEX.fsnCount++;classes.add(normalizeFsnClass(fv)||fv)}
+    }
+    if(v68SpecialWarmIndex<allData.length){
+      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:120});else setTimeout(()=>run(null),8);
+    }else{
+      SPECIAL_INDEX.fsnClasses=[...classes].sort(natural);rowMeta=new WeakMap();v68SpecialReady=true;v68SpecialWarming=false;updateSpecialCounts();refreshSpecialFacets(false);
+      if(window.RAJ_AUTH_READY)applyFilters(false,false);
+    }
+  };
+  if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:120});else setTimeout(()=>run(null),8);
+}
+v68WarmSpecialIndex();
 window.RAJ_V45=V45;
 })();

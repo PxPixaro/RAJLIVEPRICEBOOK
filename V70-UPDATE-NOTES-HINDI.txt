@@ -1,0 +1,20 @@
+V70
+
+PRELOAD BEFORE LOGIN
+1. Link open hote hi login form turant nahi dikhega.
+2. Pehle branded Preparing Live Price Book screen dikhegi.
+3. Hosted/latest price data refresh, main FAST_ROWS index and V27 fast-filter cache preload honge.
+4. Actual readiness complete hone ke baad login screen open hogi.
+5. Login ke baad second 4-5 second heavy indexing intentionally nahi chalega.
+6. Default Aayub and all V69/V68 business logic retained.
+
+OFFER / SCHEME
+1. Pixaro admin ko upload form.
+2. File Blob IndexedDB me save hoti hai; large poster ko localStorage me store nahi kiya jata.
+3. Add click par object URL se card immediately preview hota hai.
+4. Customer ko upload form nahi, sirf published cards / thumbnails.
+5. Image: View Poster + Download. PDF: Open PDF + Download.
+6. Valid Till cross hone par EXPIRED red.
+7. Pixaro Delete Offer.
+8. Download Updated HTML async export ke waqt Blob ko Data URL me embed karta hai.
+9. GitHub par downloaded V70 updated HTML ko index.html replace karke offer public publish hota hai.

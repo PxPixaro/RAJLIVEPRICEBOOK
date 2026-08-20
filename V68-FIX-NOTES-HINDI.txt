@@ -1,0 +1,17 @@
+V68 FIX
+
+OFFER / SCHEME
+- V67 localStorage poster storage removed because large image/PDF Data URLs can exceed browser quota.
+- Offers now save in IndexedDB, which supports much larger browser-local data.
+- Add Offer first updates in-memory preview immediately, then saves to IndexedDB.
+- Updated HTML export embeds all current offer data/images/PDFs.
+- GitHub flow remains: Add -> Preview -> Edit Website -> Download Updated HTML -> replace index.html.
+- Expired red status and Pixaro Delete retained.
+
+PERFORMANCE
+- 44,639 product indexes now warm in small requestIdleCallback chunks while login screen is visible.
+- Typing remains responsive because each chunk has a small time budget.
+- Dashboard no longer starts one large synchronous 44k-row indexing job immediately after login.
+- V27 fast-filter cache, app FAST_ROWS/row-index, and special NEW/DS/FSN index all prewarm progressively.
+- If login is completed before preload finishes, dashboard waits for remaining chunks without freezing the browser.
+- All V67 business functionality retained.
