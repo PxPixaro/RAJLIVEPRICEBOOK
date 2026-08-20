@@ -56,13 +56,13 @@ async function downloadHtml(){
   clone.querySelector('#priceTable tbody')?.replaceChildren();
   clone.querySelector('#v45Drawer')?.classList.remove('open');
   clone.querySelector('#rajAdminOffersSeed')?.remove();
-  clone.querySelector('#rajOffersSeedV67')?.remove();clone.querySelector('#rajOffersSeedV68')?.remove();clone.querySelector('#rajOffersSeedV70')?.remove();
-  let offers=[];try{offers=typeof window.RAJ_V70_EXPORT_OFFERS==='function'?await window.RAJ_V70_EXPORT_OFFERS():[]}catch(e){console.error(e)}
-  const seed=document.createElement('script');seed.id='rajOffersSeedV70';seed.textContent='window.RAJ_EMBEDDED_OFFERS_V70='+JSON.stringify(offers).replace(/</g,'\\u003c')+';';
+  clone.querySelector('#rajOffersSeedV67')?.remove();clone.querySelector('#rajOffersSeedV68')?.remove();clone.querySelector('#rajOffersSeedV70')?.remove();clone.querySelector('#rajOffersSeedV71')?.remove();
+  let offers=[];try{offers=typeof window.RAJ_V71_EXPORT_OFFERS==='function'?await window.RAJ_V71_EXPORT_OFFERS():[]}catch(e){console.error(e)}
+  const seed=document.createElement('script');seed.id='rajOffersSeedV71';seed.textContent='window.RAJ_EMBEDDED_OFFERS_V71='+JSON.stringify(offers).replace(/</g,'\\u003c')+';';
   clone.querySelector('head')?.appendChild(seed);
   const source='<!doctype html>\n'+clone.outerHTML;
   const blob=new Blob([source],{type:'text/html;charset=utf-8'}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download='RAJLIVEPRICEBOOK-V70-UPDATED.html';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  a.href=URL.createObjectURL(blob);a.download='RAJLIVEPRICEBOOK-V71-UPDATED.html';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
 }
 
 function bind(){applyContent();$('#v49RightsBtn')?.addEventListener('click',rightsPanel);$('#v49EditBtn')?.addEventListener('click',enterEdit);let timer=0,logo=$('#v49AdminLogo');if(logo){const start=()=>{if(current()?.role!=='admin')return;clearTimeout(timer);timer=setTimeout(enterEdit,5000)},cancel=()=>clearTimeout(timer);['pointerdown','touchstart'].forEach(e=>logo.addEventListener(e,start,{passive:true}));['pointerup','pointercancel','pointerleave','touchend','touchcancel'].forEach(e=>logo.addEventListener(e,cancel,{passive:true}))}}

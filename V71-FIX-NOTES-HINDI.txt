@@ -1,0 +1,14 @@
+V71 FIX
+
+BOOT SPEED
+- Login gate ab sirf essential V27 fast filter cache + NEW/DS/FSN special index ka wait karta hai.
+- Duplicate app FAST_ROWS index aur hosted Excel parse login ko block nahi karte.
+- Hosted price-book.xlsx pehle SHA-256 se bundled workbook se compare hota hai. Same file ho to parse hi nahi hota.
+- Agar GitHub price-book.xlsx future me change ho to buffer detect hoga aur login ke baad idle time me apply hoga.
+
+OFFER / SCHEME
+- Add button handler drawer render hote hi turant bind hota hai; IndexedDB load ka wait nahi karta.
+- Click ke moment card memory me add hota hai aur thumbnail immediately render hota hai.
+- Existing IndexedDB/embedded offers baad me merge hote hain, new preview overwrite nahi hota.
+- Pixaro admin only upload/delete. Customers only view/open/download cards.
+- Expired offers red. Updated HTML export V71 offers embed karta hai.
