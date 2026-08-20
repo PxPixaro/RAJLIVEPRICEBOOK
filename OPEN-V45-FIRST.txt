@@ -1,0 +1,14 @@
+RAJ LIVE PRICEBOOK V45 - BUSINESS SUITE
+=======================================
+
+START HERE
+1. Read V45-UPDATE-NOTES.txt
+2. Read EXCEL-V45-COLUMNS.txt before adding new Excel columns.
+3. API / Hostinger / ERP / Login / Vehicle / Image Search flow is in:
+   docs/RAJ-Live-PriceBook-V45-API-Flow.docx
+4. Public connection settings are in js/v45-config.js
+5. Offer posters go in assets/offers/ and js/offers.js
+
+IMPORTANT
+Real API passwords/tokens and real customer passwords must NOT be placed in public GitHub JavaScript.
+Secure login, ERP credentials, vehicle lookup and true image similarity must run through your backend.

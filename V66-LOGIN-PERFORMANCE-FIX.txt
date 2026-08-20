@@ -1,0 +1,10 @@
+V66 - LOGIN PERFORMANCE ONLY
+
+No business functionality was changed.
+
+Changed only:
+1. 44,639-row rowIndexMap build no longer runs while login fields are being typed.
+2. FAST_ROWS/search index still starts only after successful login.
+3. Local IndexedDB restore and hosted GitHub price-book.xlsx refresh now also wait until successful login.
+4. After login, the same V65 product/filter engine initializes normally.
+5. New/DS/FSN, Aayub default, cart, Excel order, profile, offers and all other V65 behavior remains unchanged.

@@ -1,0 +1,17 @@
+V55 UPDATE
+
+1. ORDER CART badge now shows unique PRODUCT COUNT, not summed quantity.
+   Example: 8 product lines with total quantity 34 => badge shows 8.
+2. Cart summary now shows Products: 8 and Total Quantity: 34 separately.
+3. User/profile badge moved from bottom-right WhatsApp area to the TOP HEADER.
+4. Clicking profile opens full account details:
+   Name, Mobile, Customer ID, City, Access Group, Role, Profile Image and Logout.
+5. User can upload/remove a profile image. Static GitHub mode stores it in that browser's local storage.
+6. Excel export is now fault-tolerant:
+   - First tries built-in real .xlsx generator.
+   - If that generator fails in the browser, it automatically creates a compatible .xls Excel order.
+   - Native mobile sharing is attempted only when supported.
+   - Otherwise the Excel file downloads.
+   - Successful native share clears the cart.
+   - Cancelled share does NOT clear the cart.
+7. Excel generation errors now include the actual browser error message instead of only a generic message.

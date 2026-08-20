@@ -1,0 +1,17 @@
+V53 - EXCEL ORDER ONLY
+
+1. Removed WhatsApp Punch.
+2. Removed Download Order PDF.
+3. Removed Share PDF.
+4. Cart now has one order action: Share / Download Excel Order.
+5. Excel format contains:
+   - RAJ AGENCIES - CUSTOMER ORDER
+   - Party Name, Mobile No., City, Order Date/Time
+   - Sr., Part No., Brand/Group, Product Description, Qty, Unit, Item Remark
+   - Total Quantity
+   - Main Remark
+   No price, MRP, GST amount or scheme amount is included.
+6. On supported mobile devices, the Excel file opens the native Share Sheet.
+7. After a successful Excel share, the complete cart clears automatically.
+8. If file sharing is unavailable, Excel downloads instead and the cart remains for safety.
+9. If customer cancels Share, cart remains unchanged.

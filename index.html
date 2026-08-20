@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Raj Agencies — Live Price Book</title>
-  <link rel="stylesheet" href="css/style.css?v=35-filter-master-large-watermark">
-  <script defer src="js/data.js?v=35-filter-master-large-watermark"></script>
+  <link rel="stylesheet" href="css/style.css?v=49-admin-rights">
+  <script defer src="js/data.js?v=65-special-engine"></script>
   <script defer src="js/brand-logos.js?v=35-filter-master-large-watermark"></script>
 
   <script id="v27-catalog-links-before-app">
@@ -21,7 +21,12 @@
     }
   } catch (error) {}
   </script>
-  <script defer src="js/app.js?v=35-filter-master-large-watermark"></script>
+  <script defer src="js/app.js?v=66-login-performance-only"></script>
+  <script defer src="js/v45-config.js?v=50"></script>
+  <script defer src="js/customer-master.js?v=46"></script>
+  <script defer src="js/offers.js?v=46"></script>
+  <script defer src="js/v45.js?v=67-offer-static-publish"></script>
+  <link rel="stylesheet" href="css/v45.css?v=49">
 
   <style id="v25-smart-filter-styles">
     /* Independent filter controls */
@@ -304,7 +309,8 @@
     .header-actions:not(.controls-open) > .status-pill,
     .header-actions:not(.controls-open) > #syncBtn,
     .header-actions:not(.controls-open) > #syncFilterMasterBtn,
-    .header-actions:not(.controls-open) > #syncCatalogBtn{
+    .header-actions:not(.controls-open) > #syncCatalogBtn,
+    .header-actions:not(.controls-open) > #liveApiSyncBtn{
       display:none!important;
     }
     .header-actions.controls-open{
@@ -355,7 +361,8 @@
       .header-actions.controls-open > .status-pill,
       .header-actions.controls-open > #syncBtn,
       .header-actions.controls-open > #syncFilterMasterBtn,
-      .header-actions.controls-open > #syncCatalogBtn{
+      .header-actions.controls-open > #syncCatalogBtn,
+      .header-actions.controls-open > #liveApiSyncBtn{
         flex:1 1 auto;
       }
     }
@@ -363,6 +370,64 @@
       .data-tools-toggle,#syncBtn,#syncFilterMasterBtn,#syncCatalogBtn,.status-pill{display:none!important}
     }
   </style>
+<style id="v51-inline-hotfix">
+
+/* ================= V51 TABLE + HINDI NOTES HOTFIX ================= */
+/* Compact teeth column and keep complete order controls + image on one line. */
+#priceTable th[data-col="NO. OF TEETH"],
+#priceTable td[data-col="NO. OF TEETH"],
+#priceTable th[data-col="NUMBER OF TEETH"],
+#priceTable td[data-col="NUMBER OF TEETH"],
+#priceTable th[data-col="NO OF TEETH"],
+#priceTable td[data-col="NO OF TEETH"],
+#priceTable th[data-col="TEETH"],
+#priceTable td[data-col="TEETH"]{
+  width:72px!important;min-width:72px!important;max-width:72px!important;
+  padding-left:5px!important;padding-right:5px!important;
+  white-space:nowrap!important;text-align:right!important;
+}
+#priceTable th.image-col,#priceTable td.image-col{
+  width:214px!important;min-width:214px!important;max-width:214px!important;
+  box-sizing:border-box!important;padding:3px 5px!important;overflow:visible!important;
+}
+#priceTable .v46-image-order-line{
+  width:100%!important;min-width:0!important;display:flex!important;
+  flex-wrap:nowrap!important;align-items:center!important;justify-content:center!important;
+  gap:3px!important;overflow:visible!important;white-space:nowrap!important;
+}
+#priceTable .v45-product-actions{
+  display:flex!important;flex:0 0 auto!important;flex-wrap:nowrap!important;
+  align-items:center!important;gap:3px!important;overflow:visible!important;
+}
+#priceTable .v45-qbtn{flex:0 0 24px!important;width:24px!important;min-width:24px!important;height:27px!important}
+#priceTable .v45-qty{flex:0 0 36px!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:27px!important}
+#priceTable .v45-add{flex:0 0 42px!important;width:42px!important;min-width:42px!important;height:27px!important;padding:2px 4px!important}
+#priceTable .view-image-btn{
+  flex:0 0 48px!important;width:48px!important;min-width:48px!important;max-width:48px!important;
+  height:45px!important;margin:0!important;
+}
+/* Hindi guidance is intentionally stacked: each note gets full width and readable spacing. */
+.v49-filter-notes{
+  display:grid!important;grid-template-columns:1fr!important;gap:7px!important;
+  width:100%!important;margin:2px 0 14px!important;clear:both!important;
+}
+.v49-filter-notes p{
+  width:100%!important;box-sizing:border-box!important;min-height:0!important;
+  display:block!important;margin:0!important;padding:9px 12px!important;
+  font-size:10.5px!important;line-height:1.55!important;text-align:left!important;
+  overflow:visible!important;white-space:normal!important;
+}
+@media(max-width:700px){
+  #priceTable th[data-col="NO. OF TEETH"],#priceTable td[data-col="NO. OF TEETH"]{
+    width:60px!important;min-width:60px!important;max-width:60px!important;
+  }
+  #priceTable th.image-col,#priceTable td.image-col{
+    width:206px!important;min-width:206px!important;max-width:206px!important;
+  }
+  .v49-filter-notes p{font-size:9px!important;line-height:1.5!important;padding:8px 9px!important}
+}
+
+</style>
 </head>
 <body><div class="print-watermark-layer" aria-hidden="true">
   <img class="print-watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">
@@ -372,18 +437,22 @@
     <div class="header-frame">
       <div class="header-top-row">
         <div class="brand-lockup">
-          <img src="assets/company-logo/raj-group-logo-optimized.webp" class="company-logo" alt="Raj Group">
+          <img src="assets/company-logo/raj-group-logo-optimized.webp" class="company-logo" id="v49AdminLogo" alt="Raj Group">
           <div>
-            <div class="eyebrow">RAJ AGENCIES</div>
-            <h1>Live Price Book</h1>
-            <p>Fast • Searchable • Always Updated</p>
+            <div class="eyebrow" data-editable="true" data-edit-key="companyName">RAJ AGENCIES</div>
+            <h1 data-editable="true" data-edit-key="mainTitle">Live Price Book</h1>
+            <p data-editable="true" data-edit-key="headerTagline">Fast • Accurate • Professionally Organized</p>
           </div>
         </div>
-        <div class="header-actions">
-          <span id="syncStatus" class="status-pill"><span class="dot"></span> Loading data…</span>
-          <button id="syncBtn" class="btn btn-primary" title="Synchronize Price Excel">↻ Sync Price Excel</button>
-          <button id="syncFilterMasterBtn" class="btn btn-primary" title="Synchronize Filter Master Excel">↻ Sync Filter Master</button>
-          <button id="syncCatalogBtn" class="btn btn-primary catalog-sync-btn" title="Synchronize Catalog Links Excel">↻ Sync Catalog Excel</button>
+        <div class="header-actions admin-sync-zone">
+          <span id="syncStatus" class="status-pill admin-only"><span class="dot"></span> Loading data…</span>
+          <button id="syncBtn" class="btn btn-primary admin-only" title="Synchronize Price Excel">↻ Sync Price Excel</button>
+          <button id="syncFilterMasterBtn" class="btn btn-primary admin-only" title="Synchronize Filter Master Excel">↻ Sync Filter Master</button>
+          <button id="syncCatalogBtn" class="btn btn-primary catalog-sync-btn admin-only" title="Synchronize Catalog Links Excel">↻ Sync Catalog Excel</button>
+
+          <button id="liveApiSyncBtn" class="btn btn-primary admin-only" type="button" title="Synchronize Live ERP/API">↻ Sync Live API</button>
+          <button id="v49RightsBtn" class="btn btn-primary admin-only" type="button" title="Manage user/group visibility rights">⚙ Access Rights</button>
+          <button id="v49EditBtn" class="btn btn-primary admin-only" type="button" title="Open website text edit mode">✎ Edit Website</button>
           <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" hidden>
           <input id="filterMasterFile" type="file" accept=".xlsx,.xls" hidden>
           <input id="catalogExcelFile" type="file" accept=".xlsx,.xls" hidden>
@@ -392,8 +461,8 @@
       <section class="hero-card header-hero">
         <div class="hero-copy">
           <span class="badge">2026 LIVE PRICE CATALOGUE</span>
-          <h2>Find the right product in seconds.</h2>
-          <p>Select a group and narrow results by segment, vehicle, model and category. Filter Master values search anywhere in the related Excel field.</p>
+          <h2 data-editable="true" data-edit-key="heroTitle">Find the right product in seconds.</h2>
+          <p data-editable="true" data-edit-key="heroText">Use structured filters to quickly locate the exact product by brand, segment, vehicle, model and category.</p>
         </div>
         <div class="hero-mark hero-agencies hero-vehicle-showcase" aria-label="Vehicle segments">
           <img src="assets/ui/vehicle-segments.webp" alt="Vehicle segments">
@@ -404,33 +473,52 @@
 
   <main>
 
-    <section class="filter-panel">
-      <div class="panel-title">
-        <div>
-          <h3>Product Filters</h3>
-          <p>Filters work together and update instantly.</p>
+    <section class="filter-panel v46-filter-panel">
+      <div class="panel-title v47-panel-title">
+        <div><h3 data-editable="true" data-edit-key="filterTitle">Product Filters</h3><p data-editable="true" data-edit-key="filterTagline">Search products accurately using the filters below. Multiple filters work together for precise results.</p></div>
+        <div class="v47-filter-actions">
+          <button id="resetBtn" class="link-btn">Reset all</button>
+          <button id="cartBtn" class="v46-header-cart v47-filter-cart" type="button" title="Open Order Cart"><span class="v46-cart-icon">🛒</span><span><small>ORDER CART</small><b>Products <em id="cartCount">0</em></b></span></button>
         </div>
-        <button id="resetBtn" class="link-btn">Reset all</button>
       </div>
-      <div class="filters-grid">
+      <div class="v49-filter-notes" data-editable="true" data-edit-key="filterNotes">
+        <p><b>1.</b> ऊपर दिए गए फ़िल्टर का उपयोग करने के बाद नई खोज शुरू करने के लिए <b>Reset all</b> बटन दबाएँ। इससे पुराने फ़िल्टर साफ़ हो जाएंगे और आप नए सिरे से प्रोडक्ट खोज पाएंगे।</p>
+        <p><b>2.</b> Live Price Book में वही Rate और MRP दिखाई जाएगी जो वर्तमान प्रोडक्ट डेटा में उपलब्ध है। हमारे स्टॉक में पुराने एवं नए MRP वाला माल हो सकता है, इसलिए ऑर्डर करते समय कृपया Rate/MRP की पुष्टि कर लें। धन्यवाद।</p>
+      </div>
+      <div class="filters-grid v46-primary-filters">
         <label><span>Group / Brand</span><input class="filter-search" data-target="groupFilter" placeholder="Search group…"><select id="groupFilter"></select></label>
-<label><span>Sub Group</span><input class="filter-search" data-target="subGroupFilter" placeholder="Search sub group…"><select id="subGroupFilter"></select></label>
+        <label><span>Sub Group</span><input class="filter-search" data-target="subGroupFilter" placeholder="Search sub group…"><select id="subGroupFilter"></select></label>
         <label><span>Segment</span><input class="filter-search" data-target="segmentFilter" placeholder="Search segment…"><select id="segmentFilter"></select></label>
         <label><span>Vehicle</span><input class="filter-search" data-target="vehicleFilter" placeholder="Search vehicle…"><select id="vehicleFilter"></select></label>
         <label><span>Model</span><input class="filter-search" data-target="modelFilter" placeholder="Search model…"><select id="modelFilter"></select></label>
         <label><span>Category</span><input class="filter-search" data-target="categoryFilter" placeholder="Search category…"><select id="categoryFilter"></select></label>
-        <label class="search-box"><span>Search Anything / Product</span><input id="searchInput" placeholder="Search product, code, description, MRP, rate, model, vehicle or any Excel detail…"></label>
-        <label class="universal-search-box"><span>UNIVERSAL SEARCH</span>
-          <div class="voice-search-wrap">
-            <input id="universalSearchInput" placeholder="Speak or type product, code, description, MRP, rate, model, vehicle or other detail…">
-            <button id="voiceSearchBtn" type="button" title="Voice Search" aria-label="Voice Search">🎙</button>
-          </div>
-          <small id="voiceStatus">Type or speak any matching word from Excel</small>
+      </div>
+
+      <div class="v46-section-divider"><strong>Smart Search</strong><span>Search instantly by part number, product details, voice or image.</span></div>
+      <div class="v46-search-row v47-search-row">
+        <label class="v47-search-card v47-any-search">
+          <span class="v47-search-title">Search Anything / Product</span>
+          <input id="searchInput" placeholder="Search any Excel detail…">
         </label>
+        <label class="v47-search-card v47-universal-search">
+          <span class="v47-search-title">Universal Search</span>
+          <div class="voice-search-wrap"><input id="universalSearchInput" placeholder="Type or speak any product detail…"><button id="voiceSearchBtn" type="button" title="Voice Search" aria-label="Voice Search">🎙</button></div>
+          <small id="voiceStatus">Part no., company code, alternate code, model, vehicle or any Excel detail</small>
+        </label>
+        <button id="imageSearchBtn" class="v47-search-card v47-image-search" type="button"><span class="v47-search-icon">📷</span><span><b>Image Search</b><small>Search by product photo</small></span></button>
+      </div>
+
+      <div class="v46-section-divider"><strong>Product Status & Schemes</strong><span>Quick business filters</span></div>
+      <div class="v45-command-bar v46-special-bar" aria-label="Product status tools">
+        <button id="newLaunchBtn" class="v45-command" type="button"><span>NEW</span><b>New Product Launch</b></button>
+        <button id="deadStockBtn" class="v45-command" type="button"><span>DS</span><b>Dead Stock</b></button>
+        <label class="v45-fsn"><span>FSN Class</span><select id="fsnFilter"><option value="">All FSN Classes</option></select></label>
+        <button id="offerSchemeBtn" class="v45-command" type="button"><span>★</span><b>Offer / Scheme</b></button>
       </div>
     </section>
 
     <section class="results-card">
+      <div id="specialFilterNote" class="v45-special-note" hidden></div>
       <div class="print-head">
         <img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group">
         <div><div class="print-kicker">RAJ AGENCIES</div><h2 id="printTitle">ALL PRODUCTS</h2><p>LIVE PRICE BOOK</p><div class="print-meta-row"><div id="printListDate" class="print-list-date">COMPANY LIST DATE: —</div><div id="printUpdatedDate" class="print-updated-date">LAST UPDATED: —</div></div><div class="print-system-note">આ Pricelist System Generated છે Rate / Mrp All Details Confirm કરી લેવું</div></div>
@@ -484,6 +572,13 @@
   </a>
 
   <footer>© 2026 Raj Agencies · Live Price Book · Let’s Grow Together</footer>
+  <div id="v45Drawer" class="v45-drawer" aria-hidden="true">
+    <div class="v45-drawer-card">
+      <button id="v45DrawerClose" class="v45-drawer-close" type="button" aria-label="Close">×</button>
+      <div id="v45DrawerContent"></div>
+    </div>
+  </div>
+  <input id="v45ImageFile" type="file" accept="image/*" capture="environment" hidden>
   <div id="imageModal" class="image-modal" aria-hidden="true">
     <div class="image-modal-card">
       <button id="imageCloseBtn" class="image-close" type="button" aria-label="Close">×</button>
@@ -991,6 +1086,7 @@
     function currentContext(){
       const q=clean(document.getElementById('searchInput').value).toLowerCase();
       const universal=normalizedSearch(document.getElementById('universalSearchInput').value);
+      const sp=typeof window.RAJ_V45_SPECIAL_CONTEXT==='function'?window.RAJ_V45_SPECIAL_CONTEXT():{};
       return {
         selected:FAST_FILTERS.map(function(def){return document.getElementById(def.id).value}),
         typed:FAST_FILTERS.map(function(def){
@@ -1000,8 +1096,21 @@
         q:q,
         exactCode:!!q&&exactCodes.has(q),
         universal:universal,
-        universalWords:universal?universal.split(' ').filter(Boolean):[]
+        universalWords:universal?universal.split(' ').filter(Boolean):[],
+        special:sp.special||'',
+        fsn:sp.fsn||'',
+        specialApi:sp
       };
+    }
+    function passesSpecial(meta,ctx){
+      const api=ctx.specialApi||{};
+      if(ctx.special==='new'&&typeof api.isNew==='function'&&!api.isNew(meta.row))return false;
+      if(ctx.special==='dead'&&typeof api.isDead==='function'&&!api.isDead(meta.row))return false;
+      if(ctx.fsn&&typeof api.fsnValue==='function'){
+        const normalize=typeof api.normalizeFsnClass==='function'?api.normalizeFsnClass:function(v){return normalizedSearch(v).toUpperCase()};
+        if(normalize(api.fsnValue(meta.row))!==normalize(ctx.fsn))return false;
+      }
+      return true;
     }
     function passesFilter(meta,index,ctx){
       const def=FAST_FILTERS[index];
@@ -1073,6 +1182,7 @@
       let activeMask=0n;
 
       cachedRows.forEach(function(meta){
+        if(!passesSpecial(meta,ctx))return;
         if(!passesSearch(meta,ctx))return;
         let failures=0;
         let failedIndex=-1;
@@ -1114,6 +1224,13 @@
       document.body.classList.toggle('table-compact',visibleColumns.length>12);
       if(resetPage)page=1;
       render();
+      if(typeof window.RAJ_V45_SPECIAL_CONTEXT==='function'){
+        const sp=window.RAJ_V45_SPECIAL_CONTEXT();
+        const nb=document.getElementById('newLaunchBtn'),db=document.getElementById('deadStockBtn'),fs=document.getElementById('fsnFilter');
+        if(nb)nb.classList.toggle('active',sp.special==='new');
+        if(db)db.classList.toggle('active',sp.special==='dead');
+        if(fs&&fs.parentElement)fs.parentElement.classList.toggle('active',!!sp.fsn);
+      }
       document.querySelectorAll('.filter-clear').forEach(function(button){
         const target=button.dataset.clearTarget;
         const control=document.getElementById(target);
@@ -1171,17 +1288,26 @@
       document.getElementById('universalSearchInput').value='';
       const masterGroups=typeof masterValuesForFilter==='function'?masterValuesForFilter('groupFilter'):[];
       const groups=masterGroups.length?masterGroups:unique(allData,'GROUP');
-      if(groups.length)document.getElementById('groupFilter').value=groups[0];
+      const aayub=groups.find(function(x){return normalizedSearch(x)==='aayub'});
+      if(groups.length)document.getElementById('groupFilter').value=aayub||groups[0];
       fastApplyNow(true);
     }
     reset=clearToDefaultGroup;
     document.getElementById('resetBtn').onclick=clearToDefaultGroup;
 
-    // Default view: first group from the price Excel, not the 44,000+ All Products grid.
-    const masterGroups=typeof masterValuesForFilter==='function'?masterValuesForFilter('groupFilter'):[];
-    const firstGroups=masterGroups.length?masterGroups:unique(allData,'GROUP');
-    if(firstGroups.length)document.getElementById('groupFilter').value=firstGroups[0];
-    fastApplyNow(true);
+    // V65: do not build/filter 44k rows while the user is typing login credentials.
+    let v65FastStarted=false;
+    function startFastEngineAfterLogin(){
+      if(v65FastStarted)return;
+      v65FastStarted=true;
+      const masterGroups=typeof masterValuesForFilter==='function'?masterValuesForFilter('groupFilter'):[];
+      const firstGroups=masterGroups.length?masterGroups:unique(allData,'GROUP');
+      const aayub=firstGroups.find(function(x){return normalizedSearch(x)==='aayub'});
+      if(firstGroups.length)document.getElementById('groupFilter').value=aayub||firstGroups[0];
+      setTimeout(function(){fastApplyNow(true)},0);
+    }
+    window.addEventListener('raj-auth-ready',startFastEngineAfterLogin,{once:true});
+    if(window.RAJ_AUTH_READY)startFastEngineAfterLogin();
   });
   </script>
 
@@ -1233,5 +1359,7 @@
   });
   </script>
 
+  <script src="js/v49.js?v=67-offer-static-publish"></script>
+  <script src="js/v50.js?v=65-special-engine"></script>
 </body>
 </html>

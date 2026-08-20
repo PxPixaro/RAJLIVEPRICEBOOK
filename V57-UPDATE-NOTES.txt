@@ -1,0 +1,9 @@
+RAJ LIVE PRICE BOOK V57
+=======================
+1. Successful Excel share/download ke turant baad cart automatically clear hota hai.
+2. Cart badge product count 0 par reset hota hai.
+3. Excel title: RAJ AGENCIES CUSTOMER ORDER.
+4. Excel print setup: A4 portrait, Fit to 1 page wide x 1 page tall.
+5. Order area me continuous row/column borders.
+6. V56 OpenXML repair fix retained.
+7. Logo website assets me retained hai. Workbook image embedding is build me intentionally nahi ki gayi, taaki XLSX corruption risk dobara na aaye.

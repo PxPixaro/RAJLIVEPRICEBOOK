@@ -1,0 +1,55 @@
+V61 - LIVE EXCEL SPECIAL FILTER GUIDE
+
+SOURCE OF TRUTH
+---------------
+NEW PRODUCT LAUNCH, DEAD STOCK aur FSN CLASS ka source sirf latest Price Excel hai.
+In filters ke liye HTML/JavaScript me product codes hard-code nahi kiye gaye hain.
+
+EXCEL COLUMNS
+-------------
+NEW PRODUCT LAUNCH
+- New item ki row me NEW likhein.
+- Blank karne par item New filter se nikal jayega.
+
+DEAD STOCK
+- Dead stock item ki row me DEAD likhein.
+- Blank karne par item Dead Stock filter se nikal jayega.
+
+FSN CLASS
+- Row me F / S / N / P ya koi bhi future class likh sakte hain.
+- Dropdown latest Excel se available classes automatically banata hai.
+
+UPDATE METHOD 1 - PIXARO EXCEL SYNC
+------------------------------------
+1. Excel save karein.
+2. Pixaro login.
+3. Data Options > Sync Price Excel.
+4. Updated Excel select karein.
+5. V61 immediately special-filter index rebuild karega.
+6. Page reload ki zarurat nahi honi chahiye.
+
+UPDATE METHOD 2 - GITHUB
+-------------------------
+1. GitHub me assets/data/price-book.xlsx ko same filename se replace karein.
+2. Customer page refresh kare.
+3. V61 hosted Excel ko cache-busting URL se fetch karega.
+4. NEW / DEAD / FSN latest Excel values se rebuild honge.
+5. Future me sirf Excel badalne ke liye JS/data.js update karna required nahi hai.
+
+FILTER SCOPE
+------------
+Aayub selected + Dead Stock = only Aayub DEAD rows.
+Aayub selected + New Product = only Aayub NEW rows.
+Aayub selected + FSN F = only Aayub F rows.
+All Groups + Dead/New/FSN = all matching brands.
+Segment / Vehicle / Model / Category selected hain to special filter unke saath combine hota hai.
+
+IMPORTANT
+---------
+Header spelling recommended exactly:
+COMPANY PART NUMBER
+COMPETITOR PART NUMBER
+ALTERNATE PART NUMBER
+NEW PRODUCT LAUNCH
+DEAD STOCK
+FSN CLASS

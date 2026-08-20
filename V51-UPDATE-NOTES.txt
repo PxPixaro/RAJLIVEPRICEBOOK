@@ -1,0 +1,6 @@
+V51 HOTFIX
+1. NO. OF TEETH column width reduced.
+2. Minus / Qty / Plus / ADD / Image forced into one visible single line.
+3. Hindi filter notes are now stacked one below another for readability.
+4. V51 visual hotfix is embedded inside index.html too, so if your GitHub already contains the complete V50 extracted folders, replacing only index.html is enough for these V51 visual changes.
+5. For a fresh deployment, upload the complete ZIP contents.

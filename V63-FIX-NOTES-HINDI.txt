@@ -1,0 +1,8 @@
+V63 FIX
+1. Uploaded latest price-book.xlsx exact project me embedded hai.
+2. data.js isi Excel se regenerate kiya gaya hai.
+3. DEAD STOCK me Excel value DS ko valid Dead Stock maana jayega.
+4. NEW PRODUCT LAUNCH me NEW.
+5. FSN CLASS me F/S/N/P aur future classes.
+6. Login screen ke baad heavy filter/search initialization defer kiya gaya hai, isliye input jaldi responsive hoga.
+7. GitHub par V63 first time index.html + js/data.js + js/app.js + js/v45.js + assets/data/price-book.xlsx replace karein.

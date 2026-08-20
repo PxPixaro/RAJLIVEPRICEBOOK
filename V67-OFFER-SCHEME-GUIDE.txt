@@ -1,0 +1,23 @@
+V67 OFFER / SCHEME
+
+PIXARO ADMIN
+- Brand, Scheme Title, Narration, Valid Till + JPG/PNG/WEBP/PDF choose karein.
+- Add Offer / Scheme click karte hi card same screen par turant preview hoga.
+- Valid date khatam hone ke baad card red EXPIRED show karega.
+- Delete Offer sirf Pixaro ko dikhega.
+- Delete ke baad updated HTML publish karna hoga.
+
+GITHUB STATIC PUBLISH
+- Poster image/PDF Data URL ke roop me updated HTML ke andar embed hoti hai.
+- Alag poster image ko GitHub par upload karna required nahi.
+- Edit Website -> Download Updated HTML.
+- Downloaded V67 HTML ko GitHub me index.html ke naam/path par replace karein.
+- Uske baad customers ko public offer card dikhega.
+
+CUSTOMER
+- Upload form nahi dikhega.
+- Sirf Brand / Title / Narration / Validity / ACTIVE-EXPIRED status.
+- Image: View Poster + Download.
+- PDF: Open PDF + Download.
+
+V66 ke baaki features unchanged hain.

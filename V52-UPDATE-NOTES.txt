@@ -1,0 +1,13 @@
+V52 UPDATE
+1. WhatsApp order message is now a compact code-block layout:
+   Party Name / Mobile / City
+   Sr + Part No + Brand/Group + Qty
+   Total Qty + Remark only.
+   No Total Amount, Scheme FOC or Free Product lines are included.
+2. WhatsApp order number remains 917046533330.
+3. After WhatsApp Punch opens successfully, cart auto-clears.
+4. After successful native PDF Share, cart auto-clears. Plain PDF Download does NOT clear cart.
+5. Existing PDF order structure is retained: Customer, Mobile, Date, Sr, Code, Description, GST, Qty, Remark, Total Quantity.
+6. Offer/Scheme upload controls are visible only to Pixaro admin.
+7. Customers see offer cards with Brand, Title, Narration, Validity, View/Open and Download.
+8. CUSTOMER MASTER can optionally include CITY for WhatsApp order header.

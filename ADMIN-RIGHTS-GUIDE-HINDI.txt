@@ -1,0 +1,24 @@
+ADMIN RIGHTS CONTROL - उपयोग
+
+Admin login: Pixaro / 123 (बाद में production backend में password बदलें).
+
+CUSTOMER MASTER में recommended columns:
+CUSTOMER NAME | MOBILE NUMBER | PASSWORD | CUSTOMER ID | ACCESS GROUP | ROLE
+
+ACCESS GROUP values:
+- salesman
+- customer
+- trusted_customer
+
+Pixaro login > Data Options > Access Rights
+- Group चुनकर column Show/Hide करें: उस group के सभी users पर rule लागू होगा.
+- Individual user चुनकर अलग override कर सकते हैं.
+- Use Group Default से individual override हट जाएगा.
+
+Website text edit:
+Pixaro login > Data Options > Edit Website
+या top RAJ GROUP logo को 5 seconds press/hold करें.
+Highlighted title/note text edit करें > Save Text.
+GitHub update के लिए Download Updated HTML दबाएँ और repository में index.html replace करें.
+
+IMPORTANT: GitHub/static mode में login/rights browser-side हैं और security-grade नहीं हैं. Hostinger production backend बनने पर passwords hashed database में, access rights server-side, and admin actions audit logs में होने चाहिए.

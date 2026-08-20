@@ -1,0 +1,28 @@
+RAJ LIVE PRICE BOOK — V46 DASHBOARD / LOGIN / COMPACT ORDER GRID
+
+1. Product table is now single-line / no-wrap on desktop.
+   - Product Name / Description is compact and ellipsis-limited.
+   - UNIT, GST, RATE, MRP and short technical columns use tighter widths.
+   - View Image + minus + Qty + plus + ADD stay in one line.
+
+2. Dashboard filter organization:
+   SECTION 1: Group/Brand, Sub Group, Segment, Vehicle, Model, Category
+   SECTION 2: Search Anything/Product, Universal + Voice Search, Image Search, Vehicle Search
+   SECTION 3: New Product Launch, Dead Stock, FSN Class, Offer/Scheme
+
+3. Order Cart moved next to Selected Group Catalog/Pricelist downloads and summary.
+
+4. Login is now an entry gate; Customer Login is removed from filter tools.
+   CUSTOMER USERNAME = registered mobile number
+   CUSTOMER PASSWORD = Customer Master password
+   ADMIN USERNAME = Pixaro
+   ADMIN PASSWORD = 123
+
+5. Customer Master Excel support:
+   Add a sheet named CUSTOMER MASTER to the Price Excel workbook.
+   Supported headings: CUSTOMER NAME (or NAME/PARTY NAME), MOBILE NUMBER (or MOBILE/MOBILE NO/PHONE), PASSWORD (or PASS/LOGIN PASSWORD), optional CUSTOMER ID/PARTY CODE/CUSTOMER CODE.
+   When admin uses Sync Price Excel, this sheet is imported into local browser storage for static/offline mode.
+   For public production hosting, use the secure LOGIN API instead of exposing real passwords in a public workbook/site.
+
+6. Admin-only synchronization toolbar:
+   Sync Price Excel, Sync Filter Master, Sync Catalog Excel and Sync Live API are visible after Pixaro admin login and opening the data-tools arrow.

@@ -1,0 +1,194 @@
+RAJ LIVE PRICE BOOK V58 - MASTER DATA MAINTENANCE GUIDE
+========================================================
+
+A. MAIN PRICE EXCEL - PRODUCT DATA KAHAN MAINTAIN KARNA HAI
+-----------------------------------------------------------
+Aap jo main Price Excel Sync karte hain, usi workbook ki product-data sheet me apne existing columns ke saath ye columns maintain karein. Columns first/header row me kahin bhi ho sakte hain; heading spelling recommended format me rakhein:
+
+1. COMPANY PART NUMBER
+   - Aapka/company ka alternate code.
+   - Example: CODE = AA1002, COMPANY PART NUMBER = AF1002.
+
+2. COMPETITOR PART NUMBER
+   - Matching competitor/cross-reference codes.
+   - Multiple codes ek cell me comma / slash / semicolon / space se likh sakte hain.
+   - Best result ke liye reciprocal mapping rakhein: Brand-A row me Brand-B code, aur Brand-B row me Brand-A code.
+
+3. ALTERNATE PART NUMBER
+   - Same/matching alternate part codes.
+   - Search is full cell text par hota hai.
+
+4. NEW PRODUCT LAUNCH
+   - New item ke row me NEW likhein.
+   - Blank row normal product maana jayega.
+   - New Product Launch filter isi column ko read karta hai.
+
+5. DEAD STOCK
+   - Dead-stock item ke row me DEAD likhein.
+   - Dead Stock filter isi column ko read karta hai.
+
+6. FSN CLASS
+   - F / S / N / P ya future me koi bhi naya class text.
+   - Filter dynamic hai; Excel me jo distinct class milega, option me aa sakta hai.
+
+IMPORTANT:
+- Existing CODE / PRODUCT NAME / UNIT / GST / RATE / MRP / SEGMENT / VEHICLE / MODEL / CATEGORY etc. headings ko delete/rename na karein jab tak mapping update na ho.
+- Product CODE ko stable unique key rakhein. ERP/API integration ke time isi code se Rate/MRP/GST/Product Name sync karna best rahega.
+
+
+B. CUSTOMER LOGIN MASTER - ALAG SHEET
+-------------------------------------
+Main Price Excel workbook ke andar ek separate worksheet banayein jiska naam EXACTLY ho:
+
+CUSTOMER MASTER
+
+Recommended headings:
+CUSTOMER NAME | MOBILE NUMBER | PASSWORD | CUSTOMER ID | CITY | ACCESS GROUP | ROLE
+
+Example:
+ABC AUTO | 9876543210 | raj123 | C001 | SURAT | customer | customer
+XYZ SALES | 9876500000 | raj123 | S001 | AHMEDABAD | salesman | customer
+TRUST AUTO | 9876511111 | raj123 | T001 | RAJKOT | trusted_customer | customer
+
+Meaning:
+- CUSTOMER NAME: login ke baad Welcome/Profile me naam.
+- MOBILE NUMBER: customer ka login username. Matching last 10 digits se hoti hai.
+- PASSWORD: static GitHub prototype me login password.
+- CUSTOMER ID: future ERP/customer-code mapping ke liye useful.
+- CITY: Profile/order Excel me use ho sakta hai.
+- ACCESS GROUP: salesman / customer / trusted_customer.
+- ROLE: normal users ke liye customer rakhein. Pixaro built-in admin alag hai.
+
+PIXARO ADMIN (current static setup):
+User: Pixaro
+Password: 123
+Production/Hostinger backend par password zaroor change/harden karein.
+
+
+C. CUSTOMER MASTER SYNC - CURRENT GITHUB/STATIC MODE
+----------------------------------------------------
+1. Pixaro se login karein.
+2. Top Data Options open karein.
+3. Sync Price Excel choose karein.
+4. Wahi Price Excel select karein jisme CUSTOMER MASTER sheet bhi ho.
+5. Current browser me Customer Master import ho jayega.
+
+VERY IMPORTANT STATIC-HOSTING LIMITATION:
+- GitHub Pages par browser localStorage secure central database nahi hai.
+- Pixaro ke browser me imported Customer Master automatically har customer ke phone/browser me transfer nahi hota.
+- Public/professional customer login ke liye Hostinger/backend API + database final solution hai.
+- GitHub phase ko testing/demo phase samjhein. Password ko public JS me permanent rakhna secure nahi hai.
+
+
+D. ACCESS RIGHTS - SALESMAN / CUSTOMER / TRUSTED CUSTOMER
+---------------------------------------------------------
+Pixaro -> Data Options -> Access Rights
+
+Current groups:
+- Salesman
+- Customer
+- Trusted Customer
+
+Aap group select karke product columns show/hide kar sakte hain.
+Individual customer par bhi override diya ja sakta hai.
+
+Current GitHub/static version me ye rights browser localStorage me save hote hain. Ye server-security nahi hai. Hostinger/backend par jaane ke baad rights database me server-side enforce karne chahiye.
+
+Suggested future backend tables:
+customers, access_groups, access_group_columns, customer_overrides, login_audit
+
+
+E. OFFER / SCHEME KAHAN MAINTAIN KARNA HAI
+-------------------------------------------
+Offer/Scheme Excel column se nahi; current V58 me Pixaro admin UI se manage hota hai:
+
+Pixaro Login -> Offer / Scheme ->
+Brand Name + Scheme Title + Narration + Valid Till + JPG/PNG/WEBP/PDF upload.
+
+GitHub static mode workflow:
+1. Offer upload karein.
+2. Pixaro Edit Website mode open karein (logo long-press 5 sec ya Data Options -> Edit Website).
+3. Download Updated HTML karein.
+4. Updated HTML GitHub me publish/replace karein.
+
+Hostinger phase me ye same offer files database/server storage me direct save ho sakenge.
+
+
+F. WEBSITE TEXT / NOTES EDIT
+----------------------------
+Sirf Pixaro admin ke liye:
+- Raj Group logo ko approx 5 seconds press/hold -> Edit Mode.
+- Editable headings/notes/text change karein.
+- Save Text current admin browser me save karta hai.
+- Download Updated HTML se publishable HTML nikalein.
+- Product master data ko website text editor se edit nahi karna; product data Excel/API se maintain karein.
+
+
+G. PRODUCT IMAGES / BRAND LOGOS
+-------------------------------
+- Brand logos: assets/brand-logos/
+- Raj Group logo: assets/company-logo/
+- Product images: project ke existing product image structure/naming convention me rakhein.
+- Large images ko WEBP/JPG me optimize karna mobile speed ke liye better hai.
+
+
+H. DAILY / WEEKLY PRACTICAL WORKFLOW (ABHI GITHUB PAR)
+------------------------------------------------------
+Product change/new item/dead/FSN:
+1. Main Price Excel edit karein.
+2. Required NEW / DEAD / FSN / company/competitor codes fill karein.
+3. Pixaro -> Sync Price Excel.
+4. Product/filter result check karein.
+5. Aapka existing Excel-to-data/GitHub publishing workflow follow karein.
+
+Offer change:
+Pixaro Offer Upload -> Download Updated HTML -> GitHub replace.
+
+Website text/note change:
+Pixaro Edit Mode -> Download Updated HTML -> GitHub replace.
+
+Customer login changes:
+CUSTOMER MASTER sheet maintain karein, lekin professional multi-customer live login ke liye Hostinger/backend migration recommended hai.
+
+
+I. HOSTINGER / ERP PHASE ME FINAL STRUCTURE
+-------------------------------------------
+Future recommended flow:
+Customer Web/App -> Secure Backend -> Database -> ERP API
+
+ERP se primarily:
+- CODE / Product Name
+- RATE
+- MRP
+- GST
+- Standard Packing / Unit
+- future Stock if authorized
+
+Customer login/database:
+- Mobile
+- Password hash (plain password nahi)
+- Customer Name
+- ERP Customer Code
+- City
+- Access Group
+- Active/Inactive
+- Column rights
+- Audit logs
+
+Order:
+Cart -> Excel order / future ERP SOR API -> successful punch -> cart clear.
+
+
+J. V58 ORDER EXCEL
+------------------
+V58 Excel order PDF-style professional layout me generate hota hai:
+- RAJ GROUP logo
+- RAJ AGENCIES - CUSTOMER ORDER
+- Order No. / Date
+- Customer Name / Mobile
+- Order Source / Customer Note
+- Sr. / Code / Product Description / GST / Qty / Unit / Item Remark
+- Total Line Items / Total Quantity
+- Main Remark
+- A4 portrait, one-page fit print setup
+- Successful share/download ke baad cart auto-clear.

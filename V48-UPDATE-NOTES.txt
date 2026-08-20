@@ -1,0 +1,7 @@
+RAJ LIVE PRICEBOOK V48
+
+FIX:
+- Separate standalone HTML now embeds CSS, JS and bundled price-book data.
+- Opening V48-STANDALONE-CHECK.html alone will retain the dashboard format.
+- Main project index.html continues to use normal css/js/assets folders for GitHub/Hostinger deployment.
+- Company shell logo/watermark are embedded in standalone checker. Product/brand asset images still resolve from project assets when available.

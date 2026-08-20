@@ -1,0 +1,29 @@
+V65 ROOT-CAUSE FIX
+
+LATEST EXCEL VERIFIED
+- 58 columns.
+- COMPANY PART NUMBER, COMPETITOR PART NUMBER, ALTERNATE PART NUMBER,
+  NEW PRODUCT LAUNCH, DEAD STOCK, FSN CLASS present.
+- Aayub special test data exists.
+
+ACTUAL BUG FIXED
+- Old inline V27 fast-filter engine was overriding V45 applyFilters().
+- Counts were correct, but NEW/DS/FSN conditions were not included in the final fast result engine.
+- V65 passes NEW / DS / FSN state into V27 fastApplyNow(), so the actual displayed product rows are filtered.
+
+LOGIN LAG FIX
+- 44k row fast-search/filter cache is not built while login ID/password is being typed.
+- Heavy indexing starts only after successful login / restored authenticated session.
+
+BEHAVIOR
+- Default Group = Aayub.
+- Aayub + NEW = only Aayub rows with NEW PRODUCT LAUNCH=NEW.
+- Aayub + DS = only Aayub rows with DEAD STOCK=DS/DEAD.
+- Aayub + FSN F/S/N/P = only matching Aayub class.
+- If user manually selects All Groups, the same filter works across all brands.
+- Selected special button/card gets a dark-blue active highlight.
+
+FUTURE EXCEL COLUMNS
+- Core row reader is header-driven; it does not assume only 58 columns.
+- New columns added to price-book.xlsx are available to universal search automatically.
+- A future UI filter still needs a filter control definition, but product codes/data do not need hard-coding.

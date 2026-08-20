@@ -1,0 +1,24 @@
+RAJ LIVE PRICE BOOK V59
+=======================
+
+PRODUCT EXCEL FIX
+- assets/data/price-book.xlsx has been replaced with the customer-supplied updated workbook.
+- New columns now present at BA:BF:
+  COMPANY PART NUMBER
+  COMPETITOR PART NUMBER
+  ALTERNATE PART NUMBER
+  NEW PRODUCT LAUNCH
+  DEAD STOCK
+  FSN CLASS
+- Verified sample data in uploaded workbook: 4 NEW rows, 3 DEAD rows, FSN F=2, S=2, N=2 in the starting test rows.
+- GitHub fetch now uses a V59 cache-busting query and no-store so an older price-book.xlsx is not reused.
+
+ORDER EXCEL FORMAT
+- Generator updated to match the customer's corrected order workbook more closely.
+- Logo retained.
+- Title: RAJ AGENCIES - CUSTOMER ORDER.
+- Subtitle merge widened to C3:G3.
+- Blank separator A4:G4 merged.
+- Long product descriptions get taller rows automatically.
+- Customer/Order Source/Customer Note, GST, Qty, Unit, Item Remark, totals and Main Remark retained.
+- A4 print setup retained.

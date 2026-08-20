@@ -1,0 +1,10 @@
+RAJ LIVE PRICE BOOK V50
+
+1. Order Punch WhatsApp number set to 917046533330.
+2. Offer/Scheme: Pixaro admin can upload JPG/PNG/WEBP/PDF with Brand, Scheme Title, Narration and optional Valid Till date. Customers can Open/Download published offers.
+3. GitHub static publishing flow: admin uploads offers -> Edit Website -> Download Updated HTML -> replace index.html on GitHub. Uploaded offers are embedded in exported HTML.
+4. Product Filters Hindi notes and Cart/Reset header spacing fixed so no overlap.
+5. Mobile view redesigned like an app: sticky compact header, card sections, mobile bottom dock (Home/Filters/Search/Offers/Cart), compact result cards, touch-friendly table/order controls and bottom-sheet drawers.
+6. Existing Pixaro admin rights, group rights, text editing, cart and order features retained.
+
+Production note: after Hostinger/backend migration, offer uploads should go to server/object storage instead of embedding in HTML.

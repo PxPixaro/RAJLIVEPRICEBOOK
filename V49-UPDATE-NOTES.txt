@@ -1,0 +1,13 @@
+RAJ LIVE PRICE BOOK V49
+
+1. Vehicle Number Search temporarily removed.
+2. Results header reorganized: larger selected brand logo/name at left; Products/Visible Columns/Last Updated moved to right below downloads.
+3. Product row order controls are one line: Minus | Qty | Plus | ADD | Image.
+4. Hindi Reset/Rate-MRP guidance notes added below Product Filters.
+5. Data Options visible only to Pixaro admin.
+6. Access Rights prototype: Salesman, Customer, Trusted Customer groups + per-user column visibility overrides.
+7. CUSTOMER MASTER can now include ACCESS GROUP / USER GROUP and ROLE / USER TYPE columns.
+8. Pixaro admin can open Edit Website from Data Options or long-press company logo for 5 seconds. Editable headings/notes can be saved and an updated HTML can be downloaded.
+9. Professional taglines replace informal filter/search copy.
+
+Production note: On public GitHub, client-side passwords/rights are not secure. When Hostinger/backend is connected, move authentication, access rights and admin settings to the backend database/API.

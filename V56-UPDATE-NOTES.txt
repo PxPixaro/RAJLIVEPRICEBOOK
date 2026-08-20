@@ -1,0 +1,9 @@
+V56 EXCEL OPENXML FIX
+
+- Fixed Microsoft Excel repair/blank worksheet issue.
+- Root cause: worksheet OpenXML element sequence was schema-invalid (mergeCells appeared before autoFilter).
+- Correct order is now sheetData -> autoFilter -> mergeCells -> pageMargins.
+- Added worksheet dimension and sheetFormatPr for stricter Excel compatibility.
+- Excel Order still contains Party Name, Mobile, City, Date/Time, Sr., Part No., Brand/Group, Description, Qty, Unit, Item Remark, Total Quantity and Main Remark.
+- Cart product-count and top profile features from V55 are retained.
+- Successful native mobile share clears the cart; cancelled share does not.

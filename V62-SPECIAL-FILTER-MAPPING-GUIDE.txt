@@ -1,0 +1,20 @@
+V62 SPECIAL FILTER MAPPING
+
+Excel headers:
+NEW PRODUCT LAUNCH -> value NEW
+DEAD STOCK -> value DEAD
+FSN CLASS -> F / S / N / P
+
+FSN dropdown always shows F, S, N, P.
+Any future class found in Excel is also added automatically.
+
+Scope:
+Aayub selected + NEW => only Aayub NEW rows.
+Aayub selected + DS => only Aayub DEAD rows.
+Aayub selected + F => only Aayub F rows.
+All Groups + any special filter => all matching brands.
+
+Important cache fix:
+index.html now version-bumps data.js, app.js, v45.js, v49.js and v50.js.
+Upload index.html together with changed JS/CSS files when moving from V61 to V62.
+Future price-only changes can be made by replacing assets/data/price-book.xlsx because app fetch uses cache:no-store + timestamp.

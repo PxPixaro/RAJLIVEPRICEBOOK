@@ -1,0 +1,11 @@
+V54 OFFLINE XLSX STABLE BUILD
+
+- Excel Order no longer loads SheetJS/XLSX from a CDN.
+- The project creates a real .xlsx workbook using its own built-in browser code.
+- No external Excel library is required for the customer order export.
+- Mobile: Share / Download Excel Order uses the device Share Sheet when file sharing is supported.
+- After a successful native share, the cart clears automatically.
+- If the customer cancels sharing, the cart is preserved.
+- Desktop / unsupported file-share browsers download the .xlsx file and keep the cart for safety.
+- Order workbook includes Party Name, Mobile, City, Date/Time, Part No., Brand/Group, Description, Qty, Unit, Item Remark, Total Quantity, Main Remark.
+- No price, MRP or amount is included.

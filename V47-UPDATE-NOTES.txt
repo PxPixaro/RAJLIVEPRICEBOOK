@@ -1,0 +1,9 @@
+RAJ LIVE PRICE BOOK — V47 PROFESSIONAL ALIGNMENT UPDATE
+
+1. Smart Search area realigned into a clean compact four-control row.
+2. Vehicle Search redesigned as a number-plate style search box with GJ-05 default.
+3. Cart removed from Selected Group Downloads toolbar and moved below Reset All.
+4. Results toolbar aligned professionally: Selected Price Book + Downloads on one row, summary below.
+5. Product table Image / Order column tightened so image, minus, qty, plus and ADD stay inside the table edge.
+6. Product description and short technical columns remain compact and single-line.
+7. Existing V46 login, admin sync, filters, cart/order and API-ready hooks preserved.

@@ -1,0 +1,57 @@
+RAJ V45 - RECOMMENDED EXCEL HEADERS
+===================================
+Keep your existing headings. Add these columns anywhere in the first row:
+
+COMPANY PART NUMBER
+COMPETITOR PART NUMBER
+ALTERNATE PART NUMBER
+NEW PRODUCT LAUNCH
+DEAD STOCK
+FSN CLASS
+
+Examples
+--------
+CODE: AA1002
+COMPANY PART NUMBER: AF1002
+
+If ELOFIC EK1525CA matches a MANN item:
+ELOFIC row -> COMPETITOR PART NUMBER = <MANN CODE>
+MANN row   -> COMPETITOR PART NUMBER = EK1525CA
+This reciprocal entry makes either code return both alternatives.
+
+NEW PRODUCT LAUNCH: write NEW
+DEAD STOCK: write DEAD
+FSN CLASS: write F / S / N / P (or any future class; filter is dynamic)
+
+Multiple alternate/cross-reference codes can be written in one cell separated by comma, slash, semicolon or spaces. Search works across the full cell text.
+
+V46 CUSTOMER LOGIN MASTER SHEET
+-------------------------------
+Add a separate worksheet named exactly: CUSTOMER MASTER
+Recommended headings:
+CUSTOMER NAME | MOBILE NUMBER | PASSWORD | CUSTOMER ID
+
+Customer login username = MOBILE NUMBER.
+Admin login is built in for setup: Pixaro / 123 (change before production).
+For public production use, customer passwords should be verified by backend API instead of public/static files.
+
+V49 CUSTOMER ACCESS COLUMNS (recommended in CUSTOMER MASTER sheet)
+---------------------------------------------------------------
+ACCESS GROUP   -> salesman / customer / trusted_customer
+ROLE           -> customer (Pixaro remains built-in admin in static prototype)
+
+Example:
+CUSTOMER NAME | MOBILE NUMBER | PASSWORD | CUSTOMER ID | ACCESS GROUP | ROLE
+ABC AUTO       | 9876543210    | raj123   | C001        | customer     | customer
+XYZ SALES      | 9876500000    | raj123   | S001        | salesman     | customer
+TRUST AUTO     | 9876511111    | raj123   | T001        | trusted_customer | customer
+
+Admin > Data Options > Access Rights can hide/show individual product columns group-wise or user-wise.
+
+CUSTOMER MASTER OPTIONAL COLUMN: CITY (used in WhatsApp order header)
+
+V58 NOTE
+--------
+For CUSTOMER MASTER, recommended full headings now are:
+CUSTOMER NAME | MOBILE NUMBER | PASSWORD | CUSTOMER ID | CITY | ACCESS GROUP | ROLE
+See MASTER-DATA-MAINTENANCE-GUIDE-HINDI.txt for complete maintenance workflow.

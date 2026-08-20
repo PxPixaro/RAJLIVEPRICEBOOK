@@ -1,0 +1,10 @@
+RAJ LIVE PRICE BOOK V58
+=======================
+- Excel Customer Order redesigned to match the professional PDF-style sample.
+- RAJ GROUP logo embedded directly inside XLSX.
+- Header: RAJ AGENCIES - CUSTOMER ORDER + Order No. + Date.
+- Customer info block + bordered product table + totals + main remark.
+- A4 Portrait / Fit to 1 page.
+- Existing cart auto-clear after successful Excel share/download retained.
+- V56/V57 OpenXML validity fixes retained.
+- MASTER-DATA-MAINTENANCE-GUIDE-HINDI.txt added with current GitHub/static workflow and future Hostinger guidance.

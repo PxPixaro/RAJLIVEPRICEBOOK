@@ -1,0 +1,33 @@
+RAJ LIVE PRICE BOOK V60
+========================
+
+ORDER EXCEL
+1. Generated workbook now has TWO sheets:
+   - Customer Order = professional final order sheet with logo.
+   - BDU = only Code and Qty columns, for direct copy/paste into billing software.
+2. Customer Order total row now contains only Total Qty and its quantity value.
+3. Successful Excel share/download still clears the cart automatically.
+
+NEW / DEAD / FSN FILTER FIX
+1. Latest uploaded price-book.xlsx is bundled in assets/data/price-book.xlsx.
+2. Bundled js/data.js is regenerated to 58 columns and includes:
+   COMPANY PART NUMBER
+   COMPETITOR PART NUMBER
+   ALTERNATE PART NUMBER
+   NEW PRODUCT LAUNCH
+   DEAD STOCK
+   FSN CLASS
+3. Fast-search index now rebuilds when Excel data changes even when row count is unchanged.
+4. Manual Sync Excel and hosted GitHub Excel refresh now force V45 filter/index refresh.
+5. Clicking New Product Launch / Dead Stock preserves the selected Group/Brand:
+   - Aayub selected + Dead Stock => only Aayub Dead Stock.
+   - All Groups + Dead Stock => all matching brands, displayed brand-wise.
+6. FSN F/S/N uses the same current Group/Brand scope.
+7. NEW PRODUCT LAUNCH / DEAD STOCK / FSN CLASS metadata columns are hidden from the product grid but remain active for filtering/search.
+8. Bundled universal search now decodes compact dictionary data correctly, including new Company/Competitor/Alternate part-number columns.
+
+TEST DATA CONFIRMED IN LATEST EXCEL
+- NEW: 4 rows
+- DEAD: 3 rows
+- FSN: 6 rows (F/S/N)
+- Starting test rows are under Aayub.

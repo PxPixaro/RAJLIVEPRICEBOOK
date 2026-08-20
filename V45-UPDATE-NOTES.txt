@@ -1,0 +1,75 @@
+RAJ LIVE PRICEBOOK V45
+======================
+
+WHAT IS NEW
+-----------
+1. New Product Launch quick filter.
+   Excel accepted headings: NEW PRODUCT LAUNCH / NEW PRODUCT / NEW ARRIVAL / NEW LAUNCH.
+   Put NEW (or YES/Y/1) in a product row. Only brands containing marked rows appear while this mode is active.
+
+2. Dead Stock quick filter.
+   Excel accepted headings: DEAD STOCK / DEADSTOCK / DEAD STOCK STATUS.
+   Put DEAD (or YES/Y/1) in a product row.
+
+3. FSN Class dynamic filter.
+   Excel accepted heading: FSN CLASS (or FSN).
+   Any non-empty value is automatically listed. F/S/N/P are not hard-coded, so future classes appear automatically.
+
+4. Company / competitor / alternate part number search.
+   No special rebuild is needed for hosted Excel mode. Search indexes every Excel column except GROUP itself.
+   Recommended headings:
+   COMPANY PART NUMBER
+   COMPETITOR PART NUMBER
+   ALTERNATE PART NUMBER
+   CROSS REFERENCE NO.
+   Add reciprocal cross references on both matching brand rows if you want both products to appear from either code.
+
+5. Cart and order punch.
+   Product table Image cell now contains - / quantity / + / ADD.
+   Cart persists in the browser, supports quantity edit, delete, item remark and main note.
+   Summary shows line count and total quantity only (no price total).
+   WhatsApp Punch shares professional text. PDF includes Raj logo, customer, mobile, Sr, Code, Description, GST, Qty, remarks and total quantity.
+
+6. Customer Login connection hook.
+   js/customer-master.js is intentionally empty for public static hosting.
+   Secure production login endpoint: /api/auth/login.
+   DO NOT put real passwords/API secrets in GitHub JavaScript files.
+
+7. Offer / Scheme.
+   Put posters in assets/offers/ and register them in js/offers.js.
+   Customer can Open or Download each poster.
+
+8. Vehicle registration search API-ready box.
+   Default example GJ-05. State/UT prefixes are included.
+   Backend endpoint hook: /api/vehicle-search?registration=...
+
+9. Image Search API-ready camera/gallery flow.
+   Backend endpoint hook: POST /api/image-search (multipart image).
+   Without backend it can only do a filename-to-part-number fallback; true visual similarity requires an image model/service.
+
+10. Live ERP/API Sync hook.
+    Configure only public API base URL in js/v45-config.js. Authentication/secrets must remain on server.
+    Products endpoint hook: /api/products.
+
+11. Existing V44 tolerant text/voice search remains. Future Excel columns automatically become searchable.
+
+RECOMMENDED NEW EXCEL COLUMNS
+-----------------------------
+COMPANY PART NUMBER
+COMPETITOR PART NUMBER
+ALTERNATE PART NUMBER
+NEW PRODUCT LAUNCH
+DEAD STOCK
+FSN CLASS
+
+OPTIONAL ADDITIONAL CROSS-REFERENCE COLUMNS
+-------------------------------------------
+CROSS REFERENCE NO.
+OE PART NO.
+COMPETITOR BRAND
+
+STATIC GITHUB VS PRODUCTION
+---------------------------
+Excel filters/search/cart/offers work on GitHub static hosting.
+Secure customer authorization, secret ERP credentials, real vehicle lookup and true image-similarity search require a backend (Hostinger/VPS/Cloud/Serverless is fine).
+See RAJ-Live-PriceBook-V45-API-Flow.docx delivered with this project.

@@ -1,0 +1,11 @@
+V64 AAYUB DEFAULT + SPECIAL FILTER SCOPE
+
+1. Login ke baad Group/Brand default Aayub.
+2. Initial All Groups load avoid kiya gaya hai.
+3. NEW / DS / FSN use karne par selected Group/Brand reset nahi hota.
+4. Aayub + FSN N => Aayub ke N class products.
+5. Aayub + NEW => Aayub ke NEW products.
+6. Aayub + DS => Aayub ke DS products.
+7. User manually koi aur brand choose kare to special filters usi brand ke andar kaam karenge.
+8. Reset All ke baad bhi Group/Brand Aayub par return karega.
+9. GitHub/browser cache avoid karne ke liye app.js/v45.js version v64 kiya gaya hai.

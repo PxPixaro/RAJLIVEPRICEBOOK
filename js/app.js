@@ -96,7 +96,8 @@ const BUNDLED_ROWS = window.PRICEBOOK_ROWS || null;
 const HIDDEN_COLUMNS = new Set([
   'GROUP','SEGMENT','VEHICLE','MODEL','CATAGORIES','CATEGORIES','CATEGORY',
   'VIEW BY','VIEWBY','LIST DATE','LISTDATE','SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME',
-  'CATALOG','CATALOG LINK','CATALOG URL','CATALOG NAME','CATALOG FILE'
+  'CATALOG','CATALOG LINK','CATALOG URL','CATALOG NAME','CATALOG FILE',
+  'NEW PRODUCT LAUNCH','DEAD STOCK','FSN CLASS'
 ]);
 const ALWAYS = ['CODE','PRODUCT NAME','UNIT','GST','RATE','MRP'];
 const NUMERIC_COLUMNS = new Set(['RATE','MRP','STD PKG','CRT PKG','BOX QTY','PACK']);
@@ -121,6 +122,12 @@ function normalizeSearchText(v){return clean(v).toUpperCase().replace(/[^A-Z0-9]
 // else in the Excel row remains searchable, including future columns added later.
 // This keeps the search product/data-centric while upper GROUP filters still work.
 function universalRowValues(row){
+  if(Array.isArray(row) && COMPACT_COLUMNS.length){
+    return COMPACT_COLUMNS.filter(name=>{
+      const k=compactFieldKey(name);
+      return k!=='GROUP' && k!=='GROUPBRAND' && k!=='BRANDGROUP';
+    }).map(name=>clean(getField(row,name))).filter(Boolean);
+  }
   return Object.entries(row||{}).filter(([key])=>{
     const k=compactFieldKey(key);
     return k!=='GROUP' && k!=='GROUPBRAND' && k!=='BRANDGROUP';
@@ -213,6 +220,16 @@ function options(el, values, label){
   const current=el.value;
   el.innerHTML=`<option value="">${label}</option>`+values.map(v=>`<option>${escapeHtml(v)}</option>`).join('');
   if(values.includes(current))el.value=current;
+}
+
+const DEFAULT_GROUP_BRAND='Aayub';
+function setDefaultGroupBrand(force=false){
+  const el=$('#groupFilter');
+  if(!el)return false;
+  const match=[...el.options].find(o=>normalizeSearchText(o.value)===normalizeSearchText(DEFAULT_GROUP_BRAND));
+  if(!match)return false;
+  if(force || !clean(el.value))el.value=match.value;
+  return normalizeSearchText(el.value)===normalizeSearchText(match.value);
 }
 
 // V35 FILTER MASTER ---------------------------------------------------------
@@ -951,6 +968,7 @@ function cascade(){
  const base=FAST_ROWS.length===allData.length?FAST_ROWS:allData.map((row,index)=>({row,index,group:clean(getField(row,'GROUP')),sub:subGroupValue(row),segment:clean(getField(row,'SEGMENT')),vehicle:clean(getField(row,'VEHICLE')),model:clean(getField(row,'MODEL')),category:clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY'))}));
  const uniq=v=>[...new Set(v.filter(Boolean))].sort(natural);
  options($('#groupFilter'),uniq(base.map(x=>x.group)),'All groups');
+ setDefaultGroupBrand(false);
  let r=base;if($('#groupFilter').value)r=r.filter(x=>x.group===$('#groupFilter').value);
  options($('#subGroupFilter'),uniq(r.map(x=>x.sub)),'All sub groups');if($('#subGroupFilter').value)r=r.filter(x=>x.sub===$('#subGroupFilter').value);
  options($('#segmentFilter'),uniq(r.flatMap(x=>segmentTokens(x.segment))),'All segments');if($('#segmentFilter').value)r=r.filter(x=>multiValueMatch(x.segment,$('#segmentFilter').value,'SEGMENT')||multiValueMatch(x.segment,'UNIVERSAL','SEGMENT'));
@@ -1238,7 +1256,7 @@ function gridProductRow(row,serial){
     const price=key==='RATE'||key==='MRP';
     const left=part||key==='PRODUCT NAME';
     const cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');
-    return `<td class="${cls}">${escapeHtml(value)}</td>`;
+    return `<td class="${cls}" data-col="${escapeHtml(key)}">${escapeHtml(value)}</td>`;
   }).join('')+`<td class="image-col"><button class="view-image-btn" type="button" data-row-index="${rowSourceIndex(row)}">View Image</button></td></tr>`;
 }
 function miniGroupedBody(rows, startIndex=0, contextRows=rows){
@@ -1303,8 +1321,8 @@ function render(){
   thead.innerHTML='<tr><th class="index-col">#</th>'+visibleColumns.map(c=>{
     const key=keyOf(c);
     const cls=(key==='CODE'||key==='PRODUCT NAME')?'head-left':'head-right';
-    return `<th class="${cls}">${escapeHtml(c)}</th>`;
-  }).join('')+'<th class="image-col">IMAGE</th></tr>';
+    return `<th class="${cls}" data-col="${escapeHtml(key)}">${escapeHtml(c)}</th>`;
+  }).join('')+'<th class="image-col">IMAGE / ORDER</th></tr>';
 
   if(printingAll){
     tbody.innerHTML=makeBody(currentSortedFiltered(),0,filtered);
@@ -1472,9 +1490,11 @@ $('#excelFile').onchange=async e=>{
   try{
     const buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:'array',cellDates:true});
     const sheet=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
+    if(typeof window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK==='function')window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK(wb);
     const records=normalizeRows(rows);
     if(!records.length||!('GROUP' in records[0]))throw new Error('GROUP column missing');
     allData=records;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     let saved=false;
     try{
       await saveDB(allData);
@@ -1542,16 +1562,18 @@ async function refreshHostedPriceWorkbook(){
   if(!/^https?:$/.test(location.protocol))return false;
   try{
     $('#syncStatus').innerHTML='<span class="dot"></span> Checking GitHub Excel…';
-    const response=await fetch('assets/data/price-book.xlsx',{cache:'no-cache'});
+    const response=await fetch('assets/data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});
     if(!response.ok)throw new Error('Hosted price-book.xlsx not found');
     const records=await readPriceWorkbookBuffer(await response.arrayBuffer());
     const previousGroup=clean($('#groupFilter').value);
     allData=records;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     buildCatalogMenu();
     const masterGroups=masterValuesForFilter('groupFilter');
     const groups=masterGroups.length?masterGroups:unique(allData,'GROUP');
     options($('#groupFilter'),groups,'All groups');
     $('#groupFilter').value=groups.includes(previousGroup)?previousGroup:'';
+    if(!$('#groupFilter').value)setDefaultGroupBrand(true);
     cascade();
     applyFilters();
     $('#syncStatus').innerHTML='<span class="dot"></span> GitHub Excel loaded';
@@ -1564,32 +1586,54 @@ async function refreshHostedPriceWorkbook(){
 }
 
 (function init(){
-  rebuildRowIndexMap();
-  // V40: open instantly in All Groups. Only the current page is rendered;
-  // the complete dataset/search index remains available in memory.
-  cascade();
-  buildCatalogMenu();
-  applyFilters();
+  // V63: keep login immediately responsive. Heavy search/index work starts after first paint.
+  rowIndexMap=new WeakMap();
+  filtered=[];
+  visibleColumns=[];
+  page=1;
   $('#syncStatus').innerHTML='<span class="dot"></span> Price data ready';
+  let v65HeavyStarted=false;
+  const v65HeavyInit=()=>{
+    if(v65HeavyStarted)return;
+    v65HeavyStarted=true;
+    rebuildRowIndexMap();
+    buildFastRows();
+    cascade();
+    setDefaultGroupBrand(true);
+    cascade();
+    buildCatalogMenu();
+    applyFilters();
+  };
+  const v65StartAfterAuth=()=>{
+    if('requestAnimationFrame' in window)requestAnimationFrame(()=>setTimeout(v65HeavyInit,0));
+    else setTimeout(v65HeavyInit,0);
+  };
+  window.addEventListener('raj-auth-ready',v65StartAfterAuth,{once:true});
+  if(window.RAJ_AUTH_READY)v65StartAfterAuth();
 
-  // Restore the last synchronized Excel immediately. The bundled data remains visible
-  // during the short IndexedDB read, then the saved rows replace it automatically.
-  const hosted=/^https?:$/.test(location.protocol);
-  const restoreLocal=hosted?Promise.resolve(null):loadDB();
-  restoreLocal.then(cached=>{
-    if(cached && cached.data && cached.data.length){
-      allData=cached.data;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();
-      const cachedDate=new Date(cached.updated);
-      if(!isNaN(cachedDate))lastUpdated=cachedDate;
-      $('#syncStatus').innerHTML='<span class="dot"></span> Saved Excel restored';
-      buildCatalogMenu();applyFilters();
-    }
-  }).finally(()=>{
-    // On GitHub/HTTP hosting, assets/data/price-book.xlsx is authoritative.
-    // Replacing that file is enough; no js/data.js rebuild and no fixed row/column count.
-    if(!hosted)return;
-    const run=()=>{refreshHostedPriceWorkbook();refreshHostedFilterMaster();};
-    if('requestIdleCallback' in window)window.requestIdleCallback(run,{timeout:1200});
-    else setTimeout(run,350);
-  });
+  const v66StartDataRestore=()=>{
+      // Restore the last synchronized Excel immediately. The bundled data remains visible
+      // during the short IndexedDB read, then the saved rows replace it automatically.
+      const hosted=/^https?:$/.test(location.protocol);
+      const restoreLocal=hosted?Promise.resolve(null):loadDB();
+      restoreLocal.then(cached=>{
+        if(cached && cached.data && cached.data.length){
+          allData=cached.data;rebuildRowIndexMap();catalogUrlCache.clear();brandLogoCandidateCache.clear();
+          if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
+          const cachedDate=new Date(cached.updated);
+          if(!isNaN(cachedDate))lastUpdated=cachedDate;
+          $('#syncStatus').innerHTML='<span class="dot"></span> Saved Excel restored';
+          buildCatalogMenu();applyFilters();
+        }
+      }).finally(()=>{
+        // On GitHub/HTTP hosting, assets/data/price-book.xlsx is authoritative.
+        // Replacing that file is enough; no js/data.js rebuild and no fixed row/column count.
+        if(!hosted)return;
+        const run=()=>{refreshHostedPriceWorkbook();refreshHostedFilterMaster();};
+        if('requestIdleCallback' in window)window.requestIdleCallback(run,{timeout:1200});
+        else setTimeout(run,350);
+      });
+  };
+  window.addEventListener('raj-auth-ready',v66StartDataRestore,{once:true});
+  if(window.RAJ_AUTH_READY)v66StartDataRestore();
 })();
