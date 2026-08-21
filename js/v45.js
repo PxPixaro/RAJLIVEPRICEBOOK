@@ -155,7 +155,7 @@ function customerText(){return V45.customer?V45.customer.name+' · '+V45.custome
 function openCart(){
   const rows=V45.cart.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+escapeHtml(x.group)+'</b><br>'+escapeHtml(x.code)+'</td><td>'+escapeHtml(x.description)+'</td><td><div class="v45-product-actions"><button class="v45-qbtn" data-cart-act="minus" data-key="'+escAttr(x.key)+'">−</button><input class="v45-cart-qty" data-key="'+escAttr(x.key)+'" type="number" min="1" value="'+x.qty+'"><button class="v45-qbtn" data-cart-act="plus" data-key="'+escAttr(x.key)+'">+</button></div></td><td><input class="v45-cart-remark" data-key="'+escAttr(x.key)+'" value="'+escAttr(x.remark||'')+'" placeholder="Item remark"></td><td><button class="v45-danger" data-cart-act="delete" data-key="'+escAttr(x.key)+'">Delete</button></td></tr>').join('');
   const total=V45.cart.reduce((s,x)=>s+(Number(x.qty)||0),0);
-  drawer('<section class="v45-panel"><h2>Order Cart</h2><p class="v45-sub">Customer: <b>'+escapeHtml(customerText())+'</b>. Price totals intentionally not shown; only quantity summary is calculated.</p>'+(V45.cart.length?'<div style="overflow:auto"><table class="v45-cart-table"><thead><tr><th>#</th><th>Brand / Part No.</th><th>Description</th><th>Qty</th><th>Item Remark</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="v45-cart-summary"><span>Products: '+V45.cart.length+'</span><span>Total Quantity: '+total+'</span></div><label class="v45-field"><span>Main Note / Remark</span><textarea id="v45OrderNote" placeholder="Special instruction for complete order"></textarea></label><div class="v45-actions v53-order-actions"><button id="v53ExcelOrderBtn" class="v45-primary v53-excel-order-btn">📊 Share / Download Excel Order</button><button id="v45ClearCart" class="v45-danger">Clear Cart</button></div><p class="v53-order-hint">Excel order share/download hote hi cart automatically clear ho jayega. Workbook A4 single-page print layout me banega.</p>':'<div class="v45-empty">Your cart is empty. Add products using the + / quantity controls in the price book.</div>')+'</section>');
+  drawer('<section class="v45-panel"><h2>Order Cart</h2><p class="v45-sub">Customer: <b>'+escapeHtml(customerText())+'</b>. Price totals intentionally not shown; only quantity summary is calculated.</p>'+(V45.cart.length?'<div style="overflow:auto"><table class="v45-cart-table"><thead><tr><th>#</th><th>Brand / Part No.</th><th>Description</th><th>Qty</th><th>Item Remark</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="v45-cart-summary"><span>Products: '+V45.cart.length+'</span><span>Total Quantity: '+total+'</span></div><label class="v45-field"><span>Main Note / Remark</span><textarea id="v45OrderNote" placeholder="Special instruction for complete order"></textarea></label><div class="v45-actions v53-order-actions"><button id="v53ExcelOrderBtn" class="v45-primary v53-excel-order-btn">📤 Share Excel Order</button><button id="v45ClearCart" class="v45-danger">Clear Cart</button></div><p class="v53-order-hint">Mobile par Share dabate hi phone ka Share Sheet khulega. WhatsApp select karke Excel order RAJ Agencies ko share karein. Share successful hone par cart automatically clear ho jayega. Desktop/unsupported browser me Excel download hoga.</p>':'<div class="v45-empty">Your cart is empty. Add products using the + / quantity controls in the price book.</div>')+'</section>');
   bindCartDrawer();
 }
 function bindCartDrawer(){
@@ -392,6 +392,16 @@ function downloadOrderBlob(blob,name){
   a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
+const RAJ_ORDER_WHATSAPP='917046533330';
+function openRajWhatsAppAfterDownload(){
+  try{
+    const msg=encodeURIComponent('RAJ Agencies Customer Order Excel ready hai. Kripya downloaded Excel file is chat me attach karke send karein.');
+    const a=document.createElement('a');
+    a.href='https://wa.me/'+RAJ_ORDER_WHATSAPP+'?text='+msg;
+    a.target='_blank';a.rel='noopener';
+    document.body.appendChild(a);a.click();a.remove();
+  }catch(e){console.warn('WhatsApp fallback open failed:',e)}
+}
 async function shareOrDownloadExcelOrder(){
   if(!V45.cart.length)return;
   const btn=q('#v53ExcelOrderBtn');
@@ -402,7 +412,7 @@ async function shareOrDownloadExcelOrder(){
       blob=await makeOrderExcelBlob();
       if(!blob||!blob.size)throw new Error('Empty XLSX output');
     }catch(xlsxErr){
-      console.warn('V55 XLSX generator fallback:',xlsxErr);
+      console.warn('V75 XLSX generator fallback:',xlsxErr);
       blob=makeLegacyExcelBlob();
       name=name.replace(/\.xlsx$/i,'.xls');
       mime='application/vnd.ms-excel';
@@ -410,40 +420,41 @@ async function shareOrDownloadExcelOrder(){
     }
     if(!blob||!blob.size)throw new Error('Excel file is empty');
 
-    let shared=false;
-    if(typeof navigator.share==='function' && typeof window.File==='function'){
+    const file=new File([blob],name,{type:mime});
+    const nativeShareAvailable=typeof navigator.share==='function' && typeof window.File==='function';
+    const canFileShare=nativeShareAvailable && (typeof navigator.canShare!=='function' || navigator.canShare({files:[file]}));
+
+    if(canFileShare){
       try{
-        const file=new File([blob],name,{type:mime});
-        const canShare=typeof navigator.canShare!=='function' ? true : navigator.canShare({files:[file]});
-        if(canShare){
-          await navigator.share({
-            title:'RAJ Agencies Customer Order',
-            text:'RAJ Agencies customer order - '+(V45.customer?.name||'Customer'),
-            files:[file]
-          });
-          shared=true;
-        }
+        if(btn)btn.textContent='Choose WhatsApp / Share App...';
+        await navigator.share({
+          title:'RAJ Agencies Customer Order',
+          text:'RAJ Agencies Customer Order • Customer Care WhatsApp: +91 70465 33330',
+          files:[file]
+        });
+        V45.cart=[];saveCart();closeDrawer();
+        notify('Excel order shared successfully. Cart cleared automatically.');
+        return;
       }catch(shareErr){
         if(shareErr?.name==='AbortError'){
           notify('Share cancelled. Cart has not been cleared.');
           return;
         }
-        console.warn('Native share unavailable; downloading Excel instead:',shareErr);
+        console.warn('Native file share failed; using download fallback:',shareErr);
       }
     }
-    if(shared){
-      V45.cart=[];saveCart();closeDrawer();
-      notify('Excel order shared successfully. Cart cleared automatically.');
-      return;
-    }
+
+    // Desktop / unsupported browser fallback:
+    // download the exact same Excel, keep a direct RAJ WhatsApp chat ready for manual attachment.
     downloadOrderBlob(blob,name);
     V45.cart=[];saveCart();closeDrawer();
-    notify((usedFallback?'Compatible Excel (.xls)':'Excel (.xlsx)')+' order downloaded successfully. Cart cleared automatically.');
+    setTimeout(openRajWhatsAppAfterDownload,250);
+    notify((usedFallback?'Compatible Excel (.xls)':'Excel (.xlsx)')+' downloaded. RAJ Agencies WhatsApp chat will open; attach the downloaded Excel file and send.');
   }catch(e){
-    console.error('V55 Excel order fatal error:',e);
+    console.error('V75 Excel order fatal error:',e);
     notify('Excel order could not be created: '+(e?.message||'Unknown browser error'));
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='📊 Share / Download Excel Order'}
+    if(btn){btn.disabled=false;btn.textContent='📤 Share Excel Order'}
   }
 }
 

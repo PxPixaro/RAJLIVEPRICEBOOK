@@ -1,0 +1,21 @@
+V75 - EXCEL ORDER NATIVE SHARE
+
+Only Order Cart sharing flow changed. All V74 filters/design/admin/performance features remain unchanged.
+
+MOBILE / SUPPORTED BROWSER
+1. Customer fills cart.
+2. Tap "Share Excel Order".
+3. Existing 2-sheet Excel order is generated.
+4. Native phone Share Sheet opens.
+5. Customer selects WhatsApp and RAJ Agencies/customer-care chat.
+6. The Excel file is shared as an attachment.
+7. After successful share, cart clears automatically.
+8. If customer cancels Share Sheet, cart is NOT cleared.
+
+DESKTOP / UNSUPPORTED BROWSER
+1. Same Excel file downloads normally.
+2. RAJ Agencies WhatsApp chat (+91 70465 33330) is opened as a helper.
+3. Customer manually attaches downloaded Excel and sends it.
+4. Browser/GitHub Pages cannot automatically inject an Excel attachment into a fixed WhatsApp chat; native mobile file sharing is used where supported.
+
+No paid API/backend is required for this V75 flow.
