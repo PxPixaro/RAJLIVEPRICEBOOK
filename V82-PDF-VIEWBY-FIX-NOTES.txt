@@ -1,0 +1,14 @@
+RAJ LIVE PRICE BOOK - V82 PDF / VIEW BY FIX
+
+1. PDF hierarchy is now controlled only by Excel VIEW BY.
+   Example: SEGMENT,CATEGORY,VEHICLE -> Segment > Category > Vehicle > Products.
+   MODEL or any other level is NOT auto-added unless it is present in VIEW BY.
+2. Segment is a true parent level, so it is not repeated again merely because Category changes.
+3. VIEW BY supports comma-separated levels and existing dynamic column resolver logic.
+4. Mobile/direct PDF header alignment improved:
+   - Raj Group logo moved upward, clear of yellow line.
+   - Brand/company logo moved upward, clear of yellow line.
+   - RAJ AGENCIES / Group / LIVE PRICE BOOK centered.
+   - All four metadata boxes have centered text.
+5. Browser/web print header spacing and metadata alignment improved too.
+6. Other V81 functions are unchanged.
