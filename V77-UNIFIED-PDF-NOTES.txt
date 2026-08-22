@@ -1,0 +1,13 @@
+V77 UNIFIED PRICELIST PDF
+
+- Mobile and desktop Download Pricelist now use the SAME generated PDF engine.
+- Share PDF uses the exact same PDF blob.
+- Full filtered dataset is included, not current screen/page.
+- Professional header added:
+  RAJ Group logo, RAJ AGENCIES, Group/Brand title, LIVE PRICE BOOK,
+  Company List Date, Last Updated, Products and Columns.
+- Aayub logo is displayed for Aayub PDFs.
+- Category, Segment and Vehicle hierarchy bands are drawn in desktop-style colors.
+- Blue table header, alternating rows, price emphasis and watermark retained.
+- Multi-page PDF repeats the professional header and table header.
+- V76/V75 filters, cart, order sharing and all other website features are unchanged.
