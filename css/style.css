@@ -1627,3 +1627,19 @@ footer{color:#68758d}
     transform:translate(-50%,-50%) rotate(-10deg)!important;
   }
 }
+
+/* ================= V76 MOBILE COMPLETE PDF / SHARE ================= */
+.catalog-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.catalog-share-btn{
+  background:linear-gradient(135deg,#0b73d9,#0b9bbd)!important;
+  color:#fff!important;
+  border:0!important;
+}
+@media(max-width:900px){
+  .catalog-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .catalog-download-btn{font-size:8px!important;padding:6px 4px!important}
+}
+@media(max-width:520px){
+  .catalog-actions{grid-template-columns:1fr 1fr!important}
+  #catalogDownloadBtn{grid-column:1 / -1}
+}

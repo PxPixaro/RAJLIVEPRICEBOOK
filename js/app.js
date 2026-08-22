@@ -676,8 +676,9 @@ function renderCatalogCard(group){
   const status=$('#catalogStatus');
   const catalogBtn=$('#catalogDownloadBtn');
   const priceBtn=$('#priceListDownloadBtn');
+  const shareBtn=$('#priceListShareBtn');
   const card=$('#selectedCatalog');
-  if(!title||!status||!catalogBtn||!priceBtn||!card)return;
+  if(!title||!status||!catalogBtn||!priceBtn||!shareBtn||!card)return;
 
   currentCatalogGroup=clean(group);
   currentCatalogUrl=configuredCatalog(currentCatalogGroup);
@@ -689,10 +690,12 @@ function renderCatalogCard(group){
   catalogBtn.disabled=!hasGroup || !currentCatalogUrl;
   // Pricelist works for a selected group as well as All Groups.
   priceBtn.disabled=!hasPricelistRows;
+  shareBtn.disabled=!hasPricelistRows;
   catalogBtn.title=currentCatalogUrl ? 'Open selected group catalog' : 'Add this group Google Drive link in js/catalog-links.js';
   priceBtn.title=hasPricelistRows
-    ? (hasGroup ? 'Download the current filtered group as PDF' : 'Download all currently filtered groups as one PDF')
+    ? (hasGroup ? 'Download the complete current filtered group as PDF' : 'Download all currently filtered groups as one complete PDF')
     : 'Current filters me koi product nahi hai';
+  shareBtn.title=hasPricelistRows ? 'Share the complete current filtered pricelist PDF' : 'Current filters me koi product nahi hai';
 
   if(!hasGroup){
     title.textContent='All Groups Pricelist';
@@ -945,10 +948,73 @@ function buildFastPdfBlob(){
  for(let i=0;i<objects.length;i++){offsets[i+1]=length;const prefix=latin1Bytes(`${i+1} 0 obj\n`);chunks.push(prefix);length+=prefix.length;const o=objects[i];if(typeof o==='string'){const b=latin1Bytes(o+'\nendobj\n');chunks.push(b);length+=b.length}else{let h=latin1Bytes(o.head+'\nstream\n');chunks.push(h);length+=h.length;chunks.push(o.bin);length+=o.bin.length;let e=latin1Bytes('\nendstream\nendobj\n');chunks.push(e);length+=e.length}}
  const xrefPos=length;let x=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;for(let i=1;i<=objects.length;i++)x+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';x+=`trailer\n<< /Size ${objects.length+1} /Root ${catalog} 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;chunks.push(latin1Bytes(x));return new Blob(chunks,{type:'application/pdf'});
 }
+
+function priceListPdfFileName(){
+  return safePdfName(clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST')+'.pdf';
+}
+async function createCompletePriceListPdfBlob(){
+  if(!Array.isArray(filtered)||!filtered.length)throw new Error('Current filters me koi product nahi hai');
+  // IMPORTANT: buildFastPdfBlob reads the complete `filtered` array, not rendered/current-page DOM rows.
+  await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,15)));
+  const blob=buildFastPdfBlob();
+  if(!blob||!blob.size)throw new Error('PDF output is empty');
+  return blob;
+}
+function downloadPdfBlob(blob,name){
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;link.download=name;
+  document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+}
+async function shareSelectedPriceListPdf(){
+  if(!filtered.length){toast('Current filters me koi product nahi hai');return}
+  const btn=$('#priceListShareBtn');
+  const name=priceListPdfFileName();
+  if(btn){btn.disabled=true;btn.textContent='Preparing PDF…'}
+  try{
+    const blob=await createCompletePriceListPdfBlob();
+    const file=new File([blob],name,{type:'application/pdf'});
+    const canNativeShare=typeof navigator.share==='function' &&
+      (typeof navigator.canShare!=='function' || navigator.canShare({files:[file]}));
+    if(canNativeShare){
+      if(btn)btn.textContent='Choose Share App…';
+      try{
+        await navigator.share({
+          title:'RAJ Agencies Pricelist',
+          text:(clean($('#groupFilter').value)||'All Groups')+' - RAJ Agencies Live Price Book',
+          files:[file]
+        });
+        toast('Pricelist PDF share ready / completed.');
+        return;
+      }catch(err){
+        if(err?.name==='AbortError'){toast('PDF share cancelled.');return}
+        console.warn('Native PDF share failed; downloading instead:',err);
+      }
+    }
+    downloadPdfBlob(blob,name);
+    toast('Direct file sharing is not supported in this browser. Complete PDF downloaded instead.');
+  }catch(err){
+    console.error('V76 share PDF error:',err);
+    toast('PDF create/share nahi hua. Please try again.');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Share PDF'}
+  }
+}
 async function downloadSelectedPriceListFast(){
- if(!filtered.length){toast('Current filters me koi product nahi hai');return}const btn=$('#priceListDownloadBtn');if(btn){btn.disabled=true;btn.textContent='Creating PDF…'}
- const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);let preview=null;if(!mobile){try{preview=window.open('about:blank','_blank')}catch(e){}}
- try{await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,20)));const blob=buildFastPdfBlob();const url=URL.createObjectURL(blob);const name=safePdfName(clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST')+'.pdf';const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();if(preview){preview.location=url;preview.document.title=name}else if(!mobile){window.open(url,'_blank','noopener')}setTimeout(()=>URL.revokeObjectURL(url),180000);toast(`PDF ready: ${(blob.size/1024/1024).toFixed(1)} MB`)}catch(err){console.error(err);if(preview)preview.close();toast('PDF create nahi hua. Please try again.')}finally{if(btn){btn.disabled=false;btn.textContent='Download Pricelist'}}
+  if(!filtered.length){toast('Current filters me koi product nahi hai');return}
+  const btn=$('#priceListDownloadBtn'),name=priceListPdfFileName();
+  if(btn){btn.disabled=true;btn.textContent='Creating Full PDF…'}
+  try{
+    const blob=await createCompletePriceListPdfBlob();
+    downloadPdfBlob(blob,name);
+    toast(`Complete PDF ready: ${filtered.length.toLocaleString('en-IN')} products · ${(blob.size/1024/1024).toFixed(1)} MB`);
+  }catch(err){
+    console.error('V76 full PDF error:',err);
+    toast('PDF create nahi hua. Please try again.');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Download Pricelist'}
+  }
 }
 function cleanupPrintFrame(){
   document.title=ORIGINAL_DOCUMENT_TITLE;
@@ -956,11 +1022,18 @@ function cleanupPrintFrame(){
     activePrintFrame.remove();
     activePrintFrame=null;
   }
-  const btn=$('#priceListDownloadBtn');
+  const btn=$('#priceListDownloadBtn'),shareBtn=$('#priceListShareBtn');
   if(btn){btn.disabled=!Array.isArray(filtered)||!filtered.length;btn.textContent='Download Pricelist'}
+  if(shareBtn){shareBtn.disabled=!Array.isArray(filtered)||!filtered.length;shareBtn.textContent='Share PDF'}
 }
 function downloadSelectedPriceList(){
   if(!filtered.length){toast('Current filters me koi product nahi hai');return}
+  // Mobile browser print-to-PDF only captures/clips the visible grid on some devices.
+  // Use the complete filtered-data PDF generator instead.
+  if(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)){
+    downloadSelectedPriceListFast();
+    return;
+  }
   cleanupPrintFrame();
   const btn=$('#priceListDownloadBtn');
   if(btn){btn.disabled=true;btn.textContent='Preparing PDF…'}
@@ -1442,6 +1515,7 @@ async function loadDB(){
 
 $('#catalogDownloadBtn').onclick=openSelectedCatalog;
 $('#priceListDownloadBtn').onclick=downloadSelectedPriceList;
+$('#priceListShareBtn').onclick=shareSelectedPriceListPdf;
 
 let filterInputTimer=0;
 function scheduleFilterApply(action,delay=120){

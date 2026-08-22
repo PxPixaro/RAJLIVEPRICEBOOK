@@ -1,0 +1,16 @@
+V76 MOBILE PRICELIST PDF FIX
+
+Problem confirmed from the supplied mobile PDF:
+- PDF header showed 212 products, but mobile print output contained only the visible/cropped table area.
+- The old mobile path used browser iframe print(), which can print the scroll viewport instead of the complete grid.
+
+V76:
+1. Desktop Download Pricelist keeps the existing proper print layout.
+2. Mobile Download Pricelist uses buildFastPdfBlob() from the COMPLETE `filtered` data array.
+3. It does not use visible rows, pagination rows or screen capture.
+4. Complete filtered products are split across multiple A4 landscape PDF pages.
+5. Added "Share PDF" next to Download Pricelist.
+6. Supported mobile browsers open the native Share Sheet with the actual PDF file attached.
+7. Customer can choose WhatsApp, Email, Drive, etc.
+8. Unsupported browsers automatically download the complete PDF instead.
+9. All V75 order Excel sharing, filters, admin flow and other functionality remains unchanged.
