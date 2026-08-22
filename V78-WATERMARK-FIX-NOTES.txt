@@ -1,0 +1,12 @@
+V78 - PDF WATERMARK FIX
+
+Only the unified Pricelist PDF watermark was changed.
+
+- V77 PDF design, data, grouping, pagination, Download PDF and Share PDF remain unchanged.
+- The dark/black-background embedded watermark was removed.
+- PDF generator now uses the existing project asset:
+  assets/company-logo/rajgroup-watermark-93kb.png
+- Because the low-level PDF engine embeds JPEG images, the transparent PNG is composited on a clean white background before embedding.
+- Result: watermark keeps the RAJ Group artwork without a black/dark rectangle.
+
+Everything else remains V77.
