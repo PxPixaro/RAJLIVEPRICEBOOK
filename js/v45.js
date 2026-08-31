@@ -6,6 +6,7 @@
 const CFG=window.RAJ_V45_CONFIG||{};
 const V45={special:'',customer:null,cart:[],stateCodes:['AN','AP','AR','AS','BR','CG','CH','DD','DL','DN','GA','GJ','HP','HR','JH','JK','KA','KL','LA','LD','MH','ML','MN','MP','MZ','NL','OD','PB','PY','RJ','SK','TN','TR','TS','UK','UP','WB']};
 const q=s=>document.querySelector(s);
+function apiUrl(endpoint){return clean(CFG.LIVE_API_BASE)?CFG.LIVE_API_BASE.replace(/\/$/,'')+endpoint:''}
 const field=(row,...names)=>getField(row,...names);
 const aliases={
   new:['NEW PRODUCT LAUNCH','NEW PRODUCT','NEW ARRIVAL','NEW LAUNCH','NEW PRODUCT STATUS'],
@@ -618,9 +619,49 @@ async function openOffers(){const admin=V45.customer?.role==='admin'&&normalizeS
 function v71BlobToDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)})}
 window.RAJ_V71_EXPORT_OFFERS=async function(){const out=[];for(const o of V71_OFFERS){let file=o.file||'';if(!file&&o.fileBlob instanceof Blob)file=await v71BlobToDataUrl(o.fileBlob);out.push({id:o.id,brand:o.brand,title:o.title,narration:o.narration,validTill:o.validTill,file,fileName:o.fileName,mime:o.mime,createdAt:o.createdAt,source:'embedded'})}return out};
 
-function openImageSearch(){q('#v45ImageFile').click()}
-q('#v45ImageFile')?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;const src=URL.createObjectURL(file);drawer('<section class="v45-panel"><h2>Image Search</h2><p class="v45-sub">Photo selected from camera/gallery.</p><img class="v45-preview" src="'+src+'"><div id="v45ImageMsg" class="v45-api-note">Preparing image search…</div><div id="v45ImageHits" class="v45-result-list"></div></section>');const msg=q('#v45ImageMsg'),url=apiUrl(CFG.IMAGE_SEARCH_ENDPOINT);if(!url){const stem=normalizeSearchText(file.name.replace(/\.[^.]+$/,''));const hit=stem&&FAST_ROWS.find(x=>x.codeN&&stem.replace(/\s/g,'').includes(x.codeN.replace(/\s/g,'')));if(hit){msg.textContent='API not connected; filename matched '+hit.code+'. Click result.';q('#v45ImageHits').innerHTML='<div class="v45-result-hit" data-image-code="'+escAttr(hit.code)+'"><b>'+escapeHtml(hit.code)+'</b> '+escapeHtml(hit.product)+'</div>'}else msg.textContent='True image similarity needs the image-search backend/model. Endpoint hook is ready in js/v45-config.js.';return}try{const fd=new FormData();fd.append('image',file);const r=await fetch(url,{method:'POST',body:fd});if(!r.ok)throw new Error('Image search failed');const d=await r.json(),hits=d.results||d.products||[];msg.textContent=hits.length?hits.length+' matching products found.':'No similar product found.';q('#v45ImageHits').innerHTML=hits.slice(0,20).map(h=>'<div class="v45-result-hit" data-image-code="'+escAttr(h.code||h.partNumber||'')+'"><b>'+escapeHtml(h.code||h.partNumber||'')+'</b> '+escapeHtml(h.description||h.productName||'')+' '+(h.score!=null?'('+Math.round(h.score*100)+'%)':'')+'</div>').join('')}catch(err){msg.textContent=err.message}}); 
-q('#v45DrawerContent')?.addEventListener('click',e=>{const h=e.target.closest('[data-image-code]');if(h){closeDrawer();q('#searchInput').value=h.dataset.imageCode;applyFilters()}});
+function openImageSearch(){const input=q('#v45ImageFile');if(!input)return;input.value='';input.click()}
+function v82ImageProduct(code){
+  const n=normalizeSearchText(code);if(!n)return null;
+  // V82.2: FAST_ROWS is filled in small background chunks for a faster startup.
+  // While that preload is still running the array contains empty slots, so every
+  // image-search lookup must tolerate undefined entries.
+  const fast=FAST_ROWS.find(x=>x?.codeN===n)||FAST_ROWS.find(x=>x?.codeN&&x.codeN.includes(n));
+  if(fast)return fast;
+  // If the matched catalog row has not been warmed into FAST_ROWS yet, read it
+  // directly from allData so image-search results still work immediately.
+  const row=allData.find(r=>normalizeSearchText(getField(r,'CODE','PART NUMBER','PART NO'))===n);
+  if(!row)return null;
+  return {row,index:rowSourceIndex(row),code:clean(getField(row,'CODE','PART NUMBER','PART NO')),codeN:n,product:clean(getField(row,'PRODUCT NAME','DESCRIPTION'))};
+}
+function v82RenderImageHits(hits){
+  const box=q('#v45ImageHits');if(!box)return;
+  box.innerHTML=(hits||[]).slice(0,12).map(h=>{const code=clean(h.code||h.partNumber),row=v82ImageProduct(code),product=clean(h.description||h.productName||row?.product||''),score=Number(h.score),path=clean(h.path||'');return '<div class="v45-result-hit v82-image-hit" data-image-code="'+escAttr(code)+'">'+(path?'<img src="'+escAttr(path)+'" alt="'+escAttr(code)+'">':'')+'<span class="v82-image-hit-copy"><b>'+escapeHtml(code||'MATCH')+'</b><small>'+escapeHtml(product||clean(h.brand)||'Catalog product')+'</small></span>'+(Number.isFinite(score)?'<strong class="v82-image-score">'+Math.round(score*100)+'%</strong>':'')+'</div>'}).join('');
+}
+async function v82LocalImageSearch(file,msg){
+  const engine=window.RAJ_IMAGE_SEARCH_V82;if(!engine?.search)return false;
+  msg.textContent='Comparing photo with '+engine.count()+' catalog images…';
+  const hits=await engine.search(file,{limit:12});v82RenderImageHits(hits);
+  if(hits.length){const best=Math.round((hits[0].score||0)*100);msg.textContent='Offline visual search complete — '+hits.length+' best matches. Top similarity '+best+'%. Click a result to open product.'}else msg.textContent='No similar catalog product found.';
+  return true;
+}
+q('#v45ImageFile')?.addEventListener('change',async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  const src=URL.createObjectURL(file);drawer('<section class="v45-panel"><h2>Image Search</h2><p class="v45-sub">Camera/gallery photo is compared with the product-image catalog. Current offline index: AAYUB product images.</p><img class="v45-preview" src="'+src+'"><div id="v45ImageMsg" class="v45-api-note">Preparing image search…</div><div id="v45ImageHits" class="v45-result-list"></div></section>');
+  const msg=q('#v45ImageMsg'),url=apiUrl(CFG.IMAGE_SEARCH_ENDPOINT);
+  try{
+    if(url){
+      msg.textContent='Searching image server…';const fd=new FormData();fd.append('image',file);const r=await fetch(url,{method:'POST',body:fd});if(!r.ok)throw new Error('Image search server failed');const d=await r.json(),hits=d.results||d.products||[];v82RenderImageHits(hits);msg.textContent=hits.length?hits.length+' matching products found from image server.':'No similar product found on image server.';return;
+    }
+    if(await v82LocalImageSearch(file,msg))return;
+    const stem=normalizeSearchText(file.name.replace(/\.[^.]+$/,'')),hit=stem&&FAST_ROWS.find(x=>x?.codeN&&stem.replace(/\s/g,'').includes(x.codeN.replace(/\s/g,'')));
+    if(hit){msg.textContent='Visual index unavailable; filename matched '+hit.code+'.';v82RenderImageHits([{code:hit.code,description:hit.product,score:1}])}else msg.textContent='Image index unavailable. Please keep js/image-search-index.js and js/image-search-v82.js with the website.';
+  }catch(err){
+    console.error('Image search error',err);
+    try{if(url&&await v82LocalImageSearch(file,msg)){msg.textContent='Image server unavailable; offline visual search used instead.';return}}catch(e2){console.error(e2)}
+    msg.textContent=err?.message||'Image search failed.';
+  }
+});
+q('#v45DrawerContent')?.addEventListener('click',e=>{const h=e.target.closest('[data-image-code]');if(h){const code=h.dataset.imageCode;closeDrawer();V45.special='';['fsnFilter','groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});document.querySelectorAll('.filter-search').forEach(x=>x.value='');if(q('#universalSearchInput'))q('#universalSearchInput').value='';q('#searchInput').value=code;applyFilters(true,false)}});
 
 async function liveApiSync(){const url=apiUrl(CFG.LIVE_PRODUCTS_ENDPOINT);if(!url){notify('Live ERP API not configured yet. See API Flow Word document and js/v45-config.js.');return}const b=q('#liveApiSyncBtn');b.disabled=true;try{const r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('API sync failed');const d=await r.json(),rows=Array.isArray(d)?d:(d.products||d.data||[]);if(!rows.length)throw new Error('API returned no products');allData=rows.map(x=>{const o={};Object.keys(x).forEach(k=>o[keyOf(k)]=x[k]);return o});rebuildRowIndexMap();refreshSpecialFacets(false);applyFilters();lastUpdated=new Date();notify(rows.length.toLocaleString('en-IN')+' products loaded from Live API')}catch(e){console.error(e);notify(e.message||'API sync error')}finally{b.disabled=false}}
 

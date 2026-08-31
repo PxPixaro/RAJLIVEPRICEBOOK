@@ -897,15 +897,15 @@ function buildLightweightPrintHtml(){
     .page-content{position:relative;z-index:1}
     .print-group-block{font-size:var(--pdf-font,8px)}
     .print-group-block+.print-group-block{break-before:page;page-break-before:always}
-    .print-head{display:grid;grid-template-columns:95px 1fr 95px;align-items:start;border-bottom:3px solid #f5b00e;padding:0 0 8px;margin:0 0 5px;break-after:avoid;page-break-after:avoid}
-    .company-logo,.brand-logo{width:88px;height:46px;object-fit:contain;margin-top:0;margin-bottom:4px}
+    .print-head{display:grid;grid-template-columns:95px 1fr 95px;align-items:center;border-bottom:3px solid #f5b00e;padding:0 0 5px;margin:0 0 5px;break-after:avoid;page-break-after:avoid}
+    .company-logo,.brand-logo{width:88px;height:50px;object-fit:contain}
     .brand-logo{justify-self:end}
     .title{text-align:center}
     .kicker{font-size:11px;font-weight:900;letter-spacing:.12em;color:#dc6c0b}
     h1{margin:1px 0;color:#0e337e;font-size:18px;line-height:1.05}
     .sub{font-size:8px;letter-spacing:.18em;font-weight:800;color:#0e337e}
     .meta{display:flex;justify-content:center;gap:5px;margin-top:4px;font-size:6.7px;font-weight:800;flex-wrap:wrap}
-    .meta span{border:1px solid #7bb8ee;border-radius:4px;padding:2px 5px;background:#f3f9ff;display:inline-flex;align-items:center;justify-content:center;text-align:center;min-height:18px}
+    .meta span{border:1px solid #7bb8ee;border-radius:4px;padding:2px 5px;background:#f3f9ff}
     table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--pdf-font,8px)}
     thead{display:table-header-group}
     tfoot{display:table-footer-group}
@@ -952,17 +952,17 @@ function fastPdfPages(){
   const pages=[],W=842,H=595,margin=22,contentTop=86,rowH=9.6,bandH=11.5;
   const esc=pdfAscii;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
-  const approxTextWidth=(text,size,bold=false)=>pdfAscii(text).length*size*(bold?.56:.50);
-  const centeredX=(text,size,left,right,bold=false)=>Math.max(left,left+((right-left)-approxTextWidth(text,size,bold))/2);
 
   for(const [group,sourceRows] of groups){
-    // V82: PDF hierarchy is controlled ONLY by Excel VIEW BY, in the exact comma-separated order.
-    // Example: SEGMENT,CATEGORY,VEHICLE => Segment > Category > Vehicle > products.
-    // Nothing (including MODEL) is injected automatically.
-    const hierarchyFields=viewByFields(sourceRows);
-    const gr=sortRowsByFields(sourceRows,hierarchyFields);
+    // V81 hierarchy fixed: SEGMENT > CATEGORY > VEHICLE > MODEL > PRODUCTS
+    const gr=sourceRows.slice().sort((a,b)=>{
+      const af=[clean(getField(a,'SEGMENT')),clean(getField(a,'CATAGORIES','CATEGORIES','CATEGORY')),clean(getField(a,'VEHICLE')),clean(getField(a,'MODEL'))];
+      const bf=[clean(getField(b,'SEGMENT')),clean(getField(b,'CATAGORIES','CATEGORIES','CATEGORY')),clean(getField(b,'VEHICLE')),clean(getField(b,'MODEL'))];
+      for(let i=0;i<af.length;i++){const c=natural(af[i],bf[i]);if(c)return c}
+      return natural(clean(getField(a,'CODE','PART NUMBER','PART NO')),clean(getField(b,'CODE','PART NUMBER','PART NO')));
+    });
     const cols=visibleColumnsForRows(gr),weights=printColumnWeights(cols).columns,usable=W-margin*2-18,widths=weights.map(p=>usable*p/100);
-    let page=null,y=0,serial=0,lastPath=[];
+    let page=null,y=0,serial=0,lastSeg='',lastCat='',lastVeh='',lastModel='';
 
     const drawColumnHeader=()=>{
       let x=margin;
@@ -979,40 +979,42 @@ function fastPdfPages(){
     const newPage=()=>{
       page={group,cols,widths,cmd:[],brandLogoB64:pdfEmbeddedLogoB64(group)};pages.push(page);y=contentTop;
 
-      // Fixed professional header. Logos stay clear of the yellow rule.
+      // JUNE MASTER HEADER: compact, balanced, fixed.
+      // Orange bottom rule
       page.cmd.push(`${rgb(245,176,14)} rg ${margin} ${H-77} ${W-margin*2} 3 re f`);
 
-      const centerLeft=250,centerRight=592;
-      const agency='RAJ AGENCIES', live='LIVE PRICE BOOK';
-      page.cmd.push(`BT /F2 7.6 Tf ${rgb(220,108,11)} rg ${centeredX(agency,7.6,centerLeft,centerRight,true).toFixed(1)} ${H-28} Td (${agency}) Tj ET`);
-      page.cmd.push(`BT /F2 14.5 Tf ${rgb(14,51,126)} rg ${centeredX(group,14.5,centerLeft,centerRight,true).toFixed(1)} ${H-44} Td (${esc(group)}) Tj ET`);
-      page.cmd.push(`BT /F2 6.2 Tf ${rgb(14,51,126)} rg ${centeredX(live,6.2,centerLeft,centerRight,true).toFixed(1)} ${H-55} Td (${live}) Tj ET`);
+      // Center title block
+      page.cmd.push(`BT /F2 7.6 Tf ${rgb(220,108,11)} rg 365 ${H-31} Td (RAJ AGENCIES) Tj ET`);
+      page.cmd.push(`BT /F2 14.5 Tf ${rgb(14,51,126)} rg 365 ${H-47} Td (${esc(group)}) Tj ET`);
+      page.cmd.push(`BT /F2 6.2 Tf ${rgb(14,51,126)} rg 377 ${H-58} Td (LIVE PRICE BOOK) Tj ET`);
 
-      // Four equal, centered metadata boxes.
+      // Small boxed metadata row like June PDF
       const metaItems=[
         `COMPANY LIST DATE: ${listDateForRows(gr)}`,
         `LAST UPDATED: ${lastUpdated.toLocaleDateString('en-GB')}`,
         `${gr.length} PRODUCTS`,
         `${cols.length} COLUMNS`
       ];
-      const metaLeft=220,metaGap=6,metaWidths=[112,108,70,68],metaY=H-72,metaH=9;
-      let mx=metaLeft;
+      const starts=[220,340,456,532], widthsMeta=[112,108,70,68];
       for(let i=0;i<metaItems.length;i++){
-        const mw=metaWidths[i],fs=4.5;
-        page.cmd.push(`0.42 0.67 0.88 RG 0.965 0.985 1 rg ${mx} ${metaY} ${mw} ${metaH} re B`);
-        page.cmd.push(`BT /F2 ${fs} Tf 0.12 0.20 0.32 rg ${centeredX(metaItems[i],fs,mx,mx+mw,true).toFixed(1)} ${metaY+2.7} Td (${esc(metaItems[i])}) Tj ET`);
-        mx+=mw+metaGap;
+        page.cmd.push(`0.42 0.67 0.88 RG 0.965 0.985 1 rg ${starts[i]} ${H-72} ${widthsMeta[i]} 9 re B`);
+        page.cmd.push(`BT /F2 4.5 Tf 0.12 0.20 0.32 rg ${starts[i]+3} ${H-66} Td (${esc(metaItems[i])}) Tj ET`);
       }
       drawColumnHeader();
-      lastPath=[];
+      lastSeg='';lastCat='';lastVeh='';lastModel='';
     };
 
     const band=(label,value,level,count)=>{
       if(!value)return;
       if(y+bandH>H-24)newPage();
-      const fills=[[255,243,189],[220,238,255],[237,243,251],[247,248,250]];
+      const fills=[
+        [255,243,189], // Segment yellow
+        [220,238,255], // Category blue
+        [237,243,251], // Vehicle light blue-gray
+        [247,248,250]  // Model light gray
+      ];
       const texts=[[90,59,0],[14,51,126],[39,54,74],[39,54,74]];
-      const idx=Math.min(level-1,3),f=fills[idx],tc=texts[idx];
+      const f=fills[Math.min(level-1,3)],tc=texts[Math.min(level-1,3)];
       page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re f`);
       page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re S`);
       page.cmd.push(`BT /F2 ${level===1?6.2:5.7} Tf ${rgb(...tc)} rg ${margin+4+(level-1)*8} ${H-y-7.7} Td (${esc(label+'  '+value)}) Tj ET`);
@@ -1020,17 +1022,25 @@ function fastPdfPages(){
       y+=bandH;
     };
 
-    const countPath=path=>gr.filter(row=>path.every((value,index)=>groupValue(row,hierarchyFields[index])===value)).length;
+    const countPath=(seg,cat='',veh='',model='')=>gr.filter(r=>
+      (!seg||clean(getField(r,'SEGMENT'))===seg)&&
+      (!cat||clean(getField(r,'CATAGORIES','CATEGORIES','CATEGORY'))===cat)&&
+      (!veh||clean(getField(r,'VEHICLE'))===veh)&&
+      (!model||clean(getField(r,'MODEL'))===model)
+    ).length;
 
     newPage();
+
     for(const r of gr){
-      const path=hierarchyFields.map(field=>groupValue(r,field));
-      let changedAt=0;
-      while(changedAt<path.length && lastPath[changedAt]===path[changedAt])changedAt++;
-      for(let level=changedAt;level<path.length;level++){
-        band(viewByLabel(hierarchyFields[level]),path[level],level+1,countPath(path.slice(0,level+1)));
-      }
-      lastPath=path;
+      const seg=clean(getField(r,'SEGMENT'));
+      const cat=clean(getField(r,'CATAGORIES','CATEGORIES','CATEGORY'));
+      const veh=clean(getField(r,'VEHICLE'));
+      const model=clean(getField(r,'MODEL'));
+
+      if(seg!==lastSeg){band('SEGMENT',seg,1,countPath(seg));lastSeg=seg;lastCat='';lastVeh='';lastModel=''}
+      if(cat!==lastCat){band('CATEGORIES',cat,2,countPath(seg,cat));lastCat=cat;lastVeh='';lastModel=''}
+      if(veh!==lastVeh){band('VEHICLE',veh,3,countPath(seg,cat,veh));lastVeh=veh;lastModel=''}
+      if(model!==lastModel){band('MODEL',model,4,countPath(seg,cat,veh,model));lastModel=model}
 
       if(y+rowH>H-24)newPage();
       serial++;let x=margin;
@@ -1080,9 +1090,9 @@ async function buildFastPdfBlob(){
 
     // clean watermark + fixed logos
     content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
-    content+=`q 68 0 0 36 28 526 cm /ImLogo Do Q\n`;
+    content+=`q 68 0 0 40 28 508 cm /ImLogo Do Q\n`;
     const brandId=brandObjects.get(p.brandLogoB64||'')||0;
-    if(brandId)content+=`q 78 0 0 36 738 528 cm /ImBrand Do Q\n`;
+    if(brandId)content+=`q 78 0 0 39 738 509 cm /ImBrand Do Q\n`;
     content+=p.cmd.join('\n');
 
     const cb=latin1Bytes(content),cobj=add({bin:cb,head:`<< /Length ${cb.length} >>`});
