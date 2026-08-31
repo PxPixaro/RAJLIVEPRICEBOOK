@@ -1,0 +1,10 @@
+RAJ LIVE PRICE BOOK - V82.1 FAST GROUP DROPDOWN FIX
+
+FIX:
+1. Login/dashboard open hote hi GROUP / BRAND dropdown me complete brand list available rahegi.
+2. Aayub quick-start sirf first grid ko fast dikhane ke liye rahega; dropdown ko Aayub-only nahi karega.
+3. Full cache ready hone se pehle koi dusra brand select karne par us brand ka on-demand quick cache turant banega.
+4. Full cache ready hote hi current selected brand preserve karke grid silently complete cache par switch karega.
+5. Existing V82 image-search changes retained.
+
+Main file: index.html

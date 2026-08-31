@@ -1,0 +1,23 @@
+V81 JUNE PDF MASTER
+
+SOURCE
+- Latest V80 project kept as the application base.
+- User-provided June app.js was used as the master reference for the professional PDF header/table proportions.
+- Existing brand logo manifest is converted at build time into js/pdf-brand-logos.js so mobile/web PDF does not depend on runtime image loading.
+
+PDF
+- Mobile Download PDF, Web Download PDF and Share PDF use the same low-level PDF engine.
+- Fixed header on every page:
+  left RAJ Group logo
+  center RAJ AGENCIES / selected Group / LIVE PRICE BOOK
+  right selected brand logo
+  compact metadata boxes
+  orange divider
+- Outer generated date/title/page number and source URL retained in the June style.
+- Clean watermark retained.
+- Hierarchy fixed:
+  SEGMENT > CATEGORIES > VEHICLE > MODEL > PRODUCTS
+- Segment is printed once for its complete section and is NOT repeated when category changes.
+- Brand logos are embedded from assets/brand-logos and therefore work consistently on GitHub/mobile.
+
+ALL OTHER V80 FEATURES ARE UNCHANGED.

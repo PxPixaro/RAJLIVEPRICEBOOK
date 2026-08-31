@@ -1,0 +1,42 @@
+RAJ LIVE PRICEBOOK V82 - IMAGE SEARCH UPDATE
+============================================
+
+WHAT WAS FIXED
+1. Image Search ka "Preparing image search..." stuck issue fixed.
+   Root cause: js/v45.js me apiUrl() helper missing tha.
+2. Offline visual Image Search add kiya gaya hai.
+   - External API ke bina current catalog product photos compare hote hain.
+   - Current bundled image index me AAYUB ke 102 product images hain.
+   - Exact catalog image, resized/brightness-changed image, aur single left/right product-face ko match karne ke liye multiple visual descriptors use hote hain.
+3. Search result me product photo, part code, product name aur similarity % dikhaya jata hai.
+4. Result click karne par pricebook directly part code par search/filter hota hai.
+5. Agar future me LIVE_API_BASE + /api/image-search backend configure ho, server search first priority rahega; server fail ho to offline fallback chalega.
+6. Image file picker camera/gallery compatible rakha gaya hai.
+
+FILES ADDED
+- js/image-search-index.js          (generated catalog visual descriptors)
+- js/image-search-v82.js           (browser/offline matching engine)
+- tools/build-image-search-index-v82.py
+
+FILES UPDATED
+- index.html
+- js/v45.js
+- js/v45-config.js
+- css/v45.css
+
+FUTURE PRODUCT IMAGES ADD KARNE KE BAAD
+1. New product images assets/Products Images/<BRAND>/ me rakhein.
+2. Python me Pillow + NumPy installed hona chahiye.
+3. Project root se run karein:
+   python tools/build-image-search-index-v82.py
+4. Generated js/image-search-index.js ko bhi website ke saath upload karein.
+
+IMPORTANT
+- Ye static/offline visual similarity search hai, cloud AI model nahi. Real camera photo me angle, dark background, obstruction ya packaging hone par top results ko manually verify karein.
+- High-grade production AI search ke liye future /api/image-search backend hook retained hai.
+
+PIXARO ADMIN
+- Admin ID / User: Pixaro
+- Password: 123
+- Admin popup: top-left RAJ GROUP logo ko approx. 5 seconds hold karein.
+- Static/public website me ye credentials client-side visible hain; production security ke liye backend authentication use karein.

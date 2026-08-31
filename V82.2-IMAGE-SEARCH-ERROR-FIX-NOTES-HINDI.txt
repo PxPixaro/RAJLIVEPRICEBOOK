@@ -1,0 +1,16 @@
+RAJ LIVE PRICEBOOK V82.2 - IMAGE SEARCH ERROR FIX
+
+FIXED ERROR:
+Cannot read properties of undefined (reading 'codeN')
+
+ROOT CAUSE:
+Fast startup ke liye FAST_ROWS background me chunks me banta hai. Image Search agar preload complete hone se pehle result render karta tha, to FAST_ROWS ke kuch slots undefined hote the. Purana v82ImageProduct() direct x.codeN read karta tha aur crash ho jata tha.
+
+V82.2 FIX:
+1. FAST_ROWS lookup me undefined-safe optional checks add kiye.
+2. Agar matching row abhi FAST_ROWS me warm nahi hui ho to allData se direct fallback lookup hota hai.
+3. index.html me v45.js cache-buster V82.2 kiya, taaki hosted browser purani cached buggy JS use na kare.
+4. V82.1 fast group dropdown fix aur V82 offline AAYUB image index retained hain.
+
+TEST:
+Image Search open karke gallery/camera image choose karein. Ab codeN error nahi aana chahiye; top matches list render honi chahiye.

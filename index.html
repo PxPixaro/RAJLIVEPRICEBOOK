@@ -23,11 +23,13 @@
   </script>
   <script src="js/pdf-brand-logos.js?v=81-june-master"></script>
 <script defer src="js/app.js?v=81-june-master"></script>
-  <script defer src="js/v45-config.js?v=50"></script>
+  <script defer src="js/v45-config.js?v=82"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
-  <script defer src="js/v45.js?v=75-native-excel-share"></script>
-  <link rel="stylesheet" href="css/v45.css?v=49">
+  <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
+  <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
+  <script defer src="js/v45.js?v=82.2-image-search-error-fix"></script>
+  <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
     /* Independent filter controls */
@@ -580,7 +582,7 @@
       <div id="v45DrawerContent"></div>
     </div>
   </div>
-  <input id="v45ImageFile" type="file" accept="image/*" capture="environment" hidden>
+  <input id="v45ImageFile" type="file" accept="image/*" hidden>
   <div id="imageModal" class="image-modal" aria-hidden="true">
     <div class="image-modal-card">
       <button id="imageCloseBtn" class="image-close" type="button" aria-label="Close">×</button>
@@ -1012,6 +1014,41 @@
     }
 
     let v69QuickRows=[],v69QuickReady=false,v69QuickBuilding=false,v69QuickIndex=0,v69QuickSource=null;
+    // V82.1: keep the complete brand list available immediately even while the
+    // Aayub quick-view cache is warming up. Previously the fast-start path
+    // intentionally reduced GROUP / BRAND to only Aayub, which made the first
+    // dropdown look incomplete until the full 44k-row cache finished.
+    let v821GroupNamesSource=null,v821GroupNames=[];
+    const v821OnDemandGroups=new Map();
+    function v821AllGroupNames(){
+      if(v821GroupNamesSource===allData&&v821GroupNames.length)return v821GroupNames.slice();
+      const seen=new Map();
+      allData.forEach(function(row){
+        const value=clean(getField(row,'GROUP','GROUP / BRAND','BRAND'));
+        const key=normalizedSearch(value);
+        if(value&&key&&!seen.has(key))seen.set(key,value);
+      });
+      v821GroupNames=Array.from(seen.values()).sort(natural);
+      v821GroupNamesSource=allData;
+      v821OnDemandGroups.clear();
+      return v821GroupNames.slice();
+    }
+    function v821RowsForGroup(groupName){
+      const wanted=normalizedSearch(groupName);
+      if(!wanted)return null;
+      const hit=v821OnDemandGroups.get(wanted);
+      if(hit&&hit.source===allData)return hit.rows;
+      const rows=[];
+      for(let i=0;i<allData.length;i++){
+        const row=allData[i];
+        if(normalizedSearch(clean(getField(row,'GROUP','GROUP / BRAND','BRAND')))!==wanted)continue;
+        const meta=v69MakeMeta(row);
+        if(meta.code)exactCodes.add(meta.code);
+        rows.push(meta);
+      }
+      v821OnDemandGroups.set(wanted,{source:allData,rows:rows});
+      return rows;
+    }
     function v69MakeMeta(row){
       const values=FAST_FILTERS.map(function(def){return fieldValue(row,def)});
       const lowers=values.map(function(value){return value.toLowerCase()});
@@ -1235,8 +1272,17 @@
         window.addEventListener('raj-v69-aayub-ready',function(){fastApplyNow(resetPage)},{once:true});
         return;
       }
-      const rowsSource=fullReady?cachedRows:v69QuickRows;
       const ctx=currentContext();
+      const selectedStartupGroup=clean(ctx.selected[0]);
+      const selectedStartupKey=normalizedSearch(selectedStartupGroup);
+      // V82.1: if another brand is chosen before the complete cache is ready,
+      // build only that brand's tiny metadata set immediately instead of showing
+      // an empty grid or waiting for the full background warm-up.
+      const rowsSource=fullReady
+        ? cachedRows
+        : (selectedStartupGroup&&selectedStartupKey!=='aayub'
+            ? v821RowsForGroup(selectedStartupGroup)
+            : v69QuickRows);
       const facets=FAST_FILTERS.map(function(){return new Set()});
       const result=[];
       let activeMask=0n;
@@ -1265,19 +1311,11 @@
       FAST_FILTERS.forEach(function(def,index){
         const masterValues=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
         let vals=masterValues.length?masterValues:Array.from(facets[index]);
-        if(!fullReady&&def.id==='groupFilter'){
-          const a=vals.find(function(x){return normalizedSearch(x)==='aayub'});
-          vals=a?[a]:['Aayub'];
-        }
+        // V82.1: GROUP / BRAND is always the complete list from Filter Master
+        // (preferred) or directly from bundled price data, even during quick start.
+        if(def.id==='groupFilter')vals=masterValues.length?masterValues:v821AllGroupNames();
         refreshSelect(def,vals,ctx.selected[index]);
       });
-      if(!fullReady){
-        const gf=document.getElementById('groupFilter');
-        if(gf){
-          const a=[...gf.options].find(function(o){return normalizedSearch(o.value)==='aayub'});
-          if(a)gf.value=a.value;
-        }
-      }
       filtered=result;
 
       const keys=cachedColumns;
@@ -1385,6 +1423,11 @@
     }
     window.addEventListener('raj-auth-ready',startFastEngineAfterLogin,{once:true});
     if(window.RAJ_AUTH_READY)startFastEngineAfterLogin();
+    window.addEventListener('raj-v27-cache-ready',function(){
+      // Preserve the user's selected brand while switching from quick metadata
+      // to the complete cache. This also makes All groups accurate automatically.
+      fastApplyNow(false);
+    });
   });
   </script>
 

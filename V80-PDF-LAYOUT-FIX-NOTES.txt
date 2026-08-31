@@ -1,0 +1,8 @@
+V80 PDF FORMAT FIX
+
+- Mobile and desktop Download/Share PDF now use the same generated PDF engine.
+- Restored compact professional header based on the supplied old PDF reference.
+- RAJ GROUP logo left, selected brand/company logo right, brand name centered.
+- Browser-print style generated date/time, filtered-pricelist title, page x/y and source URL are embedded in every PDF page.
+- Segment > Category > Vehicle > Model hierarchy retained; segment is not repeated per category.
+- Cache-busting app.js version updated so GitHub Pages does not keep the older PDF code.
