@@ -801,8 +801,58 @@ async function runAIUniversalSearch(term){
             normalizedSearch!==normalizedBrand
           ){
 
-            $('#searchInput').value=searchTerm;
-            applyFilters();
+            // Selected company ke andar actual Raj Agencies CODE resolve karo.
+// Example: Aayub + 1002 -> AA1002
+let resolvedSearchTerm=searchTerm;
+const wantedCompact=normalizeSearchText(searchTerm).replace(/\s+/g,'');
+
+if(wantedCompact){
+
+  const selectedGroupKey=normalizeSearchText(selected);
+
+  const groupRows=FAST_ROWS.filter(x=>
+    x.groupN===selectedGroupKey
+  );
+
+  // 1. Exact code first
+  let codeHit=groupRows.find(x=>
+    x.codeCompact===wantedCompact
+  );
+
+  // 2. Numeric/partial code: 1002 -> AA1002
+  if(!codeHit && /^\d{2,}$/.test(wantedCompact)){
+    const suffixHits=groupRows.filter(x=>
+      x.codeCompact &&
+      x.codeCompact.endsWith(wantedCompact)
+    );
+
+    // Only auto-resolve when unambiguous
+    if(suffixHits.length===1){
+      codeHit=suffixHits[0];
+    }
+  }
+
+  // 3. General compact code contains fallback
+  if(!codeHit && wantedCompact.length>=3){
+    const codeHits=groupRows.filter(x=>
+      x.codeCompact &&
+      x.codeCompact.includes(wantedCompact)
+    );
+
+    if(codeHits.length===1){
+      codeHit=codeHits[0];
+    }
+  }
+
+  if(codeHit){
+    resolvedSearchTerm=codeHit.code;
+  }
+}
+
+searchTerm=resolvedSearchTerm;
+
+$('#searchInput').value=resolvedSearchTerm;
+applyFilters();
 
             /*
               Agar Gemini term exact form me match nahi hua,
