@@ -808,52 +808,68 @@ const wantedCompact=normalizeSearchText(searchTerm).replace(/\s+/g,'');
 
 if(wantedCompact){
 
-  const selectedGroupKey=normalizeSearchText(selected);
+const selectedGroupKey=normalizeSearchText(selected);
 
-  const groupRows=FAST_ROWS.filter(x=>
-    x.groupN===selectedGroupKey
-  );
+// Direct Raj Agencies source data use karo.
+// FAST_ROWS preload complete hone ka wait nahi.
+const groupRows=allData.filter(row=>
+  normalizeSearchText(getField(row,'GROUP'))===selectedGroupKey
+);
 
-  // 1. Exact code first
-  let codeHit=groupRows.find(x=>
-    x.codeCompact===wantedCompact
-  );
+// 1. Exact actual CODE
+let codeHit=groupRows.find(row=>{
+  const code=normalizeSearchText(
+    getField(row,'CODE','PART NUMBER','PART NO')
+  ).replace(/\s+/g,'');
 
-  // 2. Numeric/partial code: 1002 -> AA1002
-  if(!codeHit && /^\d{2,}$/.test(wantedCompact)){
-    const suffixHits=groupRows.filter(x=>
-      x.codeCompact &&
-      x.codeCompact.endsWith(wantedCompact)
-    );
+  return code===wantedCompact;
+});
 
-    // Only auto-resolve when unambiguous
-    if(suffixHits.length===1){
-      codeHit=suffixHits[0];
-    }
-  }
+// 2. Numeric suffix:
+// Aayub + 1002 -> AA1002
+if(!codeHit && /^\d{2,}$/.test(wantedCompact)){
 
-  // 3. General compact code contains fallback
-  if(!codeHit && wantedCompact.length>=3){
-    const codeHits=groupRows.filter(x=>
-      x.codeCompact &&
-      x.codeCompact.includes(wantedCompact)
-    );
+  const suffixHits=groupRows.filter(row=>{
+    const code=normalizeSearchText(
+      getField(row,'CODE','PART NUMBER','PART NO')
+    ).replace(/\s+/g,'');
 
-    if(codeHits.length===1){
-      codeHit=codeHits[0];
-    }
-  }
+    return code && code.endsWith(wantedCompact);
+  });
 
-  if(codeHit){
-    resolvedSearchTerm=codeHit.code;
+  if(suffixHits.length===1){
+    codeHit=suffixHits[0];
   }
 }
+
+// 3. Partial code fallback, but only unique match
+if(!codeHit && wantedCompact.length>=3){
+
+  const partialHits=groupRows.filter(row=>{
+    const code=normalizeSearchText(
+      getField(row,'CODE','PART NUMBER','PART NO')
+    ).replace(/\s+/g,'');
+
+    return code && code.includes(wantedCompact);
+  });
+
+  if(partialHits.length===1){
+    codeHit=partialHits[0];
+  }
+}
+
+if(codeHit){
+  resolvedSearchTerm=clean(
+    getField(codeHit,'CODE','PART NUMBER','PART NO')
+  );
+}
+
+} // end wantedCompact
 
 searchTerm=resolvedSearchTerm;
 
 $('#searchInput').value=resolvedSearchTerm;
 applyFilters();
-
             /*
               Agar Gemini term exact form me match nahi hua,
               existing Raj Agencies smart/global resolver se
