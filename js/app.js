@@ -2102,6 +2102,24 @@ function smartUniversalRowMatch(x,rawQuery){
   const cleaned=smartSearchPhrase(q);
   const cq=normalizeSearchText(cleaned);
   const cc=cq.replace(/\s+/g,'');
+  // Raj Agencies part-code suffix matching.
+// Example: selected Aayub + "1002" must match AA1002.
+// Exact numeric suffix only — 1002 must NOT match AA10020.
+if(/^\d{2,}$/.test(cc)){
+  const code=clean(x.codeCompact).toUpperCase();
+
+  if(code){
+    const escaped=cc.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+    // Code must end with the requested numeric part.
+    // AA1002 -> 1002 = YES
+    // KB1002 -> 1002 = YES (only inside currently selected brand scope)
+    // AA10020 -> 1002 = NO
+    if(new RegExp(escaped+'$').test(code)){
+      return true;
+    }
+  }
+}
   if(cq&&(x.allN.includes(cq)||(cc&&x.allCompact.includes(cc))))return true;
 
   // Compact fuzzy matching catches AA 1000 2 -> AA1002 / KX N 525 -> KX525.
