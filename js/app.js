@@ -2105,7 +2105,7 @@ function smartUniversalRowMatch(x,rawQuery){
   if(cq&&(x.allN.includes(cq)||(cc&&x.allCompact.includes(cc))))return true;
 
   // Compact fuzzy matching catches AA 1000 2 -> AA1002 / KX N 525 -> KX525.
-  if(cc.length>=5){
+  if(cc.length>=3){
     const targets=[x.codeCompact,x.modelCompact,x.vehicleCompact,x.productCompact].filter(v=>v&&v.length>=3);
     for(const t of targets){
       if(t.includes(cc)||cc.includes(t))return true;
