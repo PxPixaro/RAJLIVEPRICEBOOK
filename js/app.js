@@ -12,6 +12,58 @@ window.RAJ_BOOT_MARK=window.RAJ_BOOT_MARK||function(key,value=true){
   }
 };
 const $ = s => document.querySelector(s);
+// ============================================================
+// RAJ AGENCIES GEMINI AI
+// Gemini = intent/language understanding only.
+// Product data always comes from Raj Agencies Live Pricebook.
+// ============================================================
+
+const RAJ_AI_URL =
+  'https://mkexjkfnzhqfqzkptxrl.supabase.co/functions/v1/gemini-ai';
+
+let rajAiTimer = 0;
+let rajAiRequestId = 0;
+
+async function askRajAI(message){
+  const query = String(message || '').trim();
+
+  if(!query){
+    throw new Error('Empty AI query');
+  }
+
+  const response = await fetch(RAJ_AI_URL,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+      message:query
+    })
+  });
+
+  if(!response.ok){
+    let detail='';
+
+    try{
+      detail=await response.text();
+    }catch(error){}
+
+    throw new Error(
+      `AI request failed (${response.status})` +
+      (detail ? `: ${detail.slice(0,180)}` : '')
+    );
+  }
+
+  const data=await response.json();
+
+  if(!data?.success || !data?.result){
+    throw new Error(
+      data?.error || 'Invalid AI response'
+    );
+  }
+
+  return data.result;
+}
 const BRAND_LOGOS = {};
 const BRAND_LOGO_EXTENSIONS=['webp','png','jpg','jpeg'];
 const BRAND_LOGO_ALIASES={
@@ -543,6 +595,392 @@ function runUniversalSearch(term){
  $('#searchInput').value=cq;applyFilters();$('#voiceStatus').textContent=`Searching all groups: ${cq}`;
 }
 
+// ============================================================
+// RAJ AGENCIES GEMINI AI ROUTER
+// ============================================================
+
+function rajAiFindGroup(value){
+  const wanted=normalizeSearchText(value);
+
+  if(!wanted)return '';
+
+  // Use the actual Group dropdown as source of truth.
+  const groupFilter=$('#groupFilter');
+
+  if(!groupFilter)return '';
+
+  const groups=[...groupFilter.options]
+    .map(option=>clean(option.value))
+    .filter(Boolean);
+
+  // Exact match first
+  const exact=groups.find(
+    group=>
+      normalizeSearchText(group)===wanted
+  );
+
+  if(exact)return exact;
+
+  // Conservative partial match
+  const matches=groups.filter(group=>{
+    const normalized=
+      normalizeSearchText(group);
+
+    return (
+      normalized.includes(wanted) ||
+      wanted.includes(normalized)
+    );
+  });
+
+  return matches.length===1
+    ? matches[0]
+    : '';
+}
+
+
+function rajAiSelectGroup(value){
+  const group=
+    rajAiFindGroup(value);
+
+  if(!group)return '';
+
+  const groupFilter=
+    $('#groupFilter');
+
+  if(!groupFilter)return '';
+
+  // Clear previous upper filters first
+  clearUpperFilterScope();
+
+  groupFilter.value=group;
+
+  USER_FILTER_SCOPE_ACTIVE=true;
+
+  cascade();
+  applyFilters();
+
+  return group;
+}
+
+
+async function runAIUniversalSearch(term){
+  const original=clean(term);
+
+  if(!original){
+    runUniversalSearch('');
+    return;
+  }
+
+  const requestId=
+    ++rajAiRequestId;
+
+  const status=
+    $('#voiceStatus');
+
+  try{
+
+    if(status){
+      status.textContent=
+        'AI understanding your search…';
+    }
+
+    const ai=
+      await askRajAI(original);
+
+    // Ignore an old response if customer typed again.
+    if(requestId!==rajAiRequestId){
+      return;
+    }
+
+    console.log(
+      'Raj Agencies Gemini:',
+      ai
+    );
+
+    const intent=
+      clean(ai.intent).toUpperCase();
+
+
+    // ========================================================
+    // PRODUCT / RATE / MRP / DETAILS SEARCH
+    // ========================================================
+
+    if([
+      'SEARCH_PRODUCT',
+      'GET_PRODUCT_DETAILS',
+      'GET_PRICE',
+      'GET_MRP',
+      'SEARCH_BRAND'
+    ].includes(intent)){
+
+      const brand=
+        clean(ai.brand);
+
+      const searchTerm=
+        clean(ai.product_code) ||
+        clean(ai.part_number) ||
+        clean(ai.description) ||
+        clean(ai.vehicle) ||
+        clean(ai.query) ||
+        original;
+
+
+      // If Gemini found a real brand, scope search to that brand.
+      if(brand){
+
+        const selected=
+          rajAiSelectGroup(brand);
+
+        if(selected){
+
+          /*
+           * Do not search the whole natural sentence when
+           * only the brand was requested.
+           */
+          const normalizedSearch=
+            normalizeSearchText(searchTerm);
+
+          const normalizedBrand=
+            normalizeSearchText(brand);
+
+          if(
+            searchTerm &&
+            normalizedSearch!==normalizedBrand
+          ){
+            $('#searchInput').value=
+              searchTerm;
+
+            applyFilters();
+          }
+
+          if(status){
+            status.textContent=
+              `AI Search: ${selected}`+
+              (
+                searchTerm &&
+                normalizedSearch!==normalizedBrand
+                  ? ` · ${searchTerm}`
+                  : ''
+              );
+          }
+
+          return;
+        }
+      }
+
+
+      // No valid brand -> use existing global search.
+      runUniversalSearch(
+        searchTerm
+      );
+
+      if(status){
+        status.textContent=
+          `AI Search: ${searchTerm}`;
+      }
+
+      return;
+    }
+
+
+    // ========================================================
+    // PRICEBOOK PDF
+    // ========================================================
+
+    if(intent==='DOWNLOAD_PRICELIST'){
+
+      const brand=
+        clean(ai.brand);
+
+      if(!brand){
+
+        toast(
+          'Pricebook ke liye company name batayein'
+        );
+
+        return;
+      }
+
+
+      const selected=
+        rajAiSelectGroup(brand);
+
+
+      if(!selected){
+
+        toast(
+          `Company nahi mili: ${brand}`
+        );
+
+        runUniversalSearch(
+          brand
+        );
+
+        return;
+      }
+
+
+      if(status){
+        status.textContent=
+          `Preparing ${selected} Pricebook PDF…`;
+      }
+
+
+      /*
+       * IMPORTANT:
+       * Existing Raj Agencies PDF function only.
+       * Gemini never generates prices or PDF data.
+       */
+      setTimeout(()=>{
+
+        try{
+
+          downloadSelectedPriceList();
+
+        }catch(error){
+
+          console.error(
+            'AI Pricebook error:',
+            error
+          );
+
+          toast(
+            'Pricebook PDF create nahi hua'
+          );
+        }
+
+      },250);
+
+
+      return;
+    }
+
+
+    // ========================================================
+    // CATALOG
+    // ========================================================
+
+    if(intent==='DOWNLOAD_CATALOG'){
+
+      const brand=
+        clean(ai.brand);
+
+
+      if(!brand){
+
+        toast(
+          'Catalog ke liye company name batayein'
+        );
+
+        return;
+      }
+
+
+      const selected=
+        rajAiSelectGroup(brand);
+
+
+      if(!selected){
+
+        toast(
+          `Company nahi mili: ${brand}`
+        );
+
+        return;
+      }
+
+
+      /*
+       * Existing catalog resolver only.
+       */
+      currentCatalogGroup=
+        selected;
+
+      currentCatalogUrl=
+        configuredCatalog(selected);
+
+      renderCatalogCard(
+        selected
+      );
+
+
+      if(currentCatalogUrl){
+
+        if(status){
+          status.textContent=
+            `Opening ${selected} catalog…`;
+        }
+
+        openSelectedCatalog();
+
+      }else{
+
+        toast(
+          `${selected} catalog abhi available nahi hai`
+        );
+
+        if(status){
+          status.textContent=
+            `${selected} catalog unavailable`;
+        }
+      }
+
+
+      return;
+    }
+
+
+    // ========================================================
+    // GENERAL / UNKNOWN
+    // ========================================================
+
+    if(
+      intent==='GENERAL_QUERY' &&
+      clean(ai.reply)
+    ){
+
+      if(status){
+        status.textContent=
+          clean(ai.reply);
+      }
+
+      return;
+    }
+
+
+    /*
+     * Unknown AI result:
+     * never break normal Live Pricebook search.
+     */
+    runUniversalSearch(
+      clean(ai.query) ||
+      original
+    );
+
+
+  }catch(error){
+
+    console.error(
+      'Raj Agencies AI error:',
+      error
+    );
+
+
+    /*
+     * Gemini/Supabase unavailable?
+     * Existing search still works.
+     */
+    runUniversalSearch(
+      original
+    );
+
+
+    if(status){
+      status.textContent=
+        'AI unavailable — normal search used';
+    }
+  }
+}
 
 function filterSearchTerm(targetId){
   const input=document.querySelector(`.filter-search[data-target="${targetId}"]`);
@@ -1726,23 +2164,77 @@ $('#imageModal').onclick=e=>{if(e.target===$('#imageModal'))closeImageModal()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeImageModal()});
 $('#zoomInBtn').onclick=()=>{imageZoom=Math.min(3,imageZoom+.2);$('#productImagePreview').style.transform=`scale(${imageZoom})`};
 $('#zoomOutBtn').onclick=()=>{imageZoom=Math.max(.5,imageZoom-.2);$('#productImagePreview').style.transform=`scale(${imageZoom})`};
-$('#universalSearchInput').addEventListener('input',e=>{const value=e.target.value;scheduleFilterApply(()=>runUniversalSearch(value));});
+$('#universalSearchInput').addEventListener('input',e=>{
+  const value=e.target.value;
+
+  // Previous pending AI search cancel
+  clearTimeout(rajAiTimer);
+
+  // Empty search immediately clear
+  if(!clean(value)){
+    runUniversalSearch('');
+    return;
+  }
+
+  // Customer typing finish hone ke baad Gemini call
+  rajAiTimer=setTimeout(()=>{
+    runAIUniversalSearch(value);
+  },650);
+});
+
+
 $('#voiceSearchBtn').onclick=()=>{
-  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SpeechRecognition){toast('Voice search is not supported in this browser. Use Chrome or Edge.');return}
+  const SpeechRecognition=
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+  if(!SpeechRecognition){
+    toast(
+      'Voice search is not supported in this browser. Use Chrome or Edge.'
+    );
+    return;
+  }
+
   const recognition=new SpeechRecognition();
-  recognition.lang='en-IN'; recognition.interimResults=false; recognition.maxAlternatives=3;
-  $('#voiceSearchBtn').classList.add('listening');$('#voiceStatus').textContent='Listening… speak product, code, description, MRP, rate, vehicle, model or other detail';
+
+  recognition.lang='en-IN';
+  recognition.interimResults=false;
+  recognition.maxAlternatives=3;
+
+  $('#voiceSearchBtn').classList.add('listening');
+
+  $('#voiceStatus').textContent=
+    'Listening… Hindi, English, Gujarati ya Hinglish me boliye';
+
+
   recognition.onresult=e=>{
-    const spoken=e.results[0][0].transcript.trim();
-    $('#voiceStatus').textContent=`Heard: ${spoken}`;
-    runUniversalSearch(spoken);
+    const spoken=
+      e.results[0][0].transcript.trim();
+
+    // Spoken text Universal Search box me bhi dikhao
+    $('#universalSearchInput').value=spoken;
+
+    $('#voiceStatus').textContent=
+      `Heard: ${spoken} · AI understanding…`;
+
+    // Gemini AI -> Raj Agencies verified data
+    runAIUniversalSearch(spoken);
   };
-  recognition.onerror=e=>{$('#voiceStatus').textContent=`Voice error: ${e.error}`};
-  recognition.onend=()=>$('#voiceSearchBtn').classList.remove('listening');
+
+
+  recognition.onerror=e=>{
+    $('#voiceStatus').textContent=
+      `Voice error: ${e.error}`;
+  };
+
+
+  recognition.onend=()=>{
+    $('#voiceSearchBtn').classList.remove('listening');
+  };
+
+
   recognition.start();
 };
-
 let xlsxLoaderPromise=null;
 function ensureExcelReader(){
   if(window.XLSX)return Promise.resolve(true);
