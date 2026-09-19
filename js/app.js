@@ -689,44 +689,67 @@ function rajAiSelectGroup(value){
 async function runAIUniversalSearch(term){
   const original=clean(term);
 
+  // Empty search = normal filters restore
   if(!original){
+    $('#searchInput').value='';
     runUniversalSearch('');
     return;
   }
 
-  const requestId=
-    ++rajAiRequestId;
-
-  const status=
-    $('#voiceStatus');
+  const requestId=++rajAiRequestId;
+  const status=$('#voiceStatus');
 
   try{
 
     if(status){
-      status.textContent=
-        'AI understanding your search…';
+      status.textContent='AI understanding your search…';
     }
 
-    const ai=
-      await askRajAI(original);
+    // ----------------------------------------------------------
+    // 1. GEMINI SIRF CUSTOMER KI LANGUAGE / INTENT SAMJHEGA
+    // ----------------------------------------------------------
+    const ai=await askRajAI(original);
 
-    // Ignore an old response if customer typed again.
-    if(requestId!==rajAiRequestId){
-      return;
+    // Customer ne meanwhile naya search type kar diya ho
+    if(requestId!==rajAiRequestId)return;
+
+    console.log('Raj Agencies Gemini:',ai);
+
+    const intent=clean(ai.intent).toUpperCase();
+    const brand=clean(ai.brand);
+
+    // ----------------------------------------------------------
+    // 2. PRODUCT SEARCH TERM
+    // Priority:
+    // code -> part number -> description -> vehicle -> AI query
+    // ----------------------------------------------------------
+    let searchTerm=
+      clean(ai.product_code) ||
+      clean(ai.part_number) ||
+      clean(ai.description) ||
+      clean(ai.vehicle) ||
+      clean(ai.query);
+
+    /*
+      Gemini kabhi query me poora sentence return kar sakta hai.
+      Existing Raj Agencies smart parser se unnecessary words
+      remove karenge.
+    */
+    if(searchTerm){
+      searchTerm=smartSearchPhrase(searchTerm);
     }
 
-    console.log(
-      'Raj Agencies Gemini:',
-      ai
-    );
+    if(!searchTerm){
+      searchTerm=smartSearchPhrase(original);
+    }
 
-    const intent=
-      clean(ai.intent).toUpperCase();
+    if(!searchTerm){
+      searchTerm=original;
+    }
 
-
-    // ========================================================
-    // PRODUCT / RATE / MRP / DETAILS SEARCH
-    // ========================================================
+    // ==========================================================
+    // PRODUCT / RATE / MRP / DETAILS / BRAND SEARCH
+    // ==========================================================
 
     if([
       'SEARCH_PRODUCT',
@@ -736,155 +759,291 @@ async function runAIUniversalSearch(term){
       'SEARCH_BRAND'
     ].includes(intent)){
 
-      const brand=
-        clean(ai.brand);
+      /*
+        IMPORTANT:
+        Gemini product data nahi dega.
+        Gemini sirf brand + searchable term identify karega.
+        Result hamesha Raj Agencies ke local verified data se.
+      */
 
-      const searchTerm=
-        clean(ai.product_code) ||
-        clean(ai.part_number) ||
-        clean(ai.description) ||
-        clean(ai.vehicle) ||
-        clean(ai.query) ||
-        original;
-
-
-      // If Gemini found a real brand, scope search to that brand.
+      // --------------------------------------------------------
+      // 3. GEMINI NE BRAND/COMPANY PEHCHANI
+      // --------------------------------------------------------
       if(brand){
 
-        const selected=
-          rajAiSelectGroup(brand);
+        const selected=rajAiSelectGroup(brand);
 
         if(selected){
 
           /*
-           * Do not search the whole natural sentence when
-           * only the brand was requested.
-           */
+            rajAiSelectGroup() selected company ke saare
+            products load karta hai.
+          */
+
           const normalizedSearch=
             normalizeSearchText(searchTerm);
 
           const normalizedBrand=
             normalizeSearchText(brand);
 
+          /*
+            Agar customer ne sirf:
+            "Aayub products"
+            "KBX company"
+            bola hai to poora group dikhao.
+
+            Agar code/product bhi diya hai to group ke andar
+            us product ko search karo.
+          */
           if(
             searchTerm &&
+            normalizedSearch &&
             normalizedSearch!==normalizedBrand
           ){
-            $('#searchInput').value=
-              searchTerm;
 
+            $('#searchInput').value=searchTerm;
+            applyFilters();
+
+            /*
+              Agar Gemini term exact form me match nahi hua,
+              existing Raj Agencies smart/global resolver se
+              better candidate try karo.
+            */
+            if(!filtered.length){
+
+              const better=
+                bestGlobalVoiceQuery(searchTerm);
+
+              if(
+                better &&
+                normalizeSearchText(better)!==
+                normalizeSearchText(searchTerm)
+              ){
+                $('#searchInput').value=better;
+                applyFilters();
+                searchTerm=better;
+              }
+            }
+
+          }else{
+
+            $('#searchInput').value='';
             applyFilters();
           }
 
           if(status){
-            status.textContent=
-              `AI Search: ${selected}`+
-              (
-                searchTerm &&
-                normalizedSearch!==normalizedBrand
-                  ? ` · ${searchTerm}`
-                  : ''
-              );
+
+            if(filtered.length){
+
+              status.textContent=
+                `AI Search: ${selected}` +
+                (
+                  $('#searchInput').value
+                    ? ` · ${$('#searchInput').value}`
+                    : ''
+                ) +
+                ` · ${filtered.length} product${
+                  filtered.length===1?'':'s'
+                }`;
+
+            }else{
+
+              status.textContent=
+                `No Raj Agencies product found for ${searchTerm}`;
+            }
           }
 
           return;
         }
       }
 
+      // --------------------------------------------------------
+      // 4. BRAND NAHI MILA -> ALL COMPANIES PRODUCT SEARCH
+      // --------------------------------------------------------
 
-      // No valid brand -> use existing global search.
-      runUniversalSearch(
-        searchTerm
-      );
+      /*
+        Group filters clear kar do.
+        Product/code ko complete Raj Agencies database me search.
+      */
+      clearUpperFilterScope();
+
+      USER_FILTER_SCOPE_ACTIVE=false;
+
+      let globalTerm=
+        searchTerm ||
+        smartSearchPhrase(original) ||
+        original;
+
+      $('#searchInput').value=globalTerm;
+
+      applyFilters();
+
+      /*
+        First term fail hua to existing local smart matcher
+        ek aur useful candidate choose karega.
+      */
+      if(!filtered.length){
+
+        const better=
+          bestGlobalVoiceQuery(original);
+
+        if(better){
+
+          globalTerm=better;
+
+          $('#searchInput').value=globalTerm;
+
+          applyFilters();
+        }
+      }
 
       if(status){
-        status.textContent=
-          `AI Search: ${searchTerm}`;
+
+        if(filtered.length){
+
+          status.textContent=
+            `AI Search: ${globalTerm} · ${filtered.length} product${
+              filtered.length===1?'':'s'
+            }`;
+
+        }else{
+
+          status.textContent=
+            `No Raj Agencies product found for ${globalTerm}`;
+        }
       }
 
       return;
     }
 
 
-    // ========================================================
+    // ==========================================================
     // PRICEBOOK PDF
-    // ========================================================
+    // ==========================================================
 
-   if(intent==='DOWNLOAD_PRICELIST'){
+    if(intent==='DOWNLOAD_PRICELIST'){
 
-  const brand=clean(ai.brand);
+      if(!brand){
 
-  if(!brand){
-    toast('Pricebook ke liye company name batayein');
-    return;
-  }
+        toast(
+          'Pricebook ke liye company name batayein'
+        );
 
-  // 1. AI se company/group identify karo
-  // PDF command ko product search term mat banao.
-$('#searchInput').value='';
-  const selected=rajAiSelectGroup(brand);
+        if(status){
+          status.textContent=
+            'Company name required for Pricebook';
+        }
 
-  if(!selected){
-    toast(`Company nahi mili: ${brand}`);
-    runUniversalSearch(brand);
-    return;
-  }
+        return;
+      }
 
-  // 2. Same group/filter state prepare karo
-  //    jo customer manually GROUP dropdown se select karta hai.
-  const groupFilter=$('#groupFilter');
+      /*
+        Company select.
+        Product search completely blank rehna chahiye,
+        otherwise blank/incomplete PDF aa sakta hai.
+      */
+      $('#searchInput').value='';
 
-  if(groupFilter){
-    groupFilter.value=selected;
-  }
+      const selected=
+        rajAiSelectGroup(brand);
 
-  // Catalog/download card ko bhi same selected group do.
-  currentCatalogGroup=selected;
-  currentCatalogUrl=configuredCatalog(selected);
-  renderCatalogCard(selected);
+      if(!selected){
 
-  if(status){
-    status.textContent=
-      `Preparing ${selected} Pricebook PDF…`;
-  }
+        toast(
+          `Company nahi mili: ${brand}`
+        );
 
-  /*
-   * 3. Existing Download Pricelist button ka SAME flow.
-   * Gemini PDF nahi banata.
-   * Raj Agencies ka existing PDF generator hi chalega.
-   */
-  const priceButton=$('#priceListDownloadBtn');
+        if(status){
+          status.textContent=
+            `Company nahi mili: ${brand}`;
+        }
 
-  if(!priceButton){
-    toast('Download Pricelist button nahi mila');
-    return;
-  }
+        return;
+      }
 
-  if(!filtered.length){
-    toast(`${selected} me pricelist products nahi mile`);
-    return;
-  }
+      // Product search dobara ensure blank
+      $('#searchInput').value='';
 
-  // Same function as manual blue Download Pricelist button.
-  await downloadSelectedPriceListFast();
+      // Only company filter
+      const groupFilter=
+        $('#groupFilter');
 
-  if(status){
-    status.textContent=
-      `${selected} Pricebook PDF ready`;
-  }
+      if(groupFilter){
+        groupFilter.value=selected;
+      }
 
-  return;
-}
+      $('#subGroupFilter').value='';
+      $('#segmentFilter').value='';
+      $('#vehicleFilter').value='';
+      $('#modelFilter').value='';
+      $('#categoryFilter').value='';
 
-    // ========================================================
+      document
+        .querySelectorAll('.filter-search')
+        .forEach(input=>{
+          input.value='';
+        });
+
+      USER_FILTER_SCOPE_ACTIVE=true;
+
+      /*
+        IMPORTANT:
+        PDF se pehle selected company ka filtered dataset
+        dobara generate karo.
+      */
+      applyFilters();
+
+      currentCatalogGroup=
+        selected;
+
+      currentCatalogUrl=
+        configuredCatalog(selected);
+
+      renderCatalogCard(selected);
+
+      if(!filtered.length){
+
+        toast(
+          `${selected} me pricelist products nahi mile`
+        );
+
+        if(status){
+          status.textContent=
+            `${selected}: no pricelist products`;
+        }
+
+        return;
+      }
+
+      if(status){
+
+        status.textContent=
+          `Preparing ${selected} Pricebook PDF · `+
+          `${filtered.length} products…`;
+      }
+
+      /*
+        Existing Raj Agencies PDF generator.
+        Gemini PDF nahi banata.
+      */
+      await downloadSelectedPriceListFast();
+
+      if(status){
+
+        status.textContent=
+          `${selected} Pricebook PDF ready · `+
+          `${filtered.length} products`;
+      }
+
+      return;
+    }
+
+
+    // ==========================================================
     // CATALOG
-    // ========================================================
+    // ==========================================================
 
     if(intent==='DOWNLOAD_CATALOG'){
-
-      const brand=
-        clean(ai.brand);
-
 
       if(!brand){
 
@@ -895,10 +1054,8 @@ $('#searchInput').value='';
         return;
       }
 
-
       const selected=
         rajAiSelectGroup(brand);
-
 
       if(!selected){
 
@@ -909,20 +1066,13 @@ $('#searchInput').value='';
         return;
       }
 
-
-      /*
-       * Existing catalog resolver only.
-       */
       currentCatalogGroup=
         selected;
 
       currentCatalogUrl=
         configuredCatalog(selected);
 
-      renderCatalogCard(
-        selected
-      );
-
+      renderCatalogCard(selected);
 
       if(currentCatalogUrl){
 
@@ -945,15 +1095,50 @@ $('#searchInput').value='';
         }
       }
 
-
       return;
     }
 
 
-    // ========================================================
+    // ==========================================================
     // GENERAL / UNKNOWN
-    // ========================================================
+    // ==========================================================
 
+    /*
+      Pricebook website me general Gemini answer ko product
+      information nahi maana jayega.
+
+      Pehle Raj Agencies database me query try karo.
+    */
+
+    const fallbackTerm=
+      searchTerm ||
+      smartSearchPhrase(original) ||
+      original;
+
+    clearUpperFilterScope();
+
+    USER_FILTER_SCOPE_ACTIVE=false;
+
+    $('#searchInput').value=
+      fallbackTerm;
+
+    applyFilters();
+
+    if(filtered.length){
+
+      if(status){
+        status.textContent=
+          `AI Search: ${fallbackTerm} · `+
+          `${filtered.length} products`;
+      }
+
+      return;
+    }
+
+    /*
+      Product nahi mila aur actual general question hai,
+      tab Gemini ka reply sirf status/message ke liye.
+    */
     if(
       intent==='GENERAL_QUERY' &&
       clean(ai.reply)
@@ -967,15 +1152,10 @@ $('#searchInput').value='';
       return;
     }
 
-
-    /*
-     * Unknown AI result:
-     * never break normal Live Pricebook search.
-     */
-    runUniversalSearch(
-      clean(ai.query) ||
-      original
-    );
+    if(status){
+      status.textContent=
+        `No Raj Agencies product found for ${fallbackTerm}`;
+    }
 
 
   }catch(error){
@@ -985,19 +1165,15 @@ $('#searchInput').value='';
       error
     );
 
-
     /*
-     * Gemini/Supabase unavailable?
-     * Existing search still works.
-     */
-    runUniversalSearch(
-      original
-    );
-
+      Gemini/Supabase unavailable hone par website band nahi hogi.
+      Existing local Raj Agencies search chalega.
+    */
+    runUniversalSearch(original);
 
     if(status){
       status.textContent=
-        'AI unavailable — normal search used';
+        'AI unavailable — Raj Agencies normal search used';
     }
   }
 }
@@ -2344,7 +2520,24 @@ if(filterMasterSyncBtn&&filterMasterFile){
 // Pricelist download uses a dedicated lightweight print iframe above.
 $('#resetBtn').onclick=reset;
 ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).onchange=()=>{USER_FILTER_SCOPE_ACTIVE=true;flushPendingFilterApply();applyFilters(true,true)});
-$('#searchInput').oninput=()=>scheduleFilterApply();
+let rajProductAiTimer=0;
+
+$('#searchInput').oninput=e=>{
+  const value=clean(e.target.value);
+
+  clearTimeout(rajProductAiTimer);
+
+  // Box empty ho to normal Raj Agencies data/filter restore karo
+  if(!value){
+    scheduleFilterApply();
+    return;
+  }
+
+  // Typing complete hone ke baad Gemini AI
+  rajProductAiTimer=setTimeout(()=>{
+    runAIUniversalSearch(value);
+  },650);
+};
 $('#pageSize').onchange=()=>{page=1;render()};
 $('#prevBtn').onclick=()=>{page--;render()};
 $('#nextBtn').onclick=()=>{page++;render()};
