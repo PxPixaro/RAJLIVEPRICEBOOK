@@ -639,35 +639,52 @@ function rajAiFindGroup(value){
 
 
 function rajAiSelectGroup(value){
-  const group=
-    rajAiFindGroup(value);
+
+  const group=rajAiFindGroup(value);
 
   if(!group)return '';
 
-  const groupFilter=
-    $('#groupFilter');
+  const groupFilter=$('#groupFilter');
 
   if(!groupFilter)return '';
 
-  // Clear previous upper filters first
+  // Saare upper filters clear
   clearUpperFilterScope();
 
+  // Product search clear
+  $('#searchInput').value='';
+
+  // Sirf requested company select
   groupFilter.value=group;
 
-// Pricebook command product-search filter nahi hai.
-// Sirf requested company/group select rehna chahiye.
-$('#searchInput').value='';
+  USER_FILTER_SCOPE_ACTIVE=true;
 
-// Universal command screen par dikh sakta hai,
-// lekin product filtering me use nahi hoga.
-USER_FILTER_SCOPE_ACTIVE=true;
+  // Group ke according dropdowns rebuild
+  cascade();
 
-cascade();
-applyFilters();
+  // Group ko ensure karo
+  groupFilter.value=group;
 
-return group;
+  // Baaki sab ALL
+  $('#subGroupFilter').value='';
+  $('#segmentFilter').value='';
+  $('#vehicleFilter').value='';
+  $('#modelFilter').value='';
+  $('#categoryFilter').value='';
+
+  // Typed filter search boxes bhi clear
+  document.querySelectorAll('.filter-search').forEach(input=>{
+    input.value='';
+  });
+
+  // Product search definitely clear
+  $('#searchInput').value='';
+
+  // Ab only selected company ke products
+  applyFilters();
+
+  return group;
 }
-
 
 async function runAIUniversalSearch(term){
   const original=clean(term);
@@ -820,11 +837,6 @@ $('#searchInput').value='';
   if(groupFilter){
     groupFilter.value=selected;
   }
-
-  USER_FILTER_SCOPE_ACTIVE=true;
-
-  cascade();
-  applyFilters();
 
   // Catalog/download card ko bhi same selected group do.
   currentCatalogGroup=selected;
