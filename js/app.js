@@ -787,74 +787,74 @@ async function runAIUniversalSearch(term){
     // PRICEBOOK PDF
     // ========================================================
 
-    if(intent==='DOWNLOAD_PRICELIST'){
+   if(intent==='DOWNLOAD_PRICELIST'){
 
-      const brand=
-        clean(ai.brand);
+  const brand=clean(ai.brand);
 
-      if(!brand){
+  if(!brand){
+    toast('Pricebook ke liye company name batayein');
+    return;
+  }
 
-        toast(
-          'Pricebook ke liye company name batayein'
-        );
+  // 1. AI se company/group identify karo
+  const selected=rajAiSelectGroup(brand);
 
-        return;
-      }
+  if(!selected){
+    toast(`Company nahi mili: ${brand}`);
+    runUniversalSearch(brand);
+    return;
+  }
 
+  // 2. Same group/filter state prepare karo
+  //    jo customer manually GROUP dropdown se select karta hai.
+  const groupFilter=$('#groupFilter');
 
-      const selected=
-        rajAiSelectGroup(brand);
+  if(groupFilter){
+    groupFilter.value=selected;
+  }
 
+  USER_FILTER_SCOPE_ACTIVE=true;
 
-      if(!selected){
+  cascade();
+  applyFilters();
 
-        toast(
-          `Company nahi mili: ${brand}`
-        );
+  // Catalog/download card ko bhi same selected group do.
+  currentCatalogGroup=selected;
+  currentCatalogUrl=configuredCatalog(selected);
+  renderCatalogCard(selected);
 
-        runUniversalSearch(
-          brand
-        );
+  if(status){
+    status.textContent=
+      `Preparing ${selected} Pricebook PDF…`;
+  }
 
-        return;
-      }
+  /*
+   * 3. Existing Download Pricelist button ka SAME flow.
+   * Gemini PDF nahi banata.
+   * Raj Agencies ka existing PDF generator hi chalega.
+   */
+  const priceButton=$('#priceListDownloadBtn');
 
+  if(!priceButton){
+    toast('Download Pricelist button nahi mila');
+    return;
+  }
 
-      if(status){
-        status.textContent=
-          `Preparing ${selected} Pricebook PDF…`;
-      }
+  if(!filtered.length){
+    toast(`${selected} me pricelist products nahi mile`);
+    return;
+  }
 
+  // Same function as manual blue Download Pricelist button.
+  await downloadSelectedPriceListFast();
 
-      /*
-       * IMPORTANT:
-       * Existing Raj Agencies PDF function only.
-       * Gemini never generates prices or PDF data.
-       */
-      setTimeout(()=>{
+  if(status){
+    status.textContent=
+      `${selected} Pricebook PDF ready`;
+  }
 
-        try{
-
-          downloadSelectedPriceList();
-
-        }catch(error){
-
-          console.error(
-            'AI Pricebook error:',
-            error
-          );
-
-          toast(
-            'Pricebook PDF create nahi hua'
-          );
-        }
-
-      },250);
-
-
-      return;
-    }
-
+  return;
+}
 
     // ========================================================
     // CATALOG
