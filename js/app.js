@@ -654,12 +654,18 @@ function rajAiSelectGroup(value){
 
   groupFilter.value=group;
 
-  USER_FILTER_SCOPE_ACTIVE=true;
+// Pricebook command product-search filter nahi hai.
+// Sirf requested company/group select rehna chahiye.
+$('#searchInput').value='';
 
-  cascade();
-  applyFilters();
+// Universal command screen par dikh sakta hai,
+// lekin product filtering me use nahi hoga.
+USER_FILTER_SCOPE_ACTIVE=true;
 
-  return group;
+cascade();
+applyFilters();
+
+return group;
 }
 
 
@@ -797,6 +803,8 @@ async function runAIUniversalSearch(term){
   }
 
   // 1. AI se company/group identify karo
+  // PDF command ko product search term mat banao.
+$('#searchInput').value='';
   const selected=rajAiSelectGroup(brand);
 
   if(!selected){
