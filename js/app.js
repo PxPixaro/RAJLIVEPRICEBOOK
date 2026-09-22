@@ -1330,6 +1330,13 @@ function viewByFields(rows){
   });
   if(fields.length)return fields;
 
+  // V82.7 strict VIEW BY: when the workbook contains a VIEW BY column, blank means
+  // no hierarchy. Never inject VEHICLE/MODEL/CATEGORY implicitly. This keeps the
+  // on-screen grid and downloaded PDF governed by the exact same Excel setting.
+  const hasViewByColumn=!!existingColumnByAliases(['VIEW BY','VIEWBY']);
+  if(hasViewByColumn)return [];
+
+  // Legacy fallback only for very old workbooks that do not have VIEW BY at all.
   const subGroup=existingColumnByAliases(['SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME']);
   if(subGroup&&rows.some(row=>!isEmpty(getField(row,subGroup))))return [subGroup];
   const category=existingColumnByAliases(['CATAGORIES','CATEGORIES','CATEGORY']);
@@ -1861,13 +1868,30 @@ async function readPriceWorkbookBuffer(buffer){
   if(!records.length||!Object.prototype.hasOwnProperty.call(records[0],'GROUP'))throw new Error('GROUP column missing');
   return records;
 }
+async function fetchLatestHostedPriceBookBuffer(){
+  // V82.7: Excel is the single source of truth. Support both historical project
+  // locations so replacing either GitHub price-book.xlsx keeps VIEW BY live.
+  // Cache-busting prevents GitHub Pages/browser cache from serving an older workbook.
+  const candidates=['assets/data/price-book.xlsx','data/price-book.xlsx','price-book.xlsx'];
+  let lastError=null;
+  for(const path of candidates){
+    try{
+      const joiner=path.includes('?')?'&':'?';
+      const response=await fetch(path+joiner+'ts='+Date.now(),{cache:'no-store'});
+      if(!response.ok){lastError=new Error(path+' HTTP '+response.status);continue}
+      const buffer=await response.arrayBuffer();
+      if(buffer && buffer.byteLength>1000)return {buffer,path};
+      lastError=new Error(path+' returned an empty workbook');
+    }catch(error){lastError=error}
+  }
+  throw lastError||new Error('Hosted price-book.xlsx not found');
+}
 async function refreshHostedPriceWorkbook(){
   if(!/^https?:$/.test(location.protocol))return false;
   try{
     $('#syncStatus').innerHTML='<span class="dot"></span> Checking GitHub Excel…';
-    const response=await fetch('assets/data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});
-    if(!response.ok)throw new Error('Hosted price-book.xlsx not found');
-    const records=await readPriceWorkbookBuffer(await response.arrayBuffer());
+    const latest=await fetchLatestHostedPriceBookBuffer();
+    const records=await readPriceWorkbookBuffer(latest.buffer);
     const previousGroup=clean($('#groupFilter').value);
     allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
@@ -1932,8 +1956,8 @@ async function refreshHostedPriceWorkbook(){
   const v71CheckHostedPrice=async()=>{
     if(!/^https?:$/.test(location.protocol))return;
     try{
-      const r=await fetch('assets/data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});if(!r.ok)return;
-      const buf=await r.arrayBuffer(),hash=await v71Sha256Hex(buf);
+      const latest=await fetchLatestHostedPriceBookBuffer();
+      const buf=latest.buffer,hash=await v71Sha256Hex(buf);
       if(hash&&hash===V71_BUNDLED_PRICEBOOK_SHA256)return;
       const apply=()=>v71ApplyHostedBuffer(buf);
       const afterAuth=()=>{if('requestIdleCallback' in window)requestIdleCallback(apply,{timeout:5000});else setTimeout(apply,2500)};
