@@ -1,19 +1,12 @@
-RAJ LIVE PRICE BOOK V82.7 - VIEW BY GRID + PDF FIX
+V82.9 LIVE VIEW BY GRID + PDF FIX
 
-Replace ONLY these files in GitHub/local project:
+Replace only:
 1) /index.html
 2) /js/app.js
 
-What changed:
-- VIEW BY heading is the only hierarchy control (column letter does not matter).
-- Comma order is hierarchy priority, e.g. SEGMENT,CATAGORIES -> Segment > Categories.
-- VEHICLE/MODEL are never injected unless explicitly present in VIEW BY.
-- Blank hierarchy values render as OTHER.
-- Screen product grid and downloaded PDF use the same viewByFields() hierarchy engine.
-- Latest Excel loader now checks these GitHub paths in order:
-  assets/data/price-book.xlsx
-  data/price-book.xlsx
-  price-book.xlsx
-  with cache-busting on every fetch.
-- PDF refreshes latest hosted Excel before generation.
-- index.html cache version bumped to 82.7.
+Master Excel remains only:
+/data/price-book.xlsx
+
+Do NOT recreate /assets/data.
+
+Fix: after live Excel is loaded, FAST_ROWS is rebuilt synchronously before filters/grid render. Previously a sparse same-length FAST_ROWS array could make the live Excel refresh fail during applyFilters(), leaving the old bundled hierarchy visible. Grid and PDF both continue to use viewByFields().
