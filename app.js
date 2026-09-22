@@ -12,58 +12,6 @@ window.RAJ_BOOT_MARK=window.RAJ_BOOT_MARK||function(key,value=true){
   }
 };
 const $ = s => document.querySelector(s);
-// ============================================================
-// RAJ AGENCIES GEMINI AI
-// Gemini = intent/language understanding only.
-// Product data always comes from Raj Agencies Live Pricebook.
-// ============================================================
-
-const RAJ_AI_URL =
-  'https://mkexjkfnzhqfqzkptxrl.supabase.co/functions/v1/gemini-ai';
-
-let rajAiTimer = 0;
-let rajAiRequestId = 0;
-
-async function askRajAI(message){
-  const query = String(message || '').trim();
-
-  if(!query){
-    throw new Error('Empty AI query');
-  }
-
-  const response = await fetch(RAJ_AI_URL,{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json'
-    },
-    body:JSON.stringify({
-      message:query
-    })
-  });
-
-  if(!response.ok){
-    let detail='';
-
-    try{
-      detail=await response.text();
-    }catch(error){}
-
-    throw new Error(
-      `AI request failed (${response.status})` +
-      (detail ? `: ${detail.slice(0,180)}` : '')
-    );
-  }
-
-  const data=await response.json();
-
-  if(!data?.success || !data?.result){
-    throw new Error(
-      data?.error || 'Invalid AI response'
-    );
-  }
-
-  return data.result;
-}
 const BRAND_LOGOS = {};
 const BRAND_LOGO_EXTENSIONS=['webp','png','jpg','jpeg'];
 const BRAND_LOGO_ALIASES={
@@ -143,6 +91,28 @@ function pdfEmbeddedLogoB64(brand){
     if(ranked.length===1||(ranked.length>1&&ranked[0].d<ranked[1].d))return map[ranked[0].k]||'';
   }
   return '';
+}
+
+function jpegDimensions(bytes){
+  try{
+    if(!bytes||bytes.length<4||bytes[0]!==0xFF||bytes[1]!==0xD8)return null;
+    let i=2;
+    while(i+8<bytes.length){
+      if(bytes[i]!==0xFF){i++;continue}
+      while(i<bytes.length&&bytes[i]===0xFF)i++;
+      const marker=bytes[i++];
+      if(marker===0xD8||marker===0xD9)continue;
+      if(i+1>=bytes.length)break;
+      const len=(bytes[i]<<8)|bytes[i+1];
+      if(len<2||i+len>bytes.length)break;
+      if([0xC0,0xC1,0xC2,0xC3,0xC5,0xC6,0xC7,0xC9,0xCA,0xCB,0xCD,0xCE,0xCF].includes(marker)){
+        const h=(bytes[i+3]<<8)|bytes[i+4],w=(bytes[i+5]<<8)|bytes[i+6];
+        if(w>0&&h>0)return {width:w,height:h};
+      }
+      i+=len;
+    }
+  }catch(_e){}
+  return null;
 }
 
 function setBrandLogoImage(img,brand){
@@ -595,412 +565,6 @@ function runUniversalSearch(term){
  $('#searchInput').value=cq;applyFilters();$('#voiceStatus').textContent=`Searching all groups: ${cq}`;
 }
 
-// ============================================================
-// RAJ AGENCIES GEMINI AI ROUTER
-// ============================================================
-
-function rajAiFindGroup(value){
-  const wanted=normalizeSearchText(value);
-
-  if(!wanted)return '';
-
-  // Use the actual Group dropdown as source of truth.
-  const groupFilter=$('#groupFilter');
-
-  if(!groupFilter)return '';
-
-  const groups=[...groupFilter.options]
-    .map(option=>clean(option.value))
-    .filter(Boolean);
-
-  // Exact match first
-  const exact=groups.find(
-    group=>
-      normalizeSearchText(group)===wanted
-  );
-
-  if(exact)return exact;
-
-  // Conservative partial match
-  const matches=groups.filter(group=>{
-    const normalized=
-      normalizeSearchText(group);
-
-    return (
-      normalized.includes(wanted) ||
-      wanted.includes(normalized)
-    );
-  });
-
-  return matches.length===1
-    ? matches[0]
-    : '';
-}
-
-
-function rajAiSelectGroup(value){
-
-  const group=rajAiFindGroup(value);
-
-  if(!group)return '';
-
-  const groupFilter=$('#groupFilter');
-
-  if(!groupFilter)return '';
-
-  // Saare upper filters clear
-  clearUpperFilterScope();
-
-  // Product search clear
-  $('#searchInput').value='';
-
-  // Sirf requested company select
-  groupFilter.value=group;
-
-  USER_FILTER_SCOPE_ACTIVE=true;
-
-  // Group ke according dropdowns rebuild
-  cascade();
-
-  // Group ko ensure karo
-  groupFilter.value=group;
-
-  // Baaki sab ALL
-  $('#subGroupFilter').value='';
-  $('#segmentFilter').value='';
-  $('#vehicleFilter').value='';
-  $('#modelFilter').value='';
-  $('#categoryFilter').value='';
-
-  // Typed filter search boxes bhi clear
-  document.querySelectorAll('.filter-search').forEach(input=>{
-    input.value='';
-  });
-
-  // Product search definitely clear
-  $('#searchInput').value='';
-
-  // Ab only selected company ke products
-  applyFilters();
-
-  return group;
-}
-
-async function runAIUniversalSearch(term){
-  const original=clean(term);
-
-  if(!original){
-    runUniversalSearch('');
-    return;
-  }
-
-  const requestId=
-    ++rajAiRequestId;
-
-  const status=
-    $('#voiceStatus');
-
-  try{
-
-    if(status){
-      status.textContent=
-        'AI understanding your search…';
-    }
-
-    const ai=
-      await askRajAI(original);
-
-    // Ignore an old response if customer typed again.
-    if(requestId!==rajAiRequestId){
-      return;
-    }
-
-    console.log(
-      'Raj Agencies Gemini:',
-      ai
-    );
-
-    const intent=
-      clean(ai.intent).toUpperCase();
-
-
-    // ========================================================
-    // PRODUCT / RATE / MRP / DETAILS SEARCH
-    // ========================================================
-
-    if([
-      'SEARCH_PRODUCT',
-      'GET_PRODUCT_DETAILS',
-      'GET_PRICE',
-      'GET_MRP',
-      'SEARCH_BRAND'
-    ].includes(intent)){
-
-      const brand=
-        clean(ai.brand);
-
-      const searchTerm=
-        clean(ai.product_code) ||
-        clean(ai.part_number) ||
-        clean(ai.description) ||
-        clean(ai.vehicle) ||
-        clean(ai.query) ||
-        original;
-
-
-      // If Gemini found a real brand, scope search to that brand.
-      if(brand){
-
-        const selected=
-          rajAiSelectGroup(brand);
-
-        if(selected){
-
-          /*
-           * Do not search the whole natural sentence when
-           * only the brand was requested.
-           */
-          const normalizedSearch=
-            normalizeSearchText(searchTerm);
-
-          const normalizedBrand=
-            normalizeSearchText(brand);
-
-          if(
-            searchTerm &&
-            normalizedSearch!==normalizedBrand
-          ){
-            $('#searchInput').value=
-              searchTerm;
-
-            applyFilters();
-          }
-
-          if(status){
-            status.textContent=
-              `AI Search: ${selected}`+
-              (
-                searchTerm &&
-                normalizedSearch!==normalizedBrand
-                  ? ` · ${searchTerm}`
-                  : ''
-              );
-          }
-
-          return;
-        }
-      }
-
-
-      // No valid brand -> use existing global search.
-      runUniversalSearch(
-        searchTerm
-      );
-
-      if(status){
-        status.textContent=
-          `AI Search: ${searchTerm}`;
-      }
-
-      return;
-    }
-
-
-    // ========================================================
-    // PRICEBOOK PDF
-    // ========================================================
-
-   if(intent==='DOWNLOAD_PRICELIST'){
-
-  const brand=clean(ai.brand);
-
-  if(!brand){
-    toast('Pricebook ke liye company name batayein');
-    return;
-  }
-
-  // 1. AI se company/group identify karo
-  // PDF command ko product search term mat banao.
-$('#searchInput').value='';
-  const selected=rajAiSelectGroup(brand);
-
-  if(!selected){
-    toast(`Company nahi mili: ${brand}`);
-    runUniversalSearch(brand);
-    return;
-  }
-
-  // 2. Same group/filter state prepare karo
-  //    jo customer manually GROUP dropdown se select karta hai.
-  const groupFilter=$('#groupFilter');
-
-  if(groupFilter){
-    groupFilter.value=selected;
-  }
-
-  // Catalog/download card ko bhi same selected group do.
-  currentCatalogGroup=selected;
-  currentCatalogUrl=configuredCatalog(selected);
-  renderCatalogCard(selected);
-
-  if(status){
-    status.textContent=
-      `Preparing ${selected} Pricebook PDF…`;
-  }
-
-  /*
-   * 3. Existing Download Pricelist button ka SAME flow.
-   * Gemini PDF nahi banata.
-   * Raj Agencies ka existing PDF generator hi chalega.
-   */
-  const priceButton=$('#priceListDownloadBtn');
-
-  if(!priceButton){
-    toast('Download Pricelist button nahi mila');
-    return;
-  }
-
-  if(!filtered.length){
-    toast(`${selected} me pricelist products nahi mile`);
-    return;
-  }
-
-  // Same function as manual blue Download Pricelist button.
-  await downloadSelectedPriceListFast();
-
-  if(status){
-    status.textContent=
-      `${selected} Pricebook PDF ready`;
-  }
-
-  return;
-}
-
-    // ========================================================
-    // CATALOG
-    // ========================================================
-
-    if(intent==='DOWNLOAD_CATALOG'){
-
-      const brand=
-        clean(ai.brand);
-
-
-      if(!brand){
-
-        toast(
-          'Catalog ke liye company name batayein'
-        );
-
-        return;
-      }
-
-
-      const selected=
-        rajAiSelectGroup(brand);
-
-
-      if(!selected){
-
-        toast(
-          `Company nahi mili: ${brand}`
-        );
-
-        return;
-      }
-
-
-      /*
-       * Existing catalog resolver only.
-       */
-      currentCatalogGroup=
-        selected;
-
-      currentCatalogUrl=
-        configuredCatalog(selected);
-
-      renderCatalogCard(
-        selected
-      );
-
-
-      if(currentCatalogUrl){
-
-        if(status){
-          status.textContent=
-            `Opening ${selected} catalog…`;
-        }
-
-        openSelectedCatalog();
-
-      }else{
-
-        toast(
-          `${selected} catalog abhi available nahi hai`
-        );
-
-        if(status){
-          status.textContent=
-            `${selected} catalog unavailable`;
-        }
-      }
-
-
-      return;
-    }
-
-
-    // ========================================================
-    // GENERAL / UNKNOWN
-    // ========================================================
-
-    if(
-      intent==='GENERAL_QUERY' &&
-      clean(ai.reply)
-    ){
-
-      if(status){
-        status.textContent=
-          clean(ai.reply);
-      }
-
-      return;
-    }
-
-
-    /*
-     * Unknown AI result:
-     * never break normal Live Pricebook search.
-     */
-    runUniversalSearch(
-      clean(ai.query) ||
-      original
-    );
-
-
-  }catch(error){
-
-    console.error(
-      'Raj Agencies AI error:',
-      error
-    );
-
-
-    /*
-     * Gemini/Supabase unavailable?
-     * Existing search still works.
-     */
-    runUniversalSearch(
-      original
-    );
-
-
-    if(status){
-      status.textContent=
-        'AI unavailable — normal search used';
-    }
-  }
-}
 
 function filterSearchTerm(targetId){
   const input=document.querySelector(`.filter-search[data-target="${targetId}"]`);
@@ -1412,15 +976,12 @@ function fastPdfPages(){
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
 
   for(const [group,sourceRows] of groups){
-    // V81 hierarchy fixed: SEGMENT > CATEGORY > VEHICLE > MODEL > PRODUCTS
-    const gr=sourceRows.slice().sort((a,b)=>{
-      const af=[clean(getField(a,'SEGMENT')),clean(getField(a,'CATAGORIES','CATEGORIES','CATEGORY')),clean(getField(a,'VEHICLE')),clean(getField(a,'MODEL'))];
-      const bf=[clean(getField(b,'SEGMENT')),clean(getField(b,'CATAGORIES','CATEGORIES','CATEGORY')),clean(getField(b,'VEHICLE')),clean(getField(b,'MODEL'))];
-      for(let i=0;i<af.length;i++){const c=natural(af[i],bf[i]);if(c)return c}
-      return natural(clean(getField(a,'CODE','PART NUMBER','PART NO')),clean(getField(b,'CODE','PART NUMBER','PART NO')));
-    });
+    // Excel VIEW BY is the single source of truth. Column position is irrelevant.
+    // First comma-separated heading = level 1, second = level 2, etc.
+    const hierarchyFields=viewByFields(sourceRows);
+    const gr=sortRowsByFields(sourceRows.slice(),hierarchyFields);
     const cols=visibleColumnsForRows(gr),weights=printColumnWeights(cols).columns,usable=W-margin*2-18,widths=weights.map(p=>usable*p/100);
-    let page=null,y=0,serial=0,lastSeg='',lastCat='',lastVeh='',lastModel='';
+    let page=null,y=0,serial=0,lastPath=[];
 
     const drawColumnHeader=()=>{
       let x=margin;
@@ -1436,74 +997,52 @@ function fastPdfPages(){
 
     const newPage=()=>{
       page={group,cols,widths,cmd:[],brandLogoB64:pdfEmbeddedLogoB64(group)};pages.push(page);y=contentTop;
-
-      // JUNE MASTER HEADER: compact, balanced, fixed.
-      // Orange bottom rule
       page.cmd.push(`${rgb(245,176,14)} rg ${margin} ${H-77} ${W-margin*2} 3 re f`);
-
-      // Center title block
-      page.cmd.push(`BT /F2 7.6 Tf ${rgb(220,108,11)} rg 365 ${H-31} Td (RAJ AGENCIES) Tj ET`);
-      page.cmd.push(`BT /F2 14.5 Tf ${rgb(14,51,126)} rg 365 ${H-47} Td (${esc(group)}) Tj ET`);
-      page.cmd.push(`BT /F2 6.2 Tf ${rgb(14,51,126)} rg 377 ${H-58} Td (LIVE PRICE BOOK) Tj ET`);
-
-      // Small boxed metadata row like June PDF
-      const metaItems=[
-        `COMPANY LIST DATE: ${listDateForRows(gr)}`,
-        `LAST UPDATED: ${lastUpdated.toLocaleDateString('en-GB')}`,
-        `${gr.length} PRODUCTS`,
-        `${cols.length} COLUMNS`
-      ];
-      const starts=[220,340,456,532], widthsMeta=[112,108,70,68];
-      for(let i=0;i<metaItems.length;i++){
-        page.cmd.push(`0.42 0.67 0.88 RG 0.965 0.985 1 rg ${starts[i]} ${H-72} ${widthsMeta[i]} 9 re B`);
-        page.cmd.push(`BT /F2 4.5 Tf 0.12 0.20 0.32 rg ${starts[i]+3} ${H-66} Td (${esc(metaItems[i])}) Tj ET`);
-      }
+      const center=421;
+      const centerText=(text,font,size,yPos,color)=>{
+        const approx=Math.max(0,String(text).length*size*0.27);
+        page.cmd.push(`BT /${font} ${size} Tf ${color} rg ${Math.max(margin,center-approx)} ${H-yPos} Td (${esc(text)}) Tj ET`);
+      };
+      centerText('RAJ AGENCIES','F2',7.6,31,rgb(220,108,11));
+      centerText(group,'F2',14.5,47,rgb(14,51,126));
+      centerText('LIVE PRICE BOOK','F2',6.2,58,rgb(14,51,126));
+      const meta=`COMPANY LIST DATE: ${listDateForRows(gr)}`;
+      const boxW=150,boxX=center-boxW/2,boxY=H-72,boxH=9;
+      page.cmd.push(`0.42 0.67 0.88 RG 0.965 0.985 1 rg ${boxX} ${boxY} ${boxW} ${boxH} re B`);
+      const metaApprox=meta.length*4.5*0.27;
+      page.cmd.push(`BT /F2 4.5 Tf 0.12 0.20 0.32 rg ${center-metaApprox} ${boxY+2.9} Td (${esc(meta)}) Tj ET`);
       drawColumnHeader();
-      lastSeg='';lastCat='';lastVeh='';lastModel='';
+      lastPath=[];
     };
 
-    const band=(label,value,level,count)=>{
+    const band=(field,value,level)=>{
       if(!value)return;
       if(y+bandH>H-24)newPage();
-      const fills=[
-        [255,243,189], // Segment yellow
-        [220,238,255], // Category blue
-        [237,243,251], // Vehicle light blue-gray
-        [247,248,250]  // Model light gray
-      ];
+      const fills=[[255,243,189],[220,238,255],[237,243,251],[247,248,250]];
       const texts=[[90,59,0],[14,51,126],[39,54,74],[39,54,74]];
-      const f=fills[Math.min(level-1,3)],tc=texts[Math.min(level-1,3)];
+      const idx=Math.min(level,3),f=fills[idx],tc=texts[idx];
       page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re f`);
       page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re S`);
-      page.cmd.push(`BT /F2 ${level===1?6.2:5.7} Tf ${rgb(...tc)} rg ${margin+4+(level-1)*8} ${H-y-7.7} Td (${esc(label+'  '+value)}) Tj ET`);
-      if(count)page.cmd.push(`BT /F2 4.9 Tf ${rgb(...tc)} rg ${W-margin-60} ${H-y-7.7} Td (${esc(count+' Products')}) Tj ET`);
+      page.cmd.push(`BT /F2 ${level===0?6.2:5.7} Tf ${rgb(...tc)} rg ${margin+4+level*8} ${H-y-7.7} Td (${esc(viewByLabel(field)+'  '+value)}) Tj ET`);
       y+=bandH;
     };
 
-    const countPath=(seg,cat='',veh='',model='')=>gr.filter(r=>
-      (!seg||clean(getField(r,'SEGMENT'))===seg)&&
-      (!cat||clean(getField(r,'CATAGORIES','CATEGORIES','CATEGORY'))===cat)&&
-      (!veh||clean(getField(r,'VEHICLE'))===veh)&&
-      (!model||clean(getField(r,'MODEL'))===model)
-    ).length;
-
     newPage();
-
     for(const r of gr){
-      const seg=clean(getField(r,'SEGMENT'));
-      const cat=clean(getField(r,'CATAGORIES','CATEGORIES','CATEGORY'));
-      const veh=clean(getField(r,'VEHICLE'));
-      const model=clean(getField(r,'MODEL'));
-
-      if(seg!==lastSeg){band('SEGMENT',seg,1,countPath(seg));lastSeg=seg;lastCat='';lastVeh='';lastModel=''}
-      if(cat!==lastCat){band('CATEGORIES',cat,2,countPath(seg,cat));lastCat=cat;lastVeh='';lastModel=''}
-      if(veh!==lastVeh){band('VEHICLE',veh,3,countPath(seg,cat,veh));lastVeh=veh;lastModel=''}
-      if(model!==lastModel){band('MODEL',model,4,countPath(seg,cat,veh,model));lastModel=model}
-
-      if(y+rowH>H-24)newPage();
+      const path=hierarchyFields.map(field=>clean(getField(r,field)));
+      let changedAt=-1;
+      for(let i=0;i<path.length;i++){if(path[i]!==lastPath[i]){changedAt=i;break}}
+      if(changedAt>=0){
+        for(let i=changedAt;i<path.length;i++)band(hierarchyFields[i],path[i],i);
+        lastPath=path.slice();
+      }
+      if(y+rowH>H-24){newPage();for(let i=0;i<path.length;i++)band(hierarchyFields[i],path[i],i);lastPath=path.slice()}
       serial++;let x=margin;
       if(serial%2===0)page.cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re f`);
       page.cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re S`);
+      // light vertical grid lines
+      let gx=margin+18;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-rowH} m ${gx} ${H-y} l S`);
+      for(const w of widths){gx+=w;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-rowH} m ${gx} ${H-y} l S`)}
       page.cmd.push(`BT /F1 4.9 Tf 0 0 0 rg ${x+2} ${H-y-6.7} Td (${serial}) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
         const val=getField(r,cols[i]),max=Math.max(3,Math.floor(widths[i]/2.8));
@@ -1522,15 +1061,17 @@ async function buildFastPdfBlob(){
   const add=o=>{objects.push(o);return objects.length};
   const catalog=add(''),pagesObj=add(''),f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'),f2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
   const gs=add('<< /Type /ExtGState /ca 0.065 /CA 0.065 >>');
-  const wm=add({bin:jpeg,head:`<< /Type /XObject /Subtype /Image /Width 1536 /Height 1024 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>`});
-  const logo=add({bin:company,head:`<< /Type /XObject /Subtype /Image /Width 300 /Height 160 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${company.length} >>`});
+  const wmDim=jpegDimensions(jpeg)||{width:1536,height:1024},logoDim=jpegDimensions(company)||{width:300,height:160};
+  const wm=add({bin:jpeg,head:`<< /Type /XObject /Subtype /Image /Width ${wmDim.width} /Height ${wmDim.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>`});
+  const logo=add({bin:company,head:`<< /Type /XObject /Subtype /Image /Width ${logoDim.width} /Height ${logoDim.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${company.length} >>`});
 
   const brandObjects=new Map();
   for(const p of pages){
     const b64=p.brandLogoB64||'';
     if(b64&&!brandObjects.has(b64)){
-      const bytes=b64Bytes(b64);
-      brandObjects.set(b64,add({bin:bytes,head:`<< /Type /XObject /Subtype /Image /Width 360 /Height 180 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>`}));
+      const bytes=b64Bytes(b64),dim=jpegDimensions(bytes);
+      // Never embed an invalid/truncated JPEG: Acrobat otherwise reports 'Insufficient data for an image'.
+      if(dim)brandObjects.set(b64,add({bin:bytes,head:`<< /Type /XObject /Subtype /Image /Width ${dim.width} /Height ${dim.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>`}));
     }
   }
 
@@ -2184,77 +1725,23 @@ $('#imageModal').onclick=e=>{if(e.target===$('#imageModal'))closeImageModal()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeImageModal()});
 $('#zoomInBtn').onclick=()=>{imageZoom=Math.min(3,imageZoom+.2);$('#productImagePreview').style.transform=`scale(${imageZoom})`};
 $('#zoomOutBtn').onclick=()=>{imageZoom=Math.max(.5,imageZoom-.2);$('#productImagePreview').style.transform=`scale(${imageZoom})`};
-$('#universalSearchInput').addEventListener('input',e=>{
-  const value=e.target.value;
-
-  // Previous pending AI search cancel
-  clearTimeout(rajAiTimer);
-
-  // Empty search immediately clear
-  if(!clean(value)){
-    runUniversalSearch('');
-    return;
-  }
-
-  // Customer typing finish hone ke baad Gemini call
-  rajAiTimer=setTimeout(()=>{
-    runAIUniversalSearch(value);
-  },650);
-});
-
-
+$('#universalSearchInput').addEventListener('input',e=>{const value=e.target.value;scheduleFilterApply(()=>runUniversalSearch(value));});
 $('#voiceSearchBtn').onclick=()=>{
-  const SpeechRecognition=
-    window.SpeechRecognition ||
-    window.webkitSpeechRecognition;
-
-  if(!SpeechRecognition){
-    toast(
-      'Voice search is not supported in this browser. Use Chrome or Edge.'
-    );
-    return;
-  }
-
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){toast('Voice search is not supported in this browser. Use Chrome or Edge.');return}
   const recognition=new SpeechRecognition();
-
-  recognition.lang='en-IN';
-  recognition.interimResults=false;
-  recognition.maxAlternatives=3;
-
-  $('#voiceSearchBtn').classList.add('listening');
-
-  $('#voiceStatus').textContent=
-    'Listening… Hindi, English, Gujarati ya Hinglish me boliye';
-
-
+  recognition.lang='en-IN'; recognition.interimResults=false; recognition.maxAlternatives=3;
+  $('#voiceSearchBtn').classList.add('listening');$('#voiceStatus').textContent='Listening… speak product, code, description, MRP, rate, vehicle, model or other detail';
   recognition.onresult=e=>{
-    const spoken=
-      e.results[0][0].transcript.trim();
-
-    // Spoken text Universal Search box me bhi dikhao
-    $('#universalSearchInput').value=spoken;
-
-    $('#voiceStatus').textContent=
-      `Heard: ${spoken} · AI understanding…`;
-
-    // Gemini AI -> Raj Agencies verified data
-    runAIUniversalSearch(spoken);
+    const spoken=e.results[0][0].transcript.trim();
+    $('#voiceStatus').textContent=`Heard: ${spoken}`;
+    runUniversalSearch(spoken);
   };
-
-
-  recognition.onerror=e=>{
-    $('#voiceStatus').textContent=
-      `Voice error: ${e.error}`;
-  };
-
-
-  recognition.onend=()=>{
-    $('#voiceSearchBtn').classList.remove('listening');
-  };
-
-
+  recognition.onerror=e=>{$('#voiceStatus').textContent=`Voice error: ${e.error}`};
+  recognition.onend=()=>$('#voiceSearchBtn').classList.remove('listening');
   recognition.start();
 };
+
 let xlsxLoaderPromise=null;
 function ensureExcelReader(){
   if(window.XLSX)return Promise.resolve(true);
