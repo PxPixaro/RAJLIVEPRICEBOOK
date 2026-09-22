@@ -1869,10 +1869,11 @@ async function readPriceWorkbookBuffer(buffer){
   return records;
 }
 async function fetchLatestHostedPriceBookBuffer(){
-  // V82.7: Excel is the single source of truth. Support both historical project
-  // locations so replacing either GitHub price-book.xlsx keeps VIEW BY live.
+  // V82.8: data/price-book.xlsx is the canonical GitHub master workbook.
+  // Historical locations are fallback-only, used only when the canonical file is missing.
+  // This prevents an older assets/data copy from overriding the latest VIEW BY settings.
   // Cache-busting prevents GitHub Pages/browser cache from serving an older workbook.
-  const candidates=['assets/data/price-book.xlsx','data/price-book.xlsx','price-book.xlsx'];
+  const candidates=['data/price-book.xlsx','assets/data/price-book.xlsx','price-book.xlsx'];
   let lastError=null;
   for(const path of candidates){
     try{
