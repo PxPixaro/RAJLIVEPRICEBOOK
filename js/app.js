@@ -1803,7 +1803,7 @@ $('#excelFile').onchange=async e=>{
     if(typeof window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK==='function')window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK(wb);
     const records=normalizeRows(rows);
     if(!records.length||!('GROUP' in records[0]))throw new Error('GROUP column missing');
-    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;buildFastRows();V68_PRELOAD={index:allData.length,fast:allData.length,running:false,ready:true,data:allData};catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     let saved=false;
     try{
@@ -1873,7 +1873,7 @@ async function fetchLatestHostedPriceBookBuffer(){
   // Historical locations are fallback-only, used only when the canonical file is missing.
   // This prevents an older assets/data copy from overriding the latest VIEW BY settings.
   // Cache-busting prevents GitHub Pages/browser cache from serving an older workbook.
-  const candidates=['data/price-book.xlsx','assets/data/price-book.xlsx','price-book.xlsx'];
+  const candidates=['data/price-book.xlsx'];
   let lastError=null;
   for(const path of candidates){
     try{
@@ -1894,7 +1894,7 @@ async function refreshHostedPriceWorkbook(){
     const latest=await fetchLatestHostedPriceBookBuffer();
     const records=await readPriceWorkbookBuffer(latest.buffer);
     const previousGroup=clean($('#groupFilter').value);
-    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;buildFastRows();V68_PRELOAD={index:allData.length,fast:allData.length,running:false,ready:true,data:allData};catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     buildCatalogMenu();
     const masterGroups=masterValuesForFilter('groupFilter');
@@ -1949,7 +1949,7 @@ async function refreshHostedPriceWorkbook(){
     try{
       const records=await readPriceWorkbookBuffer(buf);if(!records?.length)return false;
       const previousGroup=clean($('#groupFilter')?.value);
-      allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+      allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;buildFastRows();V68_PRELOAD={index:allData.length,fast:allData.length,running:false,ready:true,data:allData};catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
       if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
       buildCatalogMenu();const groups=masterValuesForFilter('groupFilter').length?masterValuesForFilter('groupFilter'):unique(allData,'GROUP');options($('#groupFilter'),groups,'All groups');$('#groupFilter').value=groups.includes(previousGroup)?previousGroup:'';if(!$('#groupFilter').value)setDefaultGroupBrand(true);cascade();applyFilters();return true;
     }catch(e){console.warn('Hosted Excel apply skipped',e);return false}
