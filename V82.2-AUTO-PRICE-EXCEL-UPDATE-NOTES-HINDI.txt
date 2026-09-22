@@ -1,0 +1,12 @@
+V82.2 AUTO PRICE EXCEL UPDATE MODIFICATION
+
+1. Live website ab GitHub Pages par data/price-book.xlsx ko har page load par cache-busting ke saath check karti hai.
+2. GitHub repo me data/price-book.xlsx replace + commit karne ke baad Pages deploy complete hote hi refresh/new visit par latest Excel data load hoga.
+3. Admin header se ye 4 buttons remove kiye gaye:
+   - Sync Price Excel
+   - Sync Filter Master
+   - Sync Catalog Excel
+   - Sync Live API
+4. Access Rights, Edit Website aur Administrator control unchanged hain.
+5. User supplied latest price-book Excel project me update ki gayi hai. ANATTS2SR Rate/MRP = 3650 verified.
+6. Baaki website layout/features ko intentionally change nahi kiya gaya.
