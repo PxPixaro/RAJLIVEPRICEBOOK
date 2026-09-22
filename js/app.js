@@ -978,7 +978,13 @@ function fastPdfPages(){
   for(const [group,sourceRows] of groups){
     // Excel VIEW BY is the single source of truth. Column position is irrelevant.
     // First comma-separated heading = level 1, second = level 2, etc.
-    const hierarchyFields=viewByFields(sourceRows);
+    // PDF hierarchy must follow exactly what is written in the VIEW BY heading.
+    // Do not add fallback levels (VEHICLE/MODEL/etc.) that are not listed there.
+    // VIEW BY is located by its heading name, never by Excel column letter.
+    const viewByRaw=sourceRows.map(row=>clean(getField(row,'VIEW BY','VIEWBY'))).find(Boolean)||'';
+    const hierarchyFields=parseViewByTitles(viewByRaw)
+      .map(resolveViewByField)
+      .filter((field,index,array)=>field&&array.findIndex(x=>compactFieldKey(x)===compactFieldKey(field))===index);
     const gr=sortRowsByFields(sourceRows.slice(),hierarchyFields);
     const cols=visibleColumnsForRows(gr),weights=printColumnWeights(cols).columns,usable=W-margin*2-18,widths=weights.map(p=>usable*p/100);
     let page=null,y=0,serial=0,lastPath=[];
@@ -1089,9 +1095,9 @@ async function buildFastPdfBlob(){
 
     // clean watermark + fixed logos
     content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
-    content+=`q 68 0 0 40 28 508 cm /ImLogo Do Q\n`;
+    content+=`q 64 0 0 34 30 525 cm /ImLogo Do Q\n`;
     const brandId=brandObjects.get(p.brandLogoB64||'')||0;
-    if(brandId)content+=`q 78 0 0 39 738 509 cm /ImBrand Do Q\n`;
+    if(brandId)content+=`q 78 0 0 34 738 525 cm /ImBrand Do Q\n`;
     content+=p.cmd.join('\n');
 
     const cb=latin1Bytes(content),cobj=add({bin:cb,head:`<< /Length ${cb.length} >>`});
