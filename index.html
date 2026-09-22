@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Raj Agencies — Live Price Book</title>
   <link rel="stylesheet" href="css/style.css?v=49-admin-rights">
-  <script defer src="js/data.js?v=65-special-engine"></script>
+  <script defer src="js/data.js?v=82.6-exact-viewby"></script>
   <script defer src="js/brand-logos.js?v=35-filter-master-large-watermark"></script>
 
   <script id="v27-catalog-links-before-app">
@@ -22,7 +22,7 @@
   } catch (error) {}
   </script>
   <script src="js/pdf-brand-logos.js?v=81-june-master"></script>
-<script defer src="js/app.js?v=82.5-exact-viewby-live-excel"></script>
+<script defer src="js/app.js?v=82.6-exact-viewby"></script>
   <script defer src="js/v45-config.js?v=82"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
@@ -449,8 +449,16 @@
         </div>
         <div class="header-actions admin-sync-zone">
           <span id="syncStatus" class="status-pill admin-only"><span class="dot"></span> Loading data…</span>
+          <button id="syncBtn" class="btn btn-primary admin-only" title="Synchronize Price Excel">↻ Sync Price Excel</button>
+          <button id="syncFilterMasterBtn" class="btn btn-primary admin-only" title="Synchronize Filter Master Excel">↻ Sync Filter Master</button>
+          <button id="syncCatalogBtn" class="btn btn-primary catalog-sync-btn admin-only" title="Synchronize Catalog Links Excel">↻ Sync Catalog Excel</button>
+
+          <button id="liveApiSyncBtn" class="btn btn-primary admin-only" type="button" title="Synchronize Live ERP/API">↻ Sync Live API</button>
           <button id="v49RightsBtn" class="btn btn-primary admin-only" type="button" title="Manage user/group visibility rights">⚙ Access Rights</button>
           <button id="v49EditBtn" class="btn btn-primary admin-only" type="button" title="Open website text edit mode">✎ Edit Website</button>
+          <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" hidden>
+          <input id="filterMasterFile" type="file" accept=".xlsx,.xls" hidden>
+          <input id="catalogExcelFile" type="file" accept=".xlsx,.xls" hidden>
         </div>
       </div>
       <section class="hero-card header-hero">

@@ -981,7 +981,11 @@ function fastPdfPages(){
     // PDF hierarchy must follow exactly what is written in the VIEW BY heading.
     // Do not add fallback levels (VEHICLE/MODEL/etc.) that are not listed there.
     // VIEW BY is located by its heading name, never by Excel column letter.
-    const viewByRaw=sourceRows.map(row=>clean(getField(row,'VIEW BY','VIEWBY'))).find(Boolean)||'';
+    // V82.6: VIEW BY is the ONLY hierarchy source. Never inject VEHICLE/MODEL
+    // unless those exact headings are present in the comma-separated VIEW BY value.
+    // Use the most common nonblank value for the selected group so one stray row cannot
+    // change the whole PDF structure. Excel column letters (AY/AZ/BA...) are irrelevant.
+    const viewByRaw=mostCommonViewBy(sourceRows);
     const hierarchyFields=parseViewByTitles(viewByRaw)
       .map(resolveViewByField)
       .filter((field,index,array)=>field&&array.findIndex(x=>compactFieldKey(x)===compactFieldKey(field))===index);
@@ -1035,7 +1039,7 @@ function fastPdfPages(){
 
     newPage();
     for(const r of gr){
-      const path=hierarchyFields.map(field=>clean(getField(r,field)));
+      const path=hierarchyFields.map(field=>groupValue(r,field)); // blank hierarchy value => OTHER
       let changedAt=-1;
       for(let i=0;i<path.length;i++){if(path[i]!==lastPath[i]){changedAt=i;break}}
       if(changedAt>=0){
@@ -1095,9 +1099,9 @@ async function buildFastPdfBlob(){
 
     // clean watermark + fixed logos
     content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
-    content+=`q 64 0 0 34 30 525 cm /ImLogo Do Q\n`;
+    content+=`q 64 0 0 34 30 538 cm /ImLogo Do Q\n`;
     const brandId=brandObjects.get(p.brandLogoB64||'')||0;
-    if(brandId)content+=`q 78 0 0 34 738 525 cm /ImBrand Do Q\n`;
+    if(brandId)content+=`q 78 0 0 34 738 538 cm /ImBrand Do Q\n`;
     content+=p.cmd.join('\n');
 
     const cb=latin1Bytes(content),cobj=add({bin:cb,head:`<< /Length ${cb.length} >>`});
