@@ -999,42 +999,45 @@ function fastPdfPages(){
     const cols=visibleColumnsForRows(gr),weights=printColumnWeights(cols).columns,usable=W-margin*2-18,widths=weights.map(p=>usable*p/100);
     let page=null,y=0,serial=0,lastSeg='',lastCat='',lastVeh='',lastModel='';
 
+    const drawVerticalGrid=(topY,bottomY)=>{
+      let gx=margin+18;
+      page.cmd.push(`0.69 0.76 0.84 RG 0.32 w ${gx.toFixed(2)} ${bottomY.toFixed(2)} m ${gx.toFixed(2)} ${topY.toFixed(2)} l S`);
+      for(let i=0;i<widths.length;i++){
+        gx+=widths[i];
+        page.cmd.push(`0.69 0.76 0.84 RG 0.32 w ${gx.toFixed(2)} ${bottomY.toFixed(2)} m ${gx.toFixed(2)} ${topY.toFixed(2)} l S`);
+      }
+    };
     const drawColumnHeader=()=>{
       let x=margin;
-      page.cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re f`);
+      const top=H-y,bottom=H-y-rowH;
+      page.cmd.push(`${rgb(14,51,126)} rg ${margin} ${bottom} ${W-margin*2} ${rowH} re f`);
+      page.cmd.push(`0.30 0.48 0.70 RG 0.45 w ${margin} ${bottom} ${W-margin*2} ${rowH} re S`);
       page.cmd.push(`BT /F2 4.8 Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (#) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
         const max=Math.max(3,Math.floor(widths[i]/3));
         page.cmd.push(`BT /F2 4.8 Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (${esc(truncText(cols[i],max))}) Tj ET`);
         x+=widths[i];
       }
+      drawVerticalGrid(top,bottom);
       y+=rowH;
     };
 
     const newPage=()=>{
       page={group,cols,widths,cmd:[],brandLogoB64:pdfEmbeddedLogoB64(group)};pages.push(page);y=contentTop;
 
-      // JUNE MASTER HEADER: compact, balanced, fixed.
-      // Orange bottom rule
-      page.cmd.push(`${rgb(245,176,14)} rg ${margin} ${H-77} ${W-margin*2} 3 re f`);
+      // Professional fixed header: logos stay in their own left/right boxes;
+      // the selected GROUP title remains mathematically centered on every page.
+      page.cmd.push(pdfCenteredText(group,15.2,H-38,'F2',rgb(14,51,126)));
+      page.cmd.push(pdfCenteredText('LIVE PRICE BOOK',6.5,H-50,'F2',rgb(14,51,126)));
 
-      // Center title block
-      page.cmd.push(pdfCenteredText('RAJ AGENCIES',7.6,H-31,'F2',rgb(220,108,11)));
-      page.cmd.push(pdfCenteredText(group,14.5,H-47,'F2',rgb(14,51,126)));
-      page.cmd.push(pdfCenteredText('LIVE PRICE BOOK',6.2,H-58,'F2',rgb(14,51,126)));
+      // Only Company List Date is required under the title. No product/column/update counters.
+      const listText=`COMPANY LIST DATE: ${listDateForRows(gr)}`;
+      const listW=132,listX=(W-listW)/2;
+      page.cmd.push(`0.42 0.67 0.88 RG 0.975 0.988 1 rg ${listX.toFixed(2)} ${H-67} ${listW} 10 re B`);
+      page.cmd.push(`BT /F2 4.8 Tf 0.12 0.20 0.32 rg ${(listX+8).toFixed(2)} ${H-60.5} Td (${esc(listText)}) Tj ET`);
 
-      // Small boxed metadata row like June PDF
-      const metaItems=[
-        `COMPANY LIST DATE: ${listDateForRows(gr)}`,
-        `LAST UPDATED: ${lastUpdated.toLocaleDateString('en-GB')}`,
-        `${gr.length} PRODUCTS`,
-        `${cols.length} COLUMNS`
-      ];
-      const starts=[220,340,456,532], widthsMeta=[112,108,70,68];
-      for(let i=0;i<metaItems.length;i++){
-        page.cmd.push(`0.42 0.67 0.88 RG 0.965 0.985 1 rg ${starts[i]} ${H-72} ${widthsMeta[i]} 9 re B`);
-        page.cmd.push(`BT /F2 4.5 Tf 0.12 0.20 0.32 rg ${starts[i]+3} ${H-66} Td (${esc(metaItems[i])}) Tj ET`);
-      }
+      // Separator is below both logos and metadata; it can never cross a logo.
+      page.cmd.push(`${rgb(245,176,14)} rg ${margin} ${H-80} ${W-margin*2} 2.2 re f`);
       drawColumnHeader();
       lastSeg='';lastCat='';lastVeh='';lastModel='';
     };
@@ -1053,7 +1056,6 @@ function fastPdfPages(){
       page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re f`);
       page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re S`);
       page.cmd.push(`BT /F2 ${level===1?6.2:5.7} Tf ${rgb(...tc)} rg ${margin+4+(level-1)*8} ${H-y-7.7} Td (${esc(label+'  '+value)}) Tj ET`);
-      if(count)page.cmd.push(`BT /F2 4.9 Tf ${rgb(...tc)} rg ${W-margin-60} ${H-y-7.7} Td (${esc(count+' Products')}) Tj ET`);
       y+=bandH;
     };
 
@@ -1080,7 +1082,8 @@ function fastPdfPages(){
       if(y+rowH>H-24)newPage();
       serial++;let x=margin;
       if(serial%2===0)page.cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re f`);
-      page.cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re S`);
+      page.cmd.push(`0.72 0.76 0.82 RG 0.35 w ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re S`);
+      drawVerticalGrid(H-y,H-y-rowH);
       page.cmd.push(`BT /F1 4.9 Tf 0 0 0 rg ${x+2} ${H-y-6.7} Td (${serial}) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
         const val=getField(r,cols[i]),max=Math.max(3,Math.floor(widths[i]/2.8));
@@ -1101,13 +1104,19 @@ async function buildFastPdfBlob(){
   const gs=add('<< /Type /ExtGState /ca 0.065 /CA 0.065 >>');
   const wm=add(pdfImageObject(jpeg));
   const logo=add(pdfImageObject(company));
+  const companyDims=pdfJpegDimensions(company);
+  const fitImage=(name,dims,bx,by,bw,bh)=>{
+    const iw=Math.max(1,dims.width||1),ih=Math.max(1,dims.height||1),scale=Math.min(bw/iw,bh/ih);
+    const w=iw*scale,h=ih*scale,x=bx+(bw-w)/2,y=by+(bh-h)/2;
+    return `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /${name} Do Q\n`;
+  };
 
   const brandObjects=new Map();
   for(const p of pages){
     const b64=p.brandLogoB64||'';
     if(b64&&!brandObjects.has(b64)){
       const bytes=b64Bytes(b64);
-      brandObjects.set(b64,add(pdfImageObject(bytes)));
+      brandObjects.set(b64,{id:add(pdfImageObject(bytes)),dims:pdfJpegDimensions(bytes)});
     }
   }
 
@@ -1125,9 +1134,11 @@ async function buildFastPdfBlob(){
 
     // clean watermark + fixed logos
     content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
-    content+=`q 68 0 0 40 28 508 cm /ImLogo Do Q\n`;
-    const brandId=brandObjects.get(p.brandLogoB64||'')||0;
-    if(brandId)content+=`q 78 0 0 39 738 509 cm /ImBrand Do Q\n`;
+    // Fixed header logo boxes, aspect-ratio preserved. Both brands use equal visual boxes.
+    content+=fitImage('ImLogo',companyDims,28,526,82,43);
+    const brandEntry=brandObjects.get(p.brandLogoB64||'')||null;
+    const brandId=brandEntry?brandEntry.id:0;
+    if(brandEntry)content+=fitImage('ImBrand',brandEntry.dims,732,526,82,43);
     content+=p.cmd.join('\n');
 
     const cb=latin1Bytes(content),cobj=add({bin:cb,head:`<< /Length ${cb.length} >>`});
