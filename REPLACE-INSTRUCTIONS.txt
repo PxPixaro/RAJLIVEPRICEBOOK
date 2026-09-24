@@ -1,12 +1,10 @@
-V82.9 LIVE VIEW BY GRID + PDF FIX
+RAJ V82.10 FAST PDF
 
-Replace only:
+Replace ONLY these GitHub files:
 1) /index.html
 2) /js/app.js
 
-Master Excel remains only:
-/data/price-book.xlsx
+Do NOT change or delete /data/price-book.xlsx.
 
-Do NOT recreate /assets/data.
-
-Fix: after live Excel is loaded, FAST_ROWS is rebuilt synchronously before filters/grid render. Previously a sparse same-length FAST_ROWS array could make the live Excel refresh fail during applyFilters(), leaving the old bundled hierarchy visible. Grid and PDF both continue to use viewByFields().
+Change: PDF download no longer re-downloads/re-parses the Excel on every click.
+It uses the already-loaded filtered data, so Grid and PDF keep the same VIEW BY hierarchy.
