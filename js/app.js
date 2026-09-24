@@ -1865,7 +1865,7 @@ async function refreshHostedPriceWorkbook(){
   if(!/^https?:$/.test(location.protocol))return false;
   try{
     $('#syncStatus').innerHTML='<span class="dot"></span> Checking GitHub Excel…';
-    const response=await fetch('assets/data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});
+    const response=await fetch('data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});
     if(!response.ok)throw new Error('Hosted price-book.xlsx not found');
     const records=await readPriceWorkbookBuffer(await response.arrayBuffer());
     const previousGroup=clean($('#groupFilter').value);
@@ -1916,7 +1916,7 @@ async function refreshHostedPriceWorkbook(){
   window.addEventListener('raj-auth-ready',v65StartAfterAuth,{once:true});
   if(window.RAJ_AUTH_READY)v65StartAfterAuth();
 
-  const V71_BUNDLED_PRICEBOOK_SHA256='88ec6f77150cb0f1799567ef9fc79c462eef8dddb4785cf91c12ba1d1b0ac4cc';
+  const V71_BUNDLED_PRICEBOOK_SHA256='1b69b95c4024fcfbc2e2b3e9e502f46472a968634afdf7c7df30473719a8ac23';
   async function v71Sha256Hex(buf){
     try{const dig=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(dig)].map(b=>b.toString(16).padStart(2,'0')).join('')}catch(e){return ''}
   }
@@ -1932,7 +1932,7 @@ async function refreshHostedPriceWorkbook(){
   const v71CheckHostedPrice=async()=>{
     if(!/^https?:$/.test(location.protocol))return;
     try{
-      const r=await fetch('assets/data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});if(!r.ok)return;
+      const r=await fetch('data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});if(!r.ok)return;
       const buf=await r.arrayBuffer(),hash=await v71Sha256Hex(buf);
       if(hash&&hash===V71_BUNDLED_PRICEBOOK_SHA256)return;
       const apply=()=>v71ApplyHostedBuffer(buf);

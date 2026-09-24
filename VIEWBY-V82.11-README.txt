@@ -1,0 +1,30 @@
+V82.11 VIEW BY CANONICAL FIX
+
+MASTER EXCEL (only source):
+/data/price-book.xlsx
+
+ROOT CAUSE FOUND IN THIS DOWNLOADED PROJECT:
+1) js/app.js was still fetching assets/data/price-book.xlsx in TWO places.
+2) assets/data no longer exists, so hosted Excel refresh failed.
+3) js/data.js was stale fallback data. Its Aayub rows had VIEW BY = CATAGORIES, SEGMENT, VEHICLE.
+4) Actual /data/price-book.xlsx has Aayub VIEW BY = CATAGORIES, SEGMENT.
+That is why VEHICLE kept appearing in Grid/PDF even after replacing the Excel.
+
+FILES CHANGED:
+/index.html
+/js/app.js
+/js/data.js
+/tools/build-data.py
+
+EXPECTED RULE:
+VIEW BY is read by heading name, not Excel column letter.
+CATAGORIES, SEGMENT => Categories > Segment > Products
+SEGMENT, CATAGORIES => Segment > Categories > Products
+CATAGORIES, SEGMENT, VEHICLE, MODEL => Categories > Segment > Vehicle > Model > Products
+Blank hierarchy values => OTHER
+Grid and PDF use the same VIEW BY engine.
+
+FUTURE EXCEL UPDATE:
+Replace ONLY /data/price-book.xlsx and commit/deploy.
+The hosted app reads this file with cache:no-store + timestamp.
+js/data.js is now regenerated from the same Excel as a matching startup/offline fallback.

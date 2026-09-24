@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build compact browser data from assets/data/price-book.xlsx using only stdlib."""
+"""Build compact browser data from data/price-book.xlsx using only stdlib."""
 from __future__ import annotations
 
 import json
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "assets" / "data" / "price-book.xlsx"
+SOURCE = ROOT / "data" / "price-book.xlsx"
 TARGET = ROOT / "js" / "data.js"
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 
@@ -128,7 +128,7 @@ def main() -> int:
     headers, rows = load_rows(SOURCE)
     dictionaries, compact_rows = compact(headers, rows)
     payload = (
-        "/* V32 compact dictionary data generated from assets/data/price-book.xlsx. */\n"
+        "/* V32 compact dictionary data generated from data/price-book.xlsx. */\n"
         f"window.PRICEBOOK_DATA_FORMAT={json.dumps('DICT_V1')};"
         f"window.PRICEBOOK_COLUMNS={json.dumps(headers, ensure_ascii=False, separators=(',', ':'))};"
         f"window.PRICEBOOK_DICTIONARIES={json.dumps(dictionaries, ensure_ascii=False, separators=(',', ':'))};"
