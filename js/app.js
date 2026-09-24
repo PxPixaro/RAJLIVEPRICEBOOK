@@ -432,15 +432,14 @@ function productImageCandidates(row){
 }
 
 function productThumbnailCandidates(row){
-  const seen=new Set();
-  return productImageCandidates(row).map(path=>{
-    const thumb=path
-      .replace('assets/Products Images/','assets/Products Thumbs/')
-      .replace(/\.(webp|png|jpe?g)$/i,'.webp');
-    if(seen.has(thumb))return '';
-    seen.add(thumb);
-    return thumb;
-  }).filter(Boolean);
+  const seen=new Set(), originals=productImageCandidates(row), output=[];
+  // Prefer optimized thumbnails, then fall back to the real product image.
+  originals.forEach(path=>{
+    const thumb=path.replace('assets/Products Images/','assets/Products Thumbs/').replace(/\.(webp|png|jpe?g)$/i,'.webp');
+    if(!seen.has(thumb)){seen.add(thumb);output.push(thumb)}
+  });
+  originals.forEach(path=>{if(!seen.has(path)){seen.add(path);output.push(path)}});
+  return output;
 }
 
 let imageZoom=1;
@@ -1138,14 +1137,10 @@ function priceListPdfFileName(){
   return safePdfName(clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST')+'.pdf';
 }
 async function createCompletePriceListPdfBlob(){
-  // PDF must follow the latest GitHub Excel VIEW BY, not a bundled/cached copy.
-  // refreshHostedPriceWorkbook locates VIEW BY by heading name, so its Excel column letter can move freely.
-  if(/^https?:$/.test(location.protocol)){
-    try{await refreshHostedPriceWorkbook()}catch(e){console.warn('Latest Excel refresh before PDF skipped',e)}
-  }
+  // V82.12 FAST PDF: the hosted Excel is already loaded by the app startup refresh.
+  // Do NOT download/parse/re-index the workbook again on every PDF click.
+  // Grid and PDF therefore use the exact same already-loaded `filtered` rows / VIEW BY state.
   if(!Array.isArray(filtered)||!filtered.length)throw new Error('Current filters me koi product nahi hai');
-  // IMPORTANT: buildFastPdfBlob reads the complete `filtered` array, not rendered/current-page DOM rows.
-  await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,15)));
   const blob=await buildFastPdfBlob();
   if(!blob||!blob.size)throw new Error('PDF output is empty');
   return blob;
