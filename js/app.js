@@ -1138,11 +1138,9 @@ function priceListPdfFileName(){
   return safePdfName(clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST')+'.pdf';
 }
 async function createCompletePriceListPdfBlob(){
-  // PDF must follow the latest GitHub Excel VIEW BY, not a bundled/cached copy.
-  // refreshHostedPriceWorkbook locates VIEW BY by heading name, so its Excel column letter can move freely.
-  if(/^https?:$/.test(location.protocol)){
-    try{await refreshHostedPriceWorkbook()}catch(e){console.warn('Latest Excel refresh before PDF skipped',e)}
-  }
+  // V82.10 FAST PDF: the hosted Excel is already loaded/refreshed by app startup.
+  // Do NOT download and parse data/price-book.xlsx again on every PDF click.
+  // Grid and PDF both use the same current `filtered` rows and VIEW BY hierarchy.
   if(!Array.isArray(filtered)||!filtered.length)throw new Error('Current filters me koi product nahi hai');
   // IMPORTANT: buildFastPdfBlob reads the complete `filtered` array, not rendered/current-page DOM rows.
   await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,15)));
