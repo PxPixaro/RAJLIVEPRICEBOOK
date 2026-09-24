@@ -1138,9 +1138,11 @@ function priceListPdfFileName(){
   return safePdfName(clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST')+'.pdf';
 }
 async function createCompletePriceListPdfBlob(){
-  // V82.10 FAST PDF: the hosted Excel is already loaded/refreshed by app startup.
-  // Do NOT download and parse data/price-book.xlsx again on every PDF click.
-  // Grid and PDF both use the same current `filtered` rows and VIEW BY hierarchy.
+  // PDF must follow the latest GitHub Excel VIEW BY, not a bundled/cached copy.
+  // refreshHostedPriceWorkbook locates VIEW BY by heading name, so its Excel column letter can move freely.
+  if(/^https?:$/.test(location.protocol)){
+    try{await refreshHostedPriceWorkbook()}catch(e){console.warn('Latest Excel refresh before PDF skipped',e)}
+  }
   if(!Array.isArray(filtered)||!filtered.length)throw new Error('Current filters me koi product nahi hai');
   // IMPORTANT: buildFastPdfBlob reads the complete `filtered` array, not rendered/current-page DOM rows.
   await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,15)));
@@ -1328,13 +1330,6 @@ function viewByFields(rows){
   });
   if(fields.length)return fields;
 
-  // V82.7 strict VIEW BY: when the workbook contains a VIEW BY column, blank means
-  // no hierarchy. Never inject VEHICLE/MODEL/CATEGORY implicitly. This keeps the
-  // on-screen grid and downloaded PDF governed by the exact same Excel setting.
-  const hasViewByColumn=!!existingColumnByAliases(['VIEW BY','VIEWBY']);
-  if(hasViewByColumn)return [];
-
-  // Legacy fallback only for very old workbooks that do not have VIEW BY at all.
   const subGroup=existingColumnByAliases(['SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME']);
   if(subGroup&&rows.some(row=>!isEmpty(getField(row,subGroup))))return [subGroup];
   const category=existingColumnByAliases(['CATAGORIES','CATEGORIES','CATEGORY']);
@@ -1801,7 +1796,7 @@ $('#excelFile').onchange=async e=>{
     if(typeof window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK==='function')window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK(wb);
     const records=normalizeRows(rows);
     if(!records.length||!('GROUP' in records[0]))throw new Error('GROUP column missing');
-    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;buildFastRows();V68_PRELOAD={index:allData.length,fast:allData.length,running:false,ready:true,data:allData};catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     let saved=false;
     try{
@@ -1866,33 +1861,15 @@ async function readPriceWorkbookBuffer(buffer){
   if(!records.length||!Object.prototype.hasOwnProperty.call(records[0],'GROUP'))throw new Error('GROUP column missing');
   return records;
 }
-async function fetchLatestHostedPriceBookBuffer(){
-  // V82.8: data/price-book.xlsx is the canonical GitHub master workbook.
-  // Historical locations are fallback-only, used only when the canonical file is missing.
-  // This prevents an older assets/data copy from overriding the latest VIEW BY settings.
-  // Cache-busting prevents GitHub Pages/browser cache from serving an older workbook.
-  const candidates=['data/price-book.xlsx'];
-  let lastError=null;
-  for(const path of candidates){
-    try{
-      const joiner=path.includes('?')?'&':'?';
-      const response=await fetch(path+joiner+'ts='+Date.now(),{cache:'no-store'});
-      if(!response.ok){lastError=new Error(path+' HTTP '+response.status);continue}
-      const buffer=await response.arrayBuffer();
-      if(buffer && buffer.byteLength>1000)return {buffer,path};
-      lastError=new Error(path+' returned an empty workbook');
-    }catch(error){lastError=error}
-  }
-  throw lastError||new Error('Hosted price-book.xlsx not found');
-}
 async function refreshHostedPriceWorkbook(){
   if(!/^https?:$/.test(location.protocol))return false;
   try{
     $('#syncStatus').innerHTML='<span class="dot"></span> Checking GitHub Excel…';
-    const latest=await fetchLatestHostedPriceBookBuffer();
-    const records=await readPriceWorkbookBuffer(latest.buffer);
+    const response=await fetch('assets/data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});
+    if(!response.ok)throw new Error('Hosted price-book.xlsx not found');
+    const records=await readPriceWorkbookBuffer(await response.arrayBuffer());
     const previousGroup=clean($('#groupFilter').value);
-    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;buildFastRows();V68_PRELOAD={index:allData.length,fast:allData.length,running:false,ready:true,data:allData};catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     buildCatalogMenu();
     const masterGroups=masterValuesForFilter('groupFilter');
@@ -1947,7 +1924,7 @@ async function refreshHostedPriceWorkbook(){
     try{
       const records=await readPriceWorkbookBuffer(buf);if(!records?.length)return false;
       const previousGroup=clean($('#groupFilter')?.value);
-      allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;buildFastRows();V68_PRELOAD={index:allData.length,fast:allData.length,running:false,ready:true,data:allData};catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+      allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
       if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
       buildCatalogMenu();const groups=masterValuesForFilter('groupFilter').length?masterValuesForFilter('groupFilter'):unique(allData,'GROUP');options($('#groupFilter'),groups,'All groups');$('#groupFilter').value=groups.includes(previousGroup)?previousGroup:'';if(!$('#groupFilter').value)setDefaultGroupBrand(true);cascade();applyFilters();return true;
     }catch(e){console.warn('Hosted Excel apply skipped',e);return false}
@@ -1955,8 +1932,8 @@ async function refreshHostedPriceWorkbook(){
   const v71CheckHostedPrice=async()=>{
     if(!/^https?:$/.test(location.protocol))return;
     try{
-      const latest=await fetchLatestHostedPriceBookBuffer();
-      const buf=latest.buffer,hash=await v71Sha256Hex(buf);
+      const r=await fetch('assets/data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});if(!r.ok)return;
+      const buf=await r.arrayBuffer(),hash=await v71Sha256Hex(buf);
       if(hash&&hash===V71_BUNDLED_PRICEBOOK_SHA256)return;
       const apply=()=>v71ApplyHostedBuffer(buf);
       const afterAuth=()=>{if('requestIdleCallback' in window)requestIdleCallback(apply,{timeout:5000});else setTimeout(apply,2500)};
