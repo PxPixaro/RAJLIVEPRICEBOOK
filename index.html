@@ -22,7 +22,7 @@
   } catch (error) {}
   </script>
   <script src="js/pdf-brand-logos.js?v=81-june-master"></script>
-<script defer src="js/app.js?v=82.11-viewby-canonical"></script>
+<script defer src="js/app.js?v=82.12-fastpdf-thumbs-clean"></script>
   <script defer src="js/v45-config.js?v=82"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
@@ -431,6 +431,11 @@
 }
 
 </style>
+
+  <style id="v82-12-clean-admin-tools">
+    #syncBtn,#syncFilterMasterBtn,#syncCatalogBtn,#liveApiSyncBtn{display:none!important}
+  </style>
+
 </head>
 <body><div class="print-watermark-layer" aria-hidden="true">
   <img class="print-watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">
@@ -848,7 +853,6 @@
         lens.className='thumb-magnifier';
         lens.innerHTML=lensSvg;
         button.appendChild(image);
-        button.appendChild(lens);
 
         const candidates=productThumbnailCandidates(row);
         let position=0;
@@ -860,6 +864,7 @@
           }else{
             image.remove();
             button.classList.add('thumb-missing');
+            button.appendChild(lens);
             lens.innerHTML=lensSvg;
           }
         };

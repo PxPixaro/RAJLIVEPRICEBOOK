@@ -1,10 +1,4 @@
-RAJ V82.10 FAST PDF
-
-Replace ONLY these GitHub files:
-1) /index.html
-2) /js/app.js
-
-Do NOT change or delete /data/price-book.xlsx.
-
-Change: PDF download no longer re-downloads/re-parses the Excel on every click.
-It uses the already-loaded filtered data, so Grid and PDF keep the same VIEW BY hierarchy.
+Replace only:
+/index.html
+/js/app.js
+Do not replace price-book.xlsx for this patch.
