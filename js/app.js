@@ -1089,25 +1089,46 @@ function pdfIndexFitFont(text,width,maxSize=8,minSize=4.0){
   return Math.max(minSize,Math.min(maxSize,fit));
 }
 function buildGroupIndexPages(productPages){
-  // V87: complete price book begins with a clean, logo-assisted group index.
+  // V90: de-duplicated, logo-assisted group index with adaptive Details wrapping.
   if(clean($('#groupFilter').value)||!productPages.length)return [];
   const portrait=!!productPages[0].adminPortrait,W=productPages[0].W||842,H=productPages[0].H||595;
-  const margin=portrait?18:22,rowH=portrait?17:15,heroH=58,headerH=21,top=24,bottom=20;
-  const rowsPerPage=Math.max(1,Math.floor((H-top-heroH-headerH-bottom)/rowH));
-  const order=[],ranges=new Map();
-  productPages.forEach((p,i)=>{
-    const group=clean(p.group)||'OTHER';
-    if(!ranges.has(group)){ranges.set(group,{first:i+1,last:i+1});order.push(group)} else ranges.get(group).last=i+1;
-  });
-  const pageCount=Math.ceil(order.length/rowsPerPage);
+  const margin=portrait?18:22,baseRowH=portrait?18.5:16.5,wrapRowH=portrait?29:26,heroH=58,headerH=21,top=24,bottom=20;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
   const usable=W-margin*2;
-  // Sub Group intentionally removed: SR NO. / GROUP / DETAILS / PAGE NO.
+  // SR NO. / GROUP / DETAILS / PAGE NO. — Sub Group intentionally omitted.
   const base=portrait?[34,150,298,77]:[40,185,487,86];
-  const scale=usable/base.reduce((a,b)=>a+b,0),widths=base.map(v=>v*scale),pages=[];
-  for(let pi=0;pi<pageCount;pi++){
+  const scale=usable/base.reduce((a,b)=>a+b,0),widths=base.map(v=>v*scale);
+
+  // Merge duplicate group labels (case/punctuation variants) into one index entry.
+  const entries=[],byKey=new Map();
+  productPages.forEach((p,i)=>{
+    const display=clean(p.group)||'OTHER',key=indexGroupKey(display)||display.toUpperCase();
+    let e=byKey.get(key);
+    if(!e){e={key,group:display,first:i+1,last:i+1};byKey.set(key,e);entries.push(e)}
+    else{e.first=Math.min(e.first,i+1);e.last=Math.max(e.last,i+1)}
+  });
+
+  // Normal descriptions remain shrink-to-fit. Only exceptionally long descriptions wrap to 2 lines.
+  const detailsWidth=widths[2];
+  entries.forEach(e=>{
+    e.details=groupIndexDetails(e.group);
+    const fit=pdfIndexFitFont(e.details,detailsWidth,8.1,4.2);
+    e.wrapDetails=!!e.details && fit<=4.21 && pdfAscii(e.details).length>70;
+    e.rowH=e.wrapDetails?wrapRowH:baseRowH;
+  });
+
+  // Paginate by actual row heights so wrapped rows never collide with the footer/page number.
+  const available=H-top-heroH-headerH-bottom,indexSlices=[];let slice=[],used=0;
+  entries.forEach(e=>{
+    if(slice.length && used+e.rowH>available){indexSlices.push(slice);slice=[];used=0}
+    slice.push(e);used+=e.rowH;
+  });
+  if(slice.length)indexSlices.push(slice);
+  const pageCount=indexSlices.length;
+  const pages=[];
+
+  indexSlices.forEach((slice,pi)=>{
     const cmd=[],indexLogos=[],indexLinks=[];let y=top;
-    // Premium blue/orange boxed heading. Company logo is rendered by buildFastPdfBlob.
     cmd.push(`0.985 0.975 0.935 rg ${margin} ${H-y-heroH} ${usable} ${heroH} re f`);
     cmd.push(`${rgb(14,51,126)} RG ${margin} ${H-y-heroH} ${usable} ${heroH} re S`);
     cmd.push(`${rgb(245,176,14)} rg ${margin} ${H-y-heroH} 7 ${heroH} re f`);
@@ -1120,47 +1141,54 @@ function buildGroupIndexPages(productPages){
     cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${usable} ${headerH} re f`);
     let x=margin;const heads=['SR NO.','GROUP','DETAILS','PAGE NO.'];
     heads.forEach((h,i)=>{const size=pdfIndexFitFont(h,widths[i],8.3,5.8);cmd.push(`BT /F2 ${size.toFixed(2)} Tf 1 1 1 rg ${x+3} ${H-y-13.2} Td (${pdfAscii(h)}) Tj ET`);x+=widths[i]});y+=headerH;
-    const start=pi*rowsPerPage,end=Math.min(order.length,start+rowsPerPage);
-    for(let oi=start;oi<end;oi++){
-      const group=order[oi],rr=ranges.get(group),a=rr.first+pageCount,b=rr.last+pageCount,pageText=a===b?String(a):`${a}-${b}`;
-      const details=groupIndexDetails(group),vals=[String(oi+1),group,details,pageText];
-      if((oi-start)%2===1)cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${usable} ${rowH} re f`);
+
+    slice.forEach(e=>{
+      const oi=entries.indexOf(e),rowH=e.rowH;
+      const a=e.first+pageCount,b=e.last+pageCount,pageText=a===b?String(a):`${a}-${b}`;
+      if(oi%2===1)cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${usable} ${rowH} re f`);
       cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${usable} ${rowH} re S`);x=margin;
+      const vals=[String(oi+1),e.group,e.details,pageText];
       for(let i=0;i<widths.length;i++){
         if(i>0)cmd.push(`0.82 0.85 0.89 RG ${x} ${H-y-rowH} m ${x} ${H-y} l S`);
         const val=vals[i];
         if(i===1){
-          // Reserve the left side of Group cell for a small brand logo.
-          const logoB64=pdfEmbeddedLogoB64(group);
-          const logoW=Math.min(25,widths[i]*.20),logoH=Math.min(12,rowH-3);
+          // V90: slightly larger group logo, vertically centered; group name remains left aligned.
+          const logoB64=pdfEmbeddedLogoB64(e.group);
+          const logoW=Math.min(32,widths[i]*.24),logoH=Math.min(16,rowH-3);
           if(logoB64)indexLogos.push({b64:logoB64,x:x+3,y:H-y-rowH+(rowH-logoH)/2,w:logoW,h:logoH});
-          const textX=x+(logoB64?logoW+7:3),textW=widths[i]-(logoB64?logoW+9:5);
-          const size=pdfIndexFitFont(val,textW,8.4,5.2);
-          cmd.push(`BT /F2 ${size.toFixed(2)} Tf 0.04 0.20 0.46 rg ${textX} ${H-y-11.2} Td (${pdfAscii(val)}) Tj ET`);
+          const textX=x+(logoB64?logoW+8:3),textW=widths[i]-(logoB64?logoW+10:5);
+          const size=pdfIndexFitFont(val,textW,8.4,5.2),textY=H-y-rowH/2-size*.34;
+          cmd.push(`BT /F2 ${size.toFixed(2)} Tf 0.04 0.20 0.46 rg ${textX} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
         }else if(i===2){
-          // Details always stay on one line and shrink-to-fit only when needed.
-          const size=pdfIndexFitFont(val,widths[i],8.1,4.2);
-          cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${H-y-11.2} Td (${pdfAscii(val)}) Tj ET`);
+          if(e.wrapDetails){
+            const lines=pdfWrapText(val,widths[i]-2,6.4,2),lineGap=8.2;
+            const firstY=H-y-rowH/2+(lines.length-1)*lineGap/2-2.2;
+            lines.forEach((line,li)=>{
+              const size=pdfIndexFitFont(line,widths[i]-2,6.4,5.0);
+              cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${(firstY-li*lineGap).toFixed(2)} Td (${pdfAscii(line)}) Tj ET`);
+            });
+          }else{
+            const size=pdfIndexFitFont(val,widths[i],8.1,4.2),textY=H-y-rowH/2-size*.34;
+            cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
+          }
         }else{
-          const size=pdfIndexFitFont(val,widths[i],8.1,5.6);
-          cmd.push(`BT /${i===3?'F2':'F1'} ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${H-y-11.2} Td (${pdfAscii(val)}) Tj ET`);
+          const size=pdfIndexFitFont(val,widths[i],8.1,5.6),textY=H-y-rowH/2-size*.34;
+          cmd.push(`BT /${i===3?'F2':'F1'} ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
         }
         x+=widths[i];
       }
-      // Group and Page No. cells both jump to the first page of that group.
       const groupX=margin+widths[0],pageX=margin+widths[0]+widths[1]+widths[2];
-      const targetPageNumber=a;
-      indexLinks.push({x:groupX,y:H-y-rowH,w:widths[1],h:rowH,targetPageNumber});
-      indexLinks.push({x:pageX,y:H-y-rowH,w:widths[3],h:rowH,targetPageNumber});
+      indexLinks.push({x:groupX,y:H-y-rowH,w:widths[1],h:rowH,targetPageNumber:a});
+      indexLinks.push({x:pageX,y:H-y-rowH,w:widths[3],h:rowH,targetPageNumber:a});
       y+=rowH;
-    }
+    });
     pages.push({group:'INDEX',cols:heads,widths,cmd,brandLogoB64:'',indexLogos,indexLinks,W,H,adminPortrait:portrait,isIndex:true});
-  }
+  });
   return pages;
 }
 
 function fastPdfPages(){
-  // V89: every customer and admin PDF uses the same A4 portrait layout.
+  // V90: every customer and admin PDF uses the same A4 portrait layout.
   // BF visibility remains Pixaro-admin-only.
   const pixaroAdmin=isPixaroAdminPdfMode();
   const adminPortrait=true;
