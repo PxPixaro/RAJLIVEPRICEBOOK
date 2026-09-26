@@ -1317,6 +1317,7 @@ async function buildFastPdfBlob(){
   for(let pageIndex=0;pageIndex<pages.length;pageIndex++){
     const p=pages[pageIndex];
     const W=p.W||842,H=p.H||595,portrait=!!p.adminPortrait;
+    const pageMargin=portrait?18:22;
     const generated=new Date().toLocaleString('en-GB',{hour12:true});
     const docTitle=p.isIndex?'Group-wise Price Book Index':(clean($('#groupFilter').value)?clean($('#groupFilter').value)+' Filtered Pricelist':'All Groups Filtered Pricelist');
 
@@ -1331,11 +1332,11 @@ async function buildFastPdfBlob(){
     // Customer mode remains the current landscape layout. Pixaro Admin gets A4 portrait.
     if(portrait){
       if(!p.isIndex){const wmW=420,wmH=280,wmX=(W-wmW)/2,wmY=(H-wmH)/2-10;content+=`q /GS1 gs ${wmW} 0 0 ${wmH} ${wmX} ${wmY} cm /ImWM Do Q\n`;}
-      content+=p.isIndex?`q 72 0 0 39 ${margin+9} ${H-70} cm /ImLogo Do Q\n`:`q 58 0 0 31 24 ${H-57} cm /ImLogo Do Q\n`;
+      content+=p.isIndex?`q 72 0 0 39 ${pageMargin+9} ${H-70} cm /ImLogo Do Q\n`:`q 58 0 0 31 24 ${H-57} cm /ImLogo Do Q\n`;
       if(brandId)content+=`q 68 0 0 31 ${W-92} ${H-57} cm /ImBrand Do Q\n`;
     }else{
       if(!p.isIndex)content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
-      content+=p.isIndex?`q 78 0 0 42 ${margin+10} ${H-72} cm /ImLogo Do Q\n`:`q 64 0 0 34 30 ${H-57} cm /ImLogo Do Q\n`;
+      content+=p.isIndex?`q 78 0 0 42 ${pageMargin+10} ${H-72} cm /ImLogo Do Q\n`:`q 64 0 0 34 30 ${H-57} cm /ImLogo Do Q\n`;
       if(brandId)content+=`q 78 0 0 34 ${W-104} ${H-57} cm /ImBrand Do Q\n`;
     }
     let indexLogoResources='';
