@@ -138,12 +138,33 @@ applyFilters=function(resetPage=true,doCascade=false){
   visibleColumns=visibleColumnsForRows(columnRows);document.body.classList.toggle('table-compact',visibleColumns.length>12);if(resetPage)page=1;render();updateSpecialNote();
 };
 
-// Product row retains existing table shape; cart controls live under Image so print hierarchy stays stable.
+// V83: show the actual mini product photo in the Image / Order column.
+// Optimized thumbnail is tried first; when no image exists a compact Coming Soon tile is shown.
+function v83ThumbMarkup(row,idx){
+  let candidates=[];
+  try{if(typeof productThumbnailCandidates==='function')candidates=productThumbnailCandidates(row)}catch(e){}
+  const encoded=encodeURIComponent(JSON.stringify(candidates||[]));
+  const first=(candidates&&candidates[0])||'';
+  return '<button class="view-image-btn product-thumb-btn'+(first?'':' thumb-missing')+'" type="button" data-row-index="'+idx+'" data-thumb-candidates="'+encoded+'" title="View product image">'+
+    (first?'<img class="product-thumb" src="'+escAttr(first)+'" alt="" loading="lazy" decoding="async">':'')+
+    '<span class="thumb-coming-soon" '+(first?'hidden':'')+'>Coming<br>Soon…</span>'+
+    '<span class="thumb-magnifier" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></button>';
+}
 gridProductRow=function(row,serial){
   const idx=rowSourceIndex(row); const qtyId='v45qty-'+idx;
   return '<tr><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{const value=field(row,column),key=keyOf(column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'">'+escapeHtml(value)+'</td>'}).join('')+
-  '<td class="image-col"><div class="v46-image-order-line"><div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD</button></div><button class="view-image-btn" type="button" data-row-index="'+idx+'" title="View product image">Image</button></div></td></tr>';
+  '<td class="image-col"><div class="v46-image-order-line"><div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD</button></div>'+v83ThumbMarkup(row,idx)+'</div></td></tr>';
 };
+
+// Cycle image candidates without re-rendering the row.
+document.addEventListener('error',function(e){
+  const img=e.target;if(!(img instanceof HTMLImageElement)||!img.classList.contains('product-thumb'))return;
+  const btn=img.closest('.product-thumb-btn');if(!btn)return;
+  let list=[];try{list=JSON.parse(decodeURIComponent(btn.dataset.thumbCandidates||''))||[]}catch(_e){}
+  const current=Number(btn.dataset.thumbPos||0)+1;
+  if(current<list.length){btn.dataset.thumbPos=String(current);img.src=list[current];return}
+  img.remove();btn.classList.add('thumb-missing');const coming=btn.querySelector('.thumb-coming-soon');if(coming)coming.hidden=false;
+},true);
 
 function loadCart(){try{V45.cart=JSON.parse(localStorage.getItem('rajCartV45')||'[]');if(!Array.isArray(V45.cart))V45.cart=[]}catch(e){V45.cart=[]}updateCartBadge()}
 function saveCart(){localStorage.setItem('rajCartV45',JSON.stringify(V45.cart));updateCartBadge()}
@@ -533,17 +554,16 @@ function initAuthGate(){
   const splash=q('#v74BootSplash');
   const started=performance.now();
   let quickReady=!!window.RAJ_BOOT_STATE?.quick;
+  let fullReady=!!window.RAJ_FULL_PRELOAD_READY;
   let opened=false;
 
   const openPublicDashboard=()=>{
     if(opened)return;
     const elapsed=performance.now()-started;
-    // Keep splash for at least ~4.8 sec, but do not wait for full data.
-    if(elapsed<4800){setTimeout(openPublicDashboard,4800-elapsed);return}
-    if(!quickReady){
-      // Hard cap ~6.2 sec so customer is never trapped behind loading.
-      if(elapsed<6200){setTimeout(openPublicDashboard,180);return}
-    }
+    // V83: use the visible 5-second Preparing window to finish the heavy cache.
+    if(elapsed<5000){setTimeout(openPublicDashboard,5000-elapsed);return}
+    // Prefer a fully warmed AAYUB dashboard; use 8 sec only as a safety cap on slow devices.
+    if((!quickReady||!fullReady)&&elapsed<8000){setTimeout(openPublicDashboard,120);return}
     opened=true;
     splash?.classList.remove('open');
     setTimeout(()=>splash?.remove(),350);
@@ -559,8 +579,9 @@ function initAuthGate(){
   };
 
   window.addEventListener('raj-boot-ready',()=>{quickReady=true;openPublicDashboard()},{once:true});
-  if(quickReady)openPublicDashboard();
-  setTimeout(openPublicDashboard,4800);
+  window.addEventListener('raj-data-preloaded',()=>{fullReady=true;openPublicDashboard()},{once:true});
+  if(quickReady&&fullReady)openPublicDashboard();
+  setTimeout(openPublicDashboard,5000);
 }
 async function doGateLogin(){
   const rawUser=clean(q('#v46LoginUser')?.value),password=q('#v46LoginPassword')?.value||'',msg=q('#v46LoginMsg');
