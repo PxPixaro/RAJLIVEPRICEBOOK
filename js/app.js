@@ -1160,13 +1160,16 @@ function buildGroupIndexPages(productPages){
 }
 
 function fastPdfPages(){
-  const adminPortrait=isPixaroAdminPdfMode();
-  const sourcePdfRows=adminPortrait?filtered.filter(isAdminPdfRowVisible):filtered;
+  // V89: every customer and admin PDF uses the same A4 portrait layout.
+  // BF visibility remains Pixaro-admin-only.
+  const pixaroAdmin=isPixaroAdminPdfMode();
+  const adminPortrait=true;
+  const sourcePdfRows=pixaroAdmin?filtered.filter(isAdminPdfRowVisible):filtered;
   const rows=sortedRows(sourcePdfRows),grouped=new Map();
   rows.forEach(r=>{const g=clean(getField(r,'GROUP'))||'OTHER';if(!grouped.has(g))grouped.set(g,[]);grouped.get(g).push(r)});
   const selected=clean($('#groupFilter').value);
   const groups=selected?[[selected,grouped.get(selected)||rows]]:[...grouped.entries()].sort((x,y)=>natural(x[0],y[0]));
-  const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=86,rowH=adminPortrait?12.6:10.5,bandH=adminPortrait?14.2:12.4;
+  const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=86,rowH=adminPortrait?14.6:10.5,bandH=adminPortrait?15.6:12.4;
   const esc=pdfAscii;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
 
@@ -1195,11 +1198,11 @@ function fastPdfPages(){
     const drawColumnHeader=()=>{
       let x=margin;
       page.cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${W-margin*2} ${headerH} re f`);
-      page.cmd.push(`BT /F2 ${adminPortrait?'8':'4.8'} Tf 1 1 1 rg ${x+2} ${H-y-(adminPortrait?11.5:6.7)} Td (#) Tj ET`);x+=18;
+      page.cmd.push(`BT /F2 ${adminPortrait?'7.5':'4.8'} Tf 1 1 1 rg ${x+2} ${H-y-(adminPortrait?11.5:6.7)} Td (#) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
         if(adminPortrait){
           const lines=adminPdfHeaderLines(cols[i],widths[i]);
-          lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F2 8 Tf 1 1 1 rg ${x+2} ${H-y-8.2-lineIndex*8.1} Td (${esc(line)}) Tj ET`));
+          lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F2 7.5 Tf 1 1 1 rg ${x+2} ${H-y-8.5-lineIndex*7.8} Td (${esc(line)}) Tj ET`));
         }else{
           const max=Math.max(3,Math.floor(widths[i]/3));
           page.cmd.push(`BT /F2 4.8 Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (${esc(truncText(cols[i],max))}) Tj ET`);
@@ -1257,9 +1260,9 @@ function fastPdfPages(){
         const key=keyOf(col),value=displayFieldValue(r,col);
         // Product Name is always a single line; it uses shrink-to-fit like Excel.
         if(key==='PRODUCT NAME')return [pdfAscii(value).replace(/\s+/g,' ').trim()];
-        return pdfWrapText(value,widths[i],8,2);
+        return pdfWrapText(value,widths[i],7.5,2);
       }):[];
-      const currentRowH=adminPortrait?Math.max(rowH,3.2+Math.max(1,...wrapped.map((lines,i)=>keyOf(cols[i])==='PRODUCT NAME'?1:lines.length))*8.2):rowH;
+      const currentRowH=adminPortrait?Math.max(rowH,4.2+Math.max(1,...wrapped.map((lines,i)=>keyOf(cols[i])==='PRODUCT NAME'?1:lines.length))*8.0):rowH;
       if(y+currentRowH>H-24){newPage();for(let i=0;i<path.length;i++)band(hierarchyFields[i],path[i],i);lastPath=path.slice()}
       serial++;let x=margin;
       if(serial%2===0)page.cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-currentRowH} ${W-margin*2} ${currentRowH} re f`);
@@ -1267,17 +1270,19 @@ function fastPdfPages(){
       // light vertical grid lines
       let gx=margin+18;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-currentRowH} m ${gx} ${H-y} l S`);
       for(const w of widths){gx+=w;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-currentRowH} m ${gx} ${H-y} l S`)}
-      page.cmd.push(`BT /F1 ${adminPortrait?'8':'4.9'} Tf 0 0 0 rg ${x+2} ${H-y-(adminPortrait?8.9:6.7)} Td (${serial}) Tj ET`);x+=18;
+      const rowBase=H-y-(currentRowH/2)-2.6;
+      page.cmd.push(`BT /F1 ${adminPortrait?'7.5':'4.9'} Tf 0 0 0 rg ${x+2} ${adminPortrait?rowBase:H-y-6.7} Td (${serial}) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
         const key=keyOf(cols[i]),val=displayFieldValue(r,cols[i]),isPrice=/^(RATE|MRP)$/i.test(cols[i]);
         if(adminPortrait){
           if(key==='PRODUCT NAME'){
             const text=pdfAscii(val).replace(/\s+/g,' ').trim();
-            const size=pdfFitProductNameFont(text,widths[i],8,3.2);
-            page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${H-y-8.9} Td (${esc(text)}) Tj ET`);
+            const size=pdfFitProductNameFont(text,widths[i],7.5,3.2);
+            page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${rowBase} Td (${esc(text)}) Tj ET`);
           }else{
             const lines=wrapped[i];
-            lines.forEach((line,lineIndex)=>page.cmd.push(`BT /${isPrice?'F2':'F1'} 8 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-8.9-lineIndex*8.2} Td (${esc(line)}) Tj ET`));
+            const lineStep=7.8,totalTextH=Math.max(0,(lines.length-1)*lineStep),firstBase=rowBase+totalTextH/2;
+            lines.forEach((line,lineIndex)=>page.cmd.push(`BT /${isPrice?'F2':'F1'} 7.5 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${firstBase-lineIndex*lineStep} Td (${esc(line)}) Tj ET`));
           }
         }else{
           const max=Math.max(3,Math.floor(widths[i]/2.8));
@@ -1329,10 +1334,12 @@ async function buildFastPdfBlob(){
     content+=`BT /F1 4.5 Tf 0.25 0.25 0.25 rg 22 7 Td (${pdfAscii(location.href)}) Tj ET\n`;
 
     const brandId=brandObjects.get(p.brandLogoB64||'')||0;
-    // Customer mode remains the current landscape layout. Pixaro Admin gets A4 portrait.
+    // V89: on full-pricebook product pages the Raj Group logo doubles as an INDEX/Home control.
+    if(portrait&&!p.isIndex&&pages.some(pg=>pg.isIndex)) content+=`BT /F2 6.8 Tf 0.055 0.200 0.494 rg 39 ${H-68} Td (INDEX / HOME) Tj ET\n`;
+    // V89: customer and Pixaro Admin now share the same A4 portrait presentation.
     if(portrait){
       if(!p.isIndex){const wmW=420,wmH=280,wmX=(W-wmW)/2,wmY=(H-wmH)/2-10;content+=`q /GS1 gs ${wmW} 0 0 ${wmH} ${wmX} ${wmY} cm /ImWM Do Q\n`;}
-      content+=p.isIndex?`q 72 0 0 39 ${pageMargin+9} ${H-70} cm /ImLogo Do Q\n`:`q 58 0 0 31 24 ${H-57} cm /ImLogo Do Q\n`;
+      content+=p.isIndex?`q 72 0 0 39 ${pageMargin+9} ${H-70} cm /ImLogo Do Q\n`:`q 68 0 0 36 22 ${H-62} cm /ImLogo Do Q\n`;
       if(brandId)content+=`q 68 0 0 31 ${W-92} ${H-57} cm /ImBrand Do Q\n`;
     }else{
       if(!p.isIndex)content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
@@ -1356,6 +1363,10 @@ async function buildFastPdfBlob(){
       const destPageId=pageIds[targetIndex];
       annotIds.push(add(`<< /Type /Annot /Subtype /Link /Rect [${link.x.toFixed(2)} ${link.y.toFixed(2)} ${(link.x+link.w).toFixed(2)} ${(link.y+link.h).toFixed(2)}] /Border [0 0 0] /A << /S /GoTo /D [${destPageId} 0 R /FitH ${H}] >> >>`));
     }
+    if(!p.isIndex&&pages.some(pg=>pg.isIndex)){
+      const homeId=pageIds[0];
+      annotIds.push(add(`<< /Type /Annot /Subtype /Link /Rect [18 ${H-76} 102 ${H-18}] /Border [0 0 0] /A << /S /GoTo /D [${homeId} 0 R /FitH ${H}] >> >>`));
+    }
     const annots=annotIds.length?` /Annots [${annotIds.map(id=>id+' 0 R').join(' ')}]`:'';
     objects[pageIds[pageIndex]-1]=`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> /ExtGState << /GS1 ${gs} 0 R >> /XObject << /ImWM ${wm} 0 R /ImLogo ${logo} 0 R${brandResource}${indexLogoResources} >> >> /Contents ${cobj} 0 R${annots} >>`;
   }
@@ -1363,7 +1374,7 @@ async function buildFastPdfBlob(){
   objects[catalog-1]=`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
   objects[pagesObj-1]=`<< /Type /Pages /Kids [${pageIds.map(id=>id+' 0 R').join(' ')}] /Count ${pageIds.length} >>`;
 
-  const chunks=[latin1Bytes('%PDF-1.4\n%V87\n')],offsets=[0];let length=chunks[0].length;
+  const chunks=[latin1Bytes('%PDF-1.4\n%V89\n')],offsets=[0];let length=chunks[0].length;
   for(let i=0;i<objects.length;i++){
     offsets[i+1]=length;
     const prefix=latin1Bytes(`${i+1} 0 obj\n`);chunks.push(prefix);length+=prefix.length;
