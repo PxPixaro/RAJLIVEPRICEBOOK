@@ -805,6 +805,19 @@ function printCellClass(column){
   if(key==='CODE'||key==='PRODUCT NAME')return 'left';
   return 'right';
 }
+function formatGstForDisplay(value){
+  const raw=clean(value);
+  if(!raw)return '';
+  const match=raw.match(/-?\d+(?:\.\d+)?/);
+  if(!match)return raw.replace(/^GST\s*/i,'').trim();
+  const num=Number(match[0]);
+  if(!Number.isFinite(num))return raw;
+  return `${Number.isInteger(num)?num:num.toString()}%`;
+}
+function displayFieldValue(row,column){
+  const value=getField(row,column);
+  return keyOf(column)==='GST'?formatGstForDisplay(value):value;
+}
 function printColumnWeights(columns){
   const weights=columns.map(column=>{
     const key=keyOf(column);
@@ -822,7 +835,7 @@ function printColumnWeights(columns){
   };
 }
 function printProductRow(row,columns,serial){
-  return `<tr><td class="serial">${serial}</td>${columns.map(column=>`<td class="${printCellClass(column)}">${escapeHtml(getField(row,column))}</td>`).join('')}</tr>`;
+  return `<tr><td class="serial">${serial}</td>${columns.map(column=>`<td class="${printCellClass(column)}">${escapeHtml(displayFieldValue(row,column))}</td>`).join('')}</tr>`;
 }
 function hierarchyVisual(level,mode='grid'){
   const depth=level+1;
@@ -1012,7 +1025,9 @@ function adminPortraitColumnWidths(columns,rows,usable){
     let min=34,max=74,base=9;
     if(key==='CODE'){min=35;max=82;base=7}
     else if(key==='PRODUCT NAME'){min=105;max=185;base=22}
-    else if(key==='UNIT'||key==='GST'){min=26;max=40;base=5}
+    else if(key==='UNIT'){min=25;max=36;base=4}
+    else if(key==='GST'){min=22;max=30;base=3}
+    else if(key==='CLUTCH DIA'){min=32;max=44;base=6}
     else if(key==='RATE'||key==='MRP'){min=38;max=54;base=7}
     else if(key==='NO. OF TEETH'){min=38;max=58;base=7}
     let maxLen=base;
@@ -1042,6 +1057,11 @@ function adminPortraitColumnWidths(columns,rows,usable){
   }
   return widths;
 }
+function adminPdfHeaderLines(column,width){
+  const key=keyOf(column);
+  if(key==='CLUTCH DIA')return ['CLUTCH','DIA'];
+  return pdfWrapText(column,width,8,2);
+}
 
 function fastPdfPages(){
   const adminPortrait=isPixaroAdminPdfMode();
@@ -1050,7 +1070,7 @@ function fastPdfPages(){
   rows.forEach(r=>{const g=clean(getField(r,'GROUP'))||'OTHER';if(!grouped.has(g))grouped.set(g,[]);grouped.get(g).push(r)});
   const selected=clean($('#groupFilter').value);
   const groups=selected?[[selected,grouped.get(selected)||rows]]:[...grouped.entries()].sort((x,y)=>natural(x[0],y[0]));
-  const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=86,rowH=adminPortrait?14:9.6,bandH=adminPortrait?15:11.5;
+  const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=86,rowH=adminPortrait?11.2:9.6,bandH=adminPortrait?13:11.5;
   const esc=pdfAscii;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
 
@@ -1073,17 +1093,17 @@ function fastPdfPages(){
     const printWeights=printColumnWeights(cols).columns.map(Number),weightSum=printWeights.reduce((a,b)=>a+b,0)||1;
     // V84: consume the full printable width. The old percentage math left a fake blank column/gap at the right.
     const widths=adminPortrait?adminPortraitColumnWidths(cols,gr,usable):printWeights.map(p=>usable*p/weightSum);
-    const headerH=adminPortrait?22:rowH;
+    const headerH=adminPortrait?19:rowH;
     let page=null,y=0,serial=0,lastPath=[];
 
     const drawColumnHeader=()=>{
       let x=margin;
       page.cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${W-margin*2} ${headerH} re f`);
-      page.cmd.push(`BT /F2 ${adminPortrait?'8':'4.8'} Tf 1 1 1 rg ${x+2} ${H-y-(adminPortrait?13:6.7)} Td (#) Tj ET`);x+=18;
+      page.cmd.push(`BT /F2 ${adminPortrait?'8':'4.8'} Tf 1 1 1 rg ${x+2} ${H-y-(adminPortrait?11.5:6.7)} Td (#) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
         if(adminPortrait){
-          const lines=pdfWrapText(cols[i],widths[i],7.6,2);
-          lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F2 7.6 Tf 1 1 1 rg ${x+2} ${H-y-9-lineIndex*8.4} Td (${esc(line)}) Tj ET`));
+          const lines=adminPdfHeaderLines(cols[i],widths[i]);
+          lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F2 8 Tf 1 1 1 rg ${x+2} ${H-y-8.2-lineIndex*8.1} Td (${esc(line)}) Tj ET`));
         }else{
           const max=Math.max(3,Math.floor(widths[i]/3));
           page.cmd.push(`BT /F2 4.8 Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (${esc(truncText(cols[i],max))}) Tj ET`);
@@ -1121,8 +1141,8 @@ function fastPdfPages(){
       const idx=Math.min(level,3),f=fills[idx],tc=texts[idx];
       page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re f`);
       page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re S`);
-      const bandFont=adminPortrait?10:(level===0?6.2:5.7);
-      const bandBase=adminPortrait?10.8:7.7;
+      const bandFont=adminPortrait?9:(level===0?6.2:5.7);
+      const bandBase=adminPortrait?9.5:7.7;
       // V84: print only the actual hierarchy value (Flywheel Assembly / CAR / SUV), not CATEGORIES/SEGMENT prefixes.
       page.cmd.push(`BT /F2 ${bandFont} Tf ${rgb(...tc)} rg ${margin+4+level*(adminPortrait?6:8)} ${H-y-bandBase} Td (${esc(value)}) Tj ET`);
       y+=bandH;
@@ -1137,8 +1157,13 @@ function fastPdfPages(){
         for(let i=changedAt;i<path.length;i++)band(hierarchyFields[i],path[i],i);
         lastPath=path.slice();
       }
-      const wrapped=adminPortrait?cols.map((col,i)=>pdfWrapText(getField(r,col),widths[i],10,8)):[];
-      const currentRowH=adminPortrait?Math.max(rowH,4+Math.max(1,...wrapped.map(lines=>lines.length))*10.8):rowH;
+      const wrapped=adminPortrait?cols.map((col,i)=>{
+        const key=keyOf(col),value=displayFieldValue(r,col);
+        // Product Name is always a single line; it uses shrink-to-fit like Excel.
+        if(key==='PRODUCT NAME')return [pdfAscii(value).replace(/\s+/g,' ').trim()];
+        return pdfWrapText(value,widths[i],8,2);
+      }):[];
+      const currentRowH=adminPortrait?Math.max(rowH,3.2+Math.max(1,...wrapped.map((lines,i)=>keyOf(cols[i])==='PRODUCT NAME'?1:lines.length))*8.2):rowH;
       if(y+currentRowH>H-24){newPage();for(let i=0;i<path.length;i++)band(hierarchyFields[i],path[i],i);lastPath=path.slice()}
       serial++;let x=margin;
       if(serial%2===0)page.cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-currentRowH} ${W-margin*2} ${currentRowH} re f`);
@@ -1146,12 +1171,18 @@ function fastPdfPages(){
       // light vertical grid lines
       let gx=margin+18;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-currentRowH} m ${gx} ${H-y} l S`);
       for(const w of widths){gx+=w;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-currentRowH} m ${gx} ${H-y} l S`)}
-      page.cmd.push(`BT /F1 ${adminPortrait?'9':'4.9'} Tf 0 0 0 rg ${x+2} ${H-y-(adminPortrait?11:6.7)} Td (${serial}) Tj ET`);x+=18;
+      page.cmd.push(`BT /F1 ${adminPortrait?'8':'4.9'} Tf 0 0 0 rg ${x+2} ${H-y-(adminPortrait?8.9:6.7)} Td (${serial}) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
-        const val=getField(r,cols[i]),isPrice=/^(RATE|MRP)$/i.test(cols[i]);
+        const key=keyOf(cols[i]),val=displayFieldValue(r,cols[i]),isPrice=/^(RATE|MRP)$/i.test(cols[i]);
         if(adminPortrait){
-          const lines=wrapped[i];
-          lines.forEach((line,lineIndex)=>page.cmd.push(`BT /${isPrice?'F2':'F1'} 10 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-11-lineIndex*10.8} Td (${esc(line)}) Tj ET`));
+          if(key==='PRODUCT NAME'){
+            const text=pdfAscii(val).replace(/\s+/g,' ').trim();
+            const size=pdfFitFont(text,widths[i],8,3.2);
+            page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${H-y-8.9} Td (${esc(text)}) Tj ET`);
+          }else{
+            const lines=wrapped[i];
+            lines.forEach((line,lineIndex)=>page.cmd.push(`BT /${isPrice?'F2':'F1'} 8 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-8.9-lineIndex*8.2} Td (${esc(line)}) Tj ET`));
+          }
         }else{
           const max=Math.max(3,Math.floor(widths[i]/2.8));
           page.cmd.push(`BT /${isPrice?'F2':'F1'} 4.9 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-6.7} Td (${esc(truncText(val,max))}) Tj ET`);
@@ -1220,7 +1251,7 @@ async function buildFastPdfBlob(){
   objects[catalog-1]=`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
   objects[pagesObj-1]=`<< /Type /Pages /Kids [${pageIds.map(id=>id+' 0 R').join(' ')}] /Count ${pageIds.length} >>`;
 
-  const chunks=[latin1Bytes('%PDF-1.4\n%V84\n')],offsets=[0];let length=chunks[0].length;
+  const chunks=[latin1Bytes('%PDF-1.4\n%V85\n')],offsets=[0];let length=chunks[0].length;
   for(let i=0;i<objects.length;i++){
     offsets[i+1]=length;
     const prefix=latin1Bytes(`${i+1} 0 obj\n`);chunks.push(prefix);length+=prefix.length;
@@ -1655,7 +1686,7 @@ function applyFilters(resetPage=true,doCascade=false){
 
 function gridProductRow(row,serial){
   return '<tr><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{
-    const value=getField(row,column);
+    const value=displayFieldValue(row,column);
     const key=keyOf(column);
     const part=key==='CODE';
     const price=key==='RATE'||key==='MRP';
@@ -1726,7 +1757,8 @@ function render(){
   thead.innerHTML='<tr><th class="index-col">#</th>'+visibleColumns.map(c=>{
     const key=keyOf(c);
     const cls=(key==='CODE'||key==='PRODUCT NAME')?'head-left':'head-right';
-    return `<th class="${cls}" data-col="${escapeHtml(key)}">${escapeHtml(c)}</th>`;
+    const label=key==='CLUTCH DIA'?'CLUTCH<br>DIA':escapeHtml(c);
+    return `<th class="${cls}" data-col="${escapeHtml(key)}">${label}</th>`;
   }).join('')+'<th class="image-col">IMAGE / ORDER</th></tr>';
 
   if(printingAll){
