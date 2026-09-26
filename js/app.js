@@ -999,6 +999,13 @@ function pdfFitFont(text,width,maxSize,minSize=1.55){
   const fit=Math.max(2,width-4)/(Math.max(1,s.length)*0.52);
   return Math.max(minSize,Math.min(maxSize,fit));
 }
+function pdfFitProductNameFont(text,width,maxSize=8,minSize=3.2){
+  const s=pdfAscii(text).replace(/\s+/g,' ').trim();
+  if(!s)return maxSize;
+  // V86: Product Name uses almost the complete cell width before shrinking.
+  const fit=Math.max(2,width-1.6)/(Math.max(1,s.length)*0.465);
+  return Math.max(minSize,Math.min(maxSize,fit));
+}
 function pdfWrapText(value,width,fontSize=10,maxLines=8){
   const text=pdfAscii(value).replace(/\s+/g,' ').trim();
   if(!text)return [''];
@@ -1061,6 +1068,66 @@ function adminPdfHeaderLines(column,width){
   const key=keyOf(column);
   if(key==='CLUTCH DIA')return ['CLUTCH','DIA'];
   return pdfWrapText(column,width,8,2);
+}
+
+const V86_INDEX_DETAILS={"AAYUB":"FLY WHEEL ASSY.","ALLIED":"BRAKE LINING & BRAKE PAD","APPOLO":"ALL TYPE OF PACKING","APRISTIC":"ALL TYPE OF PACKING","ASHWAMEGH":"GREASE, ULTRAPURE AND DISTILE WATER","ASK":"BRAKE LINING","ATOP":"SPRING WASHAR","BALOON":"SPRING BALOONG","BLUE BIRD":"DIESEL ENGINE OIL,4 STROKE OIL,TRANSMISSION OIL,INDUSTRIAL OIL","BRAVO":"SHOCK ABSORBER, GEAR LEVER, ENGINE MOUNTING, HOSE PIPE","BULLDOG":"GASKET TUBE, RTV & SILK BOTEL","C.I.":"ARM REST/ROOF HANDLES,B.OPENER,DB LOCK/ DOOR LOCK W/K","CHAMPION":"SPRAK PLUG, HEATER PLUG, WIPER BLADE","CHENER":"TIE ROD, DRAG LINK KIT,GEAR LEVER END,BALL JOINT","CRC":"POWER SPRAY","DC":"U.J.CROSS,GEAR JHAMELA,SLEEVE YOKE","DELUX":"KING PIN, CLUTCH & TAPPER BEARING & ALL BERING","ELOFIC":"ALL TYPE FILTER ,COOLANT","EMMBROSS":"REAR AXLE H.C.V. DIVISION","FENNER":"V-BELTS & POLY V-BELTS","GATES":"BELTS, METALS & KITS, TENSIONER","GAUTAM":"SYNCROMIZER RING, WASHER,TATA PARTS,BENJO BOLT, NUT-BOLT,SPRING BALOON,GAPE PLATE,KING PIN KIT,SHIMS,JACK TOMI","GAUTAM B-T":"BERTRY TERMINALS","GCL":"CLUTCH PLATES & PRESSURE PLATES,SPRING SET,LEVER FINGER KIT","GCPA":"CLUTCH PLATES & PRESSURE PLATES","GF":"RADIATOR FAN","GMT":"BOLT,PIN,NUT,WASHERS,NIPPLE,SPANNER","HALDEX":"SLACK ADJ. ASSY","HFL":"HEX BOLT AND FLANGE BOLT","HOLD ON":"HOSE PIPE CLIP","IFLEX":"FUEL LINE & DIESEL PIPE","JHAVERI":"RING PANA & FIX PANA & WHEEL SPANER","JM TOMI":"TOMI","KBX":"BRAKE OIL, BRAKE PARTS, BRAKE SHOE KIT","KBX HITACHI":"PIN HORN, TANK FUEL PUMP, SPEED SENSORS, ELE. REGULATORS","KD":"HOSE PIPE","KLIP-WEL":"HOSE PIPE CLIP","LAPOX":"LA-SEAL & EPOXY PUTTY","LASCO":"AIR FILTER","LGS":"FLY WHEEL RING","LOCTITE":"SUPERFLEX TUBE, RUST BUST SPRAY","LUMAN":"FILTER’S,AIR FILTER,COOLANT","MAGMA":"BRAKE PADS, BRAKE DISC ROTER","MANN-WIX":"FILTERS","MEKO":"WATER PUMP, REPAIR KIT & ROTTER SHAFT","MK GOLD":"WATER PUMP","MONROE":"STRUT KIT,COIL SPRING,TOP MOUNT,SHOCK ABSO.,ELEMENT","NEOLITE":"HEAD LAMP ASSY.","NGK":"SPARK PLUGS & HITER PLUGS","NOVEX":"RUBBER PARTS","OEPLUS":"WIPER BLADE,WIPER ARM","OLMA":"AUTOMOTIV COMPONENTS,TATA PARTS","OSRAM":"BULB","PIONNER":"OIL SEAL, WATER PUMP SEAL, HOSE PIPE","PIPE ROLL":"DIESEL & PETROL PIPE ROLL","PLATINUM":"SIDE GLASS","POLY GRIP":"FOAM FAST & GRIP FAST","POOJA":"UNC, UNF, BSW, BSF,BOLT,NUT,SPECIAL BOLT","PRIMA":"GREASE GUN, BERAL PUMP & OIL CUPPY. LOOSE PARTS","QH":"TIE ROD, SUSP. & JOINT PARTS","RAICAM":"CLUTCH SET","RAJNISH":"DIESEL FUEL INJECTION PUMP PARTS","RAVI JACK":"JACK & POPULAR SHAFT PIPE","RDS":"U.J.CROSS, PROPELLER SHAFTS,BEARING,TIE ROD END","REMSONS":"ACCELERATOR, SPEEDO, BONNET CABLE, DOOR OPENER","REOX":"SIDE MIRROR, SUB MIRROR","RIVIT":"BRACK LINER & CLUCH RIVIT","RKD":"CLUTCH PLATES & PRESSURE PLATES,SPRING SET,LEVER KIT","RM":"ALL TYPE BRAKE DISK & DRUM","RNF":"ADJUSTER, HYDROLIC JACK","ROSE":"SYNCROMIZER RING, WASHER,TATA PARTS,BENJO BOLT, NUT-BOLT,SPRING","SADHU FORGE":"GEAR PARTS & CROWN WHEEL PINION & SPIDER KIT","SHANCO":"WIRE & CABLE","SORL":"VALVE,ADJUSTER,PUMP,AIR COIL","SPICER":"UJ CROSS, SLEVE YOKE, CEN.FLANGE, CEN. BEARING","STAR GOLD":"COOLENT","STL":"UNC, UNF, BSW, BSF,BOLT,NUT,SPECIAL BOLT","SUPER-LAC":"OIL SEAL & FOUNDATION, RUBBER PARTS","SUPER-TIGHT":"CENTER BOLT","SVL":"UJ CROSS, SLEVE YOKE, CEN.FLANGE, CEN. BEARING","UVAL":"BULB","VALEO":"CLUTCH PLATES & PRESSURE PLATES","VEETHREE":"METER, SPEEDO CABLE, TANKE UNIT, DISEL GAJE"};
+const V86_INDEX_ALIASES={MANN:'MANNWIX',WIX:'MANNWIX',PIONEER:'PIONNER'};
+function indexGroupKey(value){return clean(value).toUpperCase().replace(/[^A-Z0-9]/g,'')}
+function groupIndexDetails(group){
+  const wanted=V86_INDEX_ALIASES[indexGroupKey(group)]||indexGroupKey(group);
+  for(const [name,details] of Object.entries(V86_INDEX_DETAILS)){if(indexGroupKey(name)===wanted)return details}
+  return '';
+}
+function groupIndexSubGroups(groupRows){
+  const values=[...new Set((groupRows||[]).map(row=>clean(subGroupValue(row))).filter(Boolean))].sort(natural);
+  return values.length?values.join(', '):'-';
+}
+function pdfIndexFitFont(text,width,maxSize=8,minSize=4.0){
+  const s=pdfAscii(text).replace(/\s+/g,' ').trim();
+  if(!s)return maxSize;
+  const fit=Math.max(2,width-3)/(Math.max(1,s.length)*0.48);
+  return Math.max(minSize,Math.min(maxSize,fit));
+}
+function buildGroupIndexPages(productPages){
+  // Only the complete price book gets an opening group-wise index.
+  if(clean($('#groupFilter').value)||!productPages.length)return [];
+  const portrait=!!productPages[0].adminPortrait,W=productPages[0].W||842,H=productPages[0].H||595;
+  const margin=portrait?18:22,rowH=portrait?13:12,titleH=28,headerH=19,top=30,bottom=20;
+  const rowsPerPage=Math.max(1,Math.floor((H-top-titleH-headerH-bottom)/rowH));
+  const order=[],ranges=new Map();
+  productPages.forEach((p,i)=>{
+    const group=clean(p.group)||'OTHER';
+    if(!ranges.has(group)){ranges.set(group,{first:i+1,last:i+1});order.push(group)} else ranges.get(group).last=i+1;
+  });
+  const pageCount=Math.ceil(order.length/rowsPerPage);
+  const pdfRows=portrait?filtered.filter(isAdminPdfRowVisible):filtered,groupedRows=new Map();
+  pdfRows.forEach(row=>{const g=clean(getField(row,'GROUP'))||'OTHER';if(!groupedRows.has(g))groupedRows.set(g,[]);groupedRows.get(g).push(row)});
+  const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
+  const usable=W-margin*2,base=portrait?[25,82,118,250,84]:[30,112,172,375,109];
+  const scale=usable/base.reduce((a,b)=>a+b,0),widths=base.map(v=>v*scale),pages=[];
+  for(let pi=0;pi<pageCount;pi++){
+    const cmd=[];let y=top;
+    const title='PRICE BOOK INDEX',approx=title.length*14*0.27;
+    cmd.push(`BT /F2 14 Tf ${rgb(14,51,126)} rg ${Math.max(margin,W/2-approx)} ${H-y} Td (${pdfAscii(title)}) Tj ET`);y+=titleH;
+    cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${usable} ${headerH} re f`);
+    let x=margin;const heads=['SR NO.','GROUP','SUB GROUP','DETAILS','PAGE NO.'];
+    heads.forEach((h,i)=>{const size=pdfIndexFitFont(h,widths[i],8,5.5);cmd.push(`BT /F2 ${size.toFixed(2)} Tf 1 1 1 rg ${x+2} ${H-y-12.3} Td (${pdfAscii(h)}) Tj ET`);x+=widths[i]});y+=headerH;
+    const start=pi*rowsPerPage,end=Math.min(order.length,start+rowsPerPage);
+    for(let oi=start;oi<end;oi++){
+      const group=order[oi],rr=ranges.get(group),a=rr.first+pageCount,b=rr.last+pageCount,pageText=a===b?String(a):`${a}-${b}`;
+      const vals=[String(oi+1),group,groupIndexSubGroups(groupedRows.get(group)||[]),groupIndexDetails(group),pageText];
+      if((oi-start)%2===1)cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${usable} ${rowH} re f`);
+      cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${usable} ${rowH} re S`);x=margin;
+      for(let i=0;i<widths.length;i++){
+        if(i>0)cmd.push(`0.82 0.85 0.89 RG ${x} ${H-y-rowH} m ${x} ${H-y} l S`);
+        const val=vals[i],size=pdfIndexFitFont(val,widths[i],i===0||i===4?7.6:7.8,i===3?3.8:4.1);
+        cmd.push(`BT /${i===1?'F2':'F1'} ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${H-y-8.9} Td (${pdfAscii(val)}) Tj ET`);x+=widths[i];
+      }
+      y+=rowH;
+    }
+    pages.push({group:'INDEX',cols:heads,widths,cmd,brandLogoB64:'',W,H,adminPortrait:portrait,isIndex:true});
+  }
+  return pages;
 }
 
 function fastPdfPages(){
@@ -1177,7 +1244,7 @@ function fastPdfPages(){
         if(adminPortrait){
           if(key==='PRODUCT NAME'){
             const text=pdfAscii(val).replace(/\s+/g,' ').trim();
-            const size=pdfFitFont(text,widths[i],8,3.2);
+            const size=pdfFitProductNameFont(text,widths[i],8,3.2);
             page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${H-y-8.9} Td (${esc(text)}) Tj ET`);
           }else{
             const lines=wrapped[i];
@@ -1196,7 +1263,7 @@ function fastPdfPages(){
 }
 
 async function buildFastPdfBlob(){
-  const pages=fastPdfPages(),jpeg=b64Bytes(FAST_WATERMARK_JPEG_B64),company=b64Bytes(V77_COMPANY_LOGO_JPEG_B64),objects=[];
+  const productPages=fastPdfPages(),pages=[...buildGroupIndexPages(productPages),...productPages],jpeg=b64Bytes(FAST_WATERMARK_JPEG_B64),company=b64Bytes(V77_COMPANY_LOGO_JPEG_B64),objects=[];
   const add=o=>{objects.push(o);return objects.length};
   const catalog=add(''),pagesObj=add(''),f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'),f2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
   const gs=add('<< /Type /ExtGState /ca 0.065 /CA 0.065 >>');
@@ -1219,7 +1286,7 @@ async function buildFastPdfBlob(){
     const p=pages[pageIndex];
     const W=p.W||842,H=p.H||595,portrait=!!p.adminPortrait;
     const generated=new Date().toLocaleString('en-GB',{hour12:true});
-    const docTitle=clean($('#groupFilter').value)?clean($('#groupFilter').value)+' Filtered Pricelist':'All Groups Filtered Pricelist';
+    const docTitle=p.isIndex?'Group-wise Price Book Index':(clean($('#groupFilter').value)?clean($('#groupFilter').value)+' Filtered Pricelist':'All Groups Filtered Pricelist');
 
     // Outer print-header/footer details retained from June look.
     const topY=H-9,titleX=portrait?Math.round(W*.43):365,pageX=portrait?W-47:795;
@@ -1231,14 +1298,13 @@ async function buildFastPdfBlob(){
     const brandId=brandObjects.get(p.brandLogoB64||'')||0;
     // Customer mode remains the current landscape layout. Pixaro Admin gets A4 portrait.
     if(portrait){
-      const wmW=420,wmH=280,wmX=(W-wmW)/2,wmY=(H-wmH)/2-10;
-      content+=`q /GS1 gs ${wmW} 0 0 ${wmH} ${wmX} ${wmY} cm /ImWM Do Q\n`;
+      if(!p.isIndex){const wmW=420,wmH=280,wmX=(W-wmW)/2,wmY=(H-wmH)/2-10;content+=`q /GS1 gs ${wmW} 0 0 ${wmH} ${wmX} ${wmY} cm /ImWM Do Q\n`;}
       content+=`q 58 0 0 31 24 ${H-57} cm /ImLogo Do Q\n`;
       if(brandId)content+=`q 68 0 0 31 ${W-92} ${H-57} cm /ImBrand Do Q\n`;
     }else{
-      content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
-      content+=`q 64 0 0 34 30 538 cm /ImLogo Do Q\n`;
-      if(brandId)content+=`q 78 0 0 34 738 538 cm /ImBrand Do Q\n`;
+      if(!p.isIndex)content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
+      content+=`q 64 0 0 34 30 ${H-57} cm /ImLogo Do Q\n`;
+      if(brandId)content+=`q 78 0 0 34 ${W-104} ${H-57} cm /ImBrand Do Q\n`;
     }
     content+=p.cmd.join('\n');
 
@@ -1251,7 +1317,7 @@ async function buildFastPdfBlob(){
   objects[catalog-1]=`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
   objects[pagesObj-1]=`<< /Type /Pages /Kids [${pageIds.map(id=>id+' 0 R').join(' ')}] /Count ${pageIds.length} >>`;
 
-  const chunks=[latin1Bytes('%PDF-1.4\n%V85\n')],offsets=[0];let length=chunks[0].length;
+  const chunks=[latin1Bytes('%PDF-1.4\n%V86\n')],offsets=[0];let length=chunks[0].length;
   for(let i=0;i<objects.length;i++){
     offsets[i+1]=length;
     const prefix=latin1Bytes(`${i+1} 0 obj\n`);chunks.push(prefix);length+=prefix.length;
