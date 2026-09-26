@@ -147,7 +147,8 @@ const HIDDEN_COLUMNS = new Set([
   'GROUP','SEGMENT','VEHICLE','MODEL','CATAGORIES','CATEGORIES','CATEGORY',
   'VIEW BY','VIEWBY','LIST DATE','LISTDATE','SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME',
   'CATALOG','CATALOG LINK','CATALOG URL','CATALOG NAME','CATALOG FILE',
-  'NEW PRODUCT LAUNCH','DEAD STOCK','FSN CLASS'
+  'NEW PRODUCT LAUNCH','DEAD STOCK','FSN CLASS',
+  'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE'
 ]);
 const ALWAYS = ['CODE','PRODUCT NAME','UNIT','GST','RATE','MRP'];
 const NUMERIC_COLUMNS = new Set(['RATE','MRP','STD PKG','CRT PKG','BOX QTY','PACK']);
@@ -847,7 +848,7 @@ function appendPrintHierarchy(output,rows,contextRows,columns,serialState){
       const nextPath=[...path,title];
       const total=hierarchyCount(contextRows,fields,nextPath);
       const visual=hierarchyVisual(level,'pdf');
-      output.push(`<tr class="pdf-group-heading ${visual.className}" data-group-level="${visual.depth}" style="--view-indent:${visual.indent}px"><td colspan="${columns.length+1}"><span class="pdf-group-label">${escapeHtml(viewByLabel(field))}</span><span class="pdf-group-title">${escapeHtml(title)}</span><span class="pdf-group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`);
+      output.push(`<tr class="pdf-group-heading ${visual.className}" data-group-level="${visual.depth}" style="--view-indent:${visual.indent}px"><td colspan="${columns.length+1}"><span class="pdf-group-title">${escapeHtml(title)}</span><span class="pdf-group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`);
       renderLevel(groupItems,level+1,nextPath);
     });
   };
@@ -972,20 +973,84 @@ function isPixaroAdminPdfMode(){
     return customer?.role==='admin' && String(customer?.name||'').trim().toUpperCase()==='PIXARO';
   }catch(e){return false}
 }
+function adminPdfVisibilityValue(row){
+  return clean(getField(row,'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE'));
+}
+function isAdminPdfRowVisible(row){
+  // V84: only explicit N hides a product from Pixaro Admin PDF. Y and blank stay visible.
+  return normalizeSearchText(adminPdfVisibilityValue(row))!=='N';
+}
 function pdfFitFont(text,width,maxSize,minSize=1.55){
   const s=pdfAscii(text);
   if(!s)return maxSize;
   const fit=Math.max(2,width-4)/(Math.max(1,s.length)*0.52);
   return Math.max(minSize,Math.min(maxSize,fit));
 }
+function pdfWrapText(value,width,fontSize=10,maxLines=8){
+  const text=pdfAscii(value).replace(/\s+/g,' ').trim();
+  if(!text)return [''];
+  const maxChars=Math.max(2,Math.floor(Math.max(4,width-5)/(fontSize*.52)));
+  const tokens=[];
+  text.split(' ').forEach(word=>{
+    if(word.length<=maxChars){tokens.push(word);return}
+    for(let i=0;i<word.length;i+=maxChars)tokens.push(word.slice(i,i+maxChars));
+  });
+  const lines=[];let line='';
+  for(const token of tokens){
+    const test=line?line+' '+token:token;
+    if(test.length<=maxChars)line=test;
+    else{if(line)lines.push(line);line=token}
+    if(lines.length>=maxLines-1)break;
+  }
+  if(line&&lines.length<maxLines)lines.push(line);
+  return lines.length?lines:[''];
+}
+function adminPortraitColumnWidths(columns,rows,usable){
+  const mins=[],desired=[];
+  columns.forEach(column=>{
+    const key=keyOf(column);
+    let min=34,max=74,base=9;
+    if(key==='CODE'){min=35;max=82;base=7}
+    else if(key==='PRODUCT NAME'){min=105;max=185;base=22}
+    else if(key==='UNIT'||key==='GST'){min=26;max=40;base=5}
+    else if(key==='RATE'||key==='MRP'){min=38;max=54;base=7}
+    else if(key==='NO. OF TEETH'){min=38;max=58;base=7}
+    let maxLen=base;
+    // Scan a representative set; widths are capped so one extreme value cannot waste the page.
+    const step=Math.max(1,Math.floor(rows.length/1800));
+    for(let i=0;i<rows.length;i+=step){
+      const len=pdfAscii(getField(rows[i],column)).length;
+      if(len>maxLen)maxLen=len;
+    }
+    const want=Math.min(max,Math.max(min,maxLen*5.2+7));
+    mins.push(min);desired.push(want);
+  });
+  const minSum=mins.reduce((a,b)=>a+b,0);
+  if(minSum>=usable){
+    const scale=usable/minSum;
+    return mins.map(v=>v*scale);
+  }
+  const extra=usable-minSum;
+  const needs=desired.map((v,i)=>Math.max(0,v-mins[i]));
+  const needSum=needs.reduce((a,b)=>a+b,0)||1;
+  let widths=mins.map((v,i)=>v+extra*(needs[i]/needSum));
+  // If desired widths use less than page width, give the balance mainly to Product Name.
+  const used=widths.reduce((a,b)=>a+b,0);
+  if(used<usable-.1){
+    const productIndex=columns.findIndex(c=>keyOf(c)==='PRODUCT NAME');
+    widths[productIndex>=0?productIndex:0]+=usable-used;
+  }
+  return widths;
+}
 
 function fastPdfPages(){
-  const rows=sortedRows(filtered),grouped=new Map();
+  const adminPortrait=isPixaroAdminPdfMode();
+  const sourcePdfRows=adminPortrait?filtered.filter(isAdminPdfRowVisible):filtered;
+  const rows=sortedRows(sourcePdfRows),grouped=new Map();
   rows.forEach(r=>{const g=clean(getField(r,'GROUP'))||'OTHER';if(!grouped.has(g))grouped.set(g,[]);grouped.get(g).push(r)});
   const selected=clean($('#groupFilter').value);
   const groups=selected?[[selected,grouped.get(selected)||rows]]:[...grouped.entries()].sort((x,y)=>natural(x[0],y[0]));
-  const adminPortrait=isPixaroAdminPdfMode();
-  const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=86,rowH=adminPortrait?8.8:9.6,bandH=adminPortrait?10.5:11.5;
+  const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=86,rowH=adminPortrait?14:9.6,bandH=adminPortrait?15:11.5;
   const esc=pdfAscii;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
 
@@ -1004,24 +1069,28 @@ function fastPdfPages(){
       .map(resolveViewByField)
       .filter((field,index,array)=>field&&array.findIndex(x=>compactFieldKey(x)===compactFieldKey(field))===index);
     const gr=sortRowsByFields(sourceRows.slice(),hierarchyFields);
-    const cols=visibleColumnsForRows(gr),weights=printColumnWeights(cols).columns,usable=W-margin*2-18,widths=weights.map(p=>usable*p/100);
+    const cols=visibleColumnsForRows(gr),usable=W-margin*2-18;
+    const printWeights=printColumnWeights(cols).columns.map(Number),weightSum=printWeights.reduce((a,b)=>a+b,0)||1;
+    // V84: consume the full printable width. The old percentage math left a fake blank column/gap at the right.
+    const widths=adminPortrait?adminPortraitColumnWidths(cols,gr,usable):printWeights.map(p=>usable*p/weightSum);
+    const headerH=adminPortrait?22:rowH;
     let page=null,y=0,serial=0,lastPath=[];
 
     const drawColumnHeader=()=>{
       let x=margin;
-      page.cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re f`);
-      page.cmd.push(`BT /F2 4.8 Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (#) Tj ET`);x+=18;
+      page.cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${W-margin*2} ${headerH} re f`);
+      page.cmd.push(`BT /F2 ${adminPortrait?'8':'4.8'} Tf 1 1 1 rg ${x+2} ${H-y-(adminPortrait?13:6.7)} Td (#) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
         if(adminPortrait){
-          const text=esc(cols[i]),size=pdfFitFont(text,widths[i],4.6,1.70);
-          page.cmd.push(`BT /F2 ${size.toFixed(2)} Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (${text}) Tj ET`);
+          const lines=pdfWrapText(cols[i],widths[i],7.6,2);
+          lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F2 7.6 Tf 1 1 1 rg ${x+2} ${H-y-9-lineIndex*8.4} Td (${esc(line)}) Tj ET`));
         }else{
           const max=Math.max(3,Math.floor(widths[i]/3));
           page.cmd.push(`BT /F2 4.8 Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (${esc(truncText(cols[i],max))}) Tj ET`);
         }
         x+=widths[i];
       }
-      y+=rowH;
+      y+=headerH;
     };
 
     const newPage=()=>{
@@ -1052,7 +1121,10 @@ function fastPdfPages(){
       const idx=Math.min(level,3),f=fills[idx],tc=texts[idx];
       page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re f`);
       page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re S`);
-      page.cmd.push(`BT /F2 ${level===0?6.2:5.7} Tf ${rgb(...tc)} rg ${margin+4+level*8} ${H-y-7.7} Td (${esc(viewByLabel(field)+'  '+value)}) Tj ET`);
+      const bandFont=adminPortrait?10:(level===0?6.2:5.7);
+      const bandBase=adminPortrait?10.8:7.7;
+      // V84: print only the actual hierarchy value (Flywheel Assembly / CAR / SUV), not CATEGORIES/SEGMENT prefixes.
+      page.cmd.push(`BT /F2 ${bandFont} Tf ${rgb(...tc)} rg ${margin+4+level*(adminPortrait?6:8)} ${H-y-bandBase} Td (${esc(value)}) Tj ET`);
       y+=bandH;
     };
 
@@ -1065,26 +1137,28 @@ function fastPdfPages(){
         for(let i=changedAt;i<path.length;i++)band(hierarchyFields[i],path[i],i);
         lastPath=path.slice();
       }
-      if(y+rowH>H-24){newPage();for(let i=0;i<path.length;i++)band(hierarchyFields[i],path[i],i);lastPath=path.slice()}
+      const wrapped=adminPortrait?cols.map((col,i)=>pdfWrapText(getField(r,col),widths[i],10,8)):[];
+      const currentRowH=adminPortrait?Math.max(rowH,4+Math.max(1,...wrapped.map(lines=>lines.length))*10.8):rowH;
+      if(y+currentRowH>H-24){newPage();for(let i=0;i<path.length;i++)band(hierarchyFields[i],path[i],i);lastPath=path.slice()}
       serial++;let x=margin;
-      if(serial%2===0)page.cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re f`);
-      page.cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${W-margin*2} ${rowH} re S`);
+      if(serial%2===0)page.cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-currentRowH} ${W-margin*2} ${currentRowH} re f`);
+      page.cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-currentRowH} ${W-margin*2} ${currentRowH} re S`);
       // light vertical grid lines
-      let gx=margin+18;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-rowH} m ${gx} ${H-y} l S`);
-      for(const w of widths){gx+=w;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-rowH} m ${gx} ${H-y} l S`)}
-      page.cmd.push(`BT /F1 4.9 Tf 0 0 0 rg ${x+2} ${H-y-6.7} Td (${serial}) Tj ET`);x+=18;
+      let gx=margin+18;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-currentRowH} m ${gx} ${H-y} l S`);
+      for(const w of widths){gx+=w;page.cmd.push(`0.82 0.85 0.89 RG ${gx} ${H-y-currentRowH} m ${gx} ${H-y} l S`)}
+      page.cmd.push(`BT /F1 ${adminPortrait?'9':'4.9'} Tf 0 0 0 rg ${x+2} ${H-y-(adminPortrait?11:6.7)} Td (${serial}) Tj ET`);x+=18;
       for(let i=0;i<cols.length;i++){
         const val=getField(r,cols[i]),isPrice=/^(RATE|MRP)$/i.test(cols[i]);
         if(adminPortrait){
-          const text=esc(val),size=pdfFitFont(text,widths[i],4.7,1.45);
-          page.cmd.push(`BT /${isPrice?'F2':'F1'} ${size.toFixed(2)} Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-6.7} Td (${text}) Tj ET`);
+          const lines=wrapped[i];
+          lines.forEach((line,lineIndex)=>page.cmd.push(`BT /${isPrice?'F2':'F1'} 10 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-11-lineIndex*10.8} Td (${esc(line)}) Tj ET`));
         }else{
           const max=Math.max(3,Math.floor(widths[i]/2.8));
           page.cmd.push(`BT /${isPrice?'F2':'F1'} 4.9 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-6.7} Td (${esc(truncText(val,max))}) Tj ET`);
         }
         x+=widths[i];
       }
-      y+=rowH;
+      y+=currentRowH;
     }
   }
   return pages;
@@ -1146,7 +1220,7 @@ async function buildFastPdfBlob(){
   objects[catalog-1]=`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
   objects[pagesObj-1]=`<< /Type /Pages /Kids [${pageIds.map(id=>id+' 0 R').join(' ')}] /Count ${pageIds.length} >>`;
 
-  const chunks=[latin1Bytes('%PDF-1.4\n%V81\n')],offsets=[0];let length=chunks[0].length;
+  const chunks=[latin1Bytes('%PDF-1.4\n%V84\n')],offsets=[0];let length=chunks[0].length;
   for(let i=0;i<objects.length;i++){
     offsets[i+1]=length;
     const prefix=latin1Bytes(`${i+1} 0 obj\n`);chunks.push(prefix);length+=prefix.length;
@@ -1175,6 +1249,7 @@ async function createCompletePriceListPdfBlob(){
   // Do NOT download/parse/re-index the workbook again on every PDF click.
   // Grid and PDF therefore use the exact same already-loaded `filtered` rows / VIEW BY state.
   if(!Array.isArray(filtered)||!filtered.length)throw new Error('Current filters me koi product nahi hai');
+  if(isPixaroAdminPdfMode()&&!filtered.some(isAdminPdfRowVisible))throw new Error('Pixaro PDF ke liye koi Visible product nahi hai');
   const blob=await buildFastPdfBlob();
   if(!blob||!blob.size)throw new Error('PDF output is empty');
   return blob;
