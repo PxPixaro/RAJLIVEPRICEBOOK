@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Raj Agencies — Live Price Book</title>
-  <link rel="stylesheet" href="css/style.css?v=49-admin-rights">
+  <link rel="stylesheet" href="css/style.css?v=91-logo-watermark">
   <script defer src="js/data.js?v=82.11-viewby-canonical"></script>
   <script defer src="js/brand-logos.js?v=35-filter-master-large-watermark"></script>
 
@@ -21,8 +21,8 @@
     }
   } catch (error) {}
   </script>
-  <script src="js/pdf-brand-logos.js?v=81-june-master"></script>
-<script defer src="js/app.js?v=91-final-index-polish"></script>
+  <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
+<script defer src="js/app.js?v=91-logo-watermark"></script>
   <script defer src="js/v45-config.js?v=87"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
@@ -596,7 +596,10 @@
       <div class="image-modal-head"><strong id="imageModalCode">Product Image</strong><span id="imageModalName"></span></div>
       <div class="image-stage">
         <button id="zoomOutBtn" class="zoom-btn" type="button">−</button>
-        <img id="productImagePreview" alt="Product">
+        <div class="product-image-watermark-wrap">
+          <img id="productImagePreview" alt="Product">
+          <img class="product-image-watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="" aria-hidden="true">
+        </div>
         <button id="zoomInBtn" class="zoom-btn" type="button">+</button>
       </div>
       <div id="imageError" class="image-error" hidden>Image not found. Keep it as <b>assets/Products Images/GROUP/PARTNUMBER_1.webp</b>, for example <b>assets/Products Images/AAYUB/AA1007_1.webp</b>.</div>

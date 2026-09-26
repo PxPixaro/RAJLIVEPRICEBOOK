@@ -1643,3 +1643,9 @@ footer{color:#68758d}
   .catalog-actions{grid-template-columns:1fr 1fr!important}
   #catalogDownloadBtn{grid-column:1 / -1}
 }
+
+/* V91 final: persistent Raj Group watermark on product-image preview. */
+.product-image-watermark-wrap{position:relative;flex:1;min-width:0;min-height:0;height:100%;display:flex;align-items:center;justify-content:center;overflow:auto;background:#fff}
+.product-image-watermark-wrap #productImagePreview{position:relative;z-index:1;max-width:96%;max-height:100%;object-fit:contain;transform-origin:center;transition:transform .15s}
+.product-image-watermark{position:absolute;z-index:3;left:50%;top:50%;width:min(62%,520px);height:auto;max-height:62%;object-fit:contain;transform:translate(-50%,-50%) rotate(-9deg);opacity:.16;pointer-events:none;user-select:none;-webkit-user-drag:none;mix-blend-mode:multiply}
+@media(max-width:720px){.product-image-watermark{width:66%;opacity:.17}.product-image-watermark-wrap #productImagePreview{max-width:94%}}
