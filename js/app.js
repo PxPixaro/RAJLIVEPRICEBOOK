@@ -1376,22 +1376,29 @@ async function buildFastPdfBlob(){
     // V89: customer and Pixaro Admin now share the same A4 portrait presentation.
     if(portrait){
       if(!p.isIndex){const wmW=420,wmH=280,wmX=(W-wmW)/2,wmY=(H-wmH)/2-10;content+=`q /GS1 gs ${wmW} 0 0 ${wmH} ${wmX} ${wmY} cm /ImWM Do Q\n`;}
-      content+=p.isIndex?`q 76 0 0 42 ${pageMargin+22} ${H-73} cm /ImLogo Do Q\n`:`q 74 0 0 39 20 ${H-64} cm /ImLogo Do Q\n`;
+      if(!p.isIndex)content+=`q 74 0 0 39 20 ${H-64} cm /ImLogo Do Q\n`;
       if(brandId)content+=`q 74 0 0 34 ${W-98} ${H-60} cm /ImBrand Do Q\n`;
       if(!p.isIndex&&pages.some(pg=>pg.isIndex)){const hbW=78,hbH=11,hbX=W/2-hbW/2,hbY=H-91;content+=`q 0.055 0.200 0.494 rg ${hbX} ${hbY} ${hbW} ${hbH} re f 0.96 0.69 0.05 RG ${hbX} ${hbY} ${hbW} ${hbH} re S Q\n`;content+=`BT /F2 7.2 Tf 1 1 1 rg ${hbX+17} ${hbY+2.6} Td (INDEX HOME) Tj ET\n`;}
     }else{
       if(!p.isIndex)content+=`q /GS1 gs 520 0 0 347 161 120 cm /ImWM Do Q\n`;
-      content+=p.isIndex?`q 78 0 0 42 ${pageMargin+10} ${H-72} cm /ImLogo Do Q\n`:`q 64 0 0 34 30 ${H-57} cm /ImLogo Do Q\n`;
+      if(!p.isIndex)content+=`q 64 0 0 34 30 ${H-57} cm /ImLogo Do Q\n`;
       if(brandId)content+=`q 78 0 0 34 ${W-104} ${H-57} cm /ImBrand Do Q\n`;
     }
     let indexLogoResources='';
+    const deferredIndexLogos=[];
     (p.indexLogos||[]).forEach((item,i)=>{
       const objectId=brandObjects.get(item.b64)||0;if(!objectId)return;
       const name=`IdxLogo${i}`;
       indexLogoResources+=` /${name} ${objectId} 0 R`;
-      content+=`q ${item.w.toFixed(2)} 0 0 ${item.h.toFixed(2)} ${item.x.toFixed(2)} ${item.y.toFixed(2)} cm /${name} Do Q\n`;
+      deferredIndexLogos.push({name,item});
     });
+    // V92: draw index backgrounds/borders/text first, then logos on top of their boxes.
+    // V91 drew logos first and the white box commands in p.cmd covered them.
     content+=p.cmd.join('\n');
+    if(p.isIndex){
+      content+=`\nq 76 0 0 42 ${pageMargin+22} ${H-73} cm /ImLogo Do Q\n`;
+      deferredIndexLogos.forEach(({name,item})=>{content+=`q ${item.w.toFixed(2)} 0 0 ${item.h.toFixed(2)} ${item.x.toFixed(2)} ${item.y.toFixed(2)} cm /${name} Do Q\n`});
+    }
 
     const cb=latin1Bytes(content),cobj=add({bin:cb,head:`<< /Length ${cb.length} >>`});
     const brandResource=brandId?` /ImBrand ${brandId} 0 R`:'';
