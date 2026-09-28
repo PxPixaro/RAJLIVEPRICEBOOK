@@ -22,13 +22,13 @@
   } catch (error) {}
   </script>
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
-<script defer src="js/app.js?v=93-filter-master"></script>
+<script defer src="js/app.js?v=94-filter-master-map-pdf"></script>
   <script defer src="js/v45-config.js?v=87"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=93-filter-master"></script>
+  <script defer src="js/v45.js?v=94-filter-master-map-pdf"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -623,17 +623,12 @@
 
     function selectedValue(def,row){
       if(def.id==='subGroupFilter')return subGroupValue(row);
-      if(def.id==='modelFilter'&&typeof V93_SOURCE_MODEL_MAP!=='undefined')return V93_SOURCE_MODEL_MAP.get(v93Norm(getField(row,'MODEL')))||clean(getField(row,'MODEL'));
-      if(def.id==='categoryFilter'&&typeof v93CategoryInfo==='function')return v93CategoryInfo(row).category;
-      if(def.id==='subCategoryFilter'&&typeof v93CategoryInfo==='function')return v93CategoryInfo(row).subCategory;
+      if(def.id==='categoryFilter'||def.id==='subCategoryFilter')return typeof v94FilterDisplayValue==='function'?v94FilterDisplayValue(row,def.id):'';
       return clean(getField.apply(null,[row].concat(def.fields)));
     }
     function selectedMatches(def,row,value){
       if(!value)return true;
-      if(def.segment)return segmentMatch(row,value);
-      if(def.id==='modelFilter'&&typeof v93ModelMatch==='function')return v93ModelMatch(row,value);
-      if(def.id==='categoryFilter'&&typeof v93CategoryMatch==='function')return v93CategoryMatch(row,value);
-      if(def.id==='subCategoryFilter'&&typeof v93SubCategoryMatch==='function')return v93SubCategoryMatch(row,value);
+      if(typeof v94FilterMatch==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id))return v94FilterMatch(row,def.id,value);
       return selectedValue(def,row)===value;
     }
     function filterText(def){
@@ -676,13 +671,9 @@
       return codeProductMatches(row,ctx) && universalMatches(row,ctx.universal);
     }
     function valuesFor(def,rows){
-      if(def.segment)return uniqueSegments(rows);
-      const found=new Set();
-      rows.forEach(function(row){
-        const value=selectedValue(def,row);
-        if(value)found.add(value);
-      });
-      return Array.from(found).sort(natural);
+      if(typeof masterValuesForFilter==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter'].includes(def.id))return masterValuesForFilter(def.id);
+      if(def.id==='subCategoryFilter'&&typeof v94SubCategoryOptions==='function')return v94SubCategoryOptions(document.getElementById('categoryFilter')?.value||'');
+      const found=new Set();rows.forEach(function(row){const value=selectedValue(def,row);if(value)found.add(value)});return Array.from(found).sort(natural);
     }
 
     // Every dropdown is now a faceted filter. It can be used first, last or in any order.
@@ -1029,9 +1020,7 @@
 
     function fieldValue(row,def){
       if(def.subgroup)return subGroupValue(row);
-      if(def.id==='modelFilter'&&typeof V93_SOURCE_MODEL_MAP!=='undefined')return V93_SOURCE_MODEL_MAP.get(v93Norm(getField(row,'MODEL')))||clean(getField(row,'MODEL'));
-      if(def.id==='categoryFilter'&&typeof v93CategoryInfo==='function')return v93CategoryInfo(row).category;
-      if(def.id==='subCategoryFilter'&&typeof v93CategoryInfo==='function')return v93CategoryInfo(row).subCategory;
+      if((def.id==='categoryFilter'||def.id==='subCategoryFilter')&&typeof v94FilterDisplayValue==='function')return v94FilterDisplayValue(row,def.id);
       return clean(getField.apply(null,[row].concat(def.fields)));
     }
 
@@ -1232,20 +1221,15 @@
       const fieldName=def.fields[0]||'';
       const masterActive=typeof filterMasterHasValues==='function'&&filterMasterHasValues(def.id);
       if(selected){
-        if(def.segment){
-          if(!multiValueMatch(meta.values[index],selected,'SEGMENT')&&!multiValueMatch(meta.values[index],'UNIVERSAL','SEGMENT'))return false;
-        }else if(def.id==='modelFilter'&&typeof v93ModelMatch==='function'){
-          if(!v93ModelMatch(meta.row,selected))return false;
-        }else if(def.id==='categoryFilter'&&typeof v93CategoryMatch==='function'){
-          if(!v93CategoryMatch(meta.row,selected))return false;
-        }else if(def.id==='subCategoryFilter'&&typeof v93SubCategoryMatch==='function'){
-          if(!v93SubCategoryMatch(meta.row,selected))return false;
-        }else if(masterActive||def.id==='vehicleFilter'){
-          if(!multiValueMatch(meta.values[index],selected,fieldName))return false;
+        if(typeof v94FilterMatch==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id)){
+          if(!v94FilterMatch(meta.row,def.id,selected))return false;
         }else if(meta.values[index]!==selected)return false;
       }
-      // Typed text also uses the same anywhere/OR/fuzzy matcher.
-      if(typed&&!multiValueMatch(meta.values[index],typed,fieldName))return false;
+      if(typed){
+        if(typeof v94FilterSearchMatch==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id)){
+          if(!v94FilterSearchMatch(meta.row,def.id,typed))return false;
+        }else if(!multiValueMatch(meta.values[index],typed,fieldName))return false;
+      }
       return true;
     }
     function normalizedSearch(value){
@@ -1338,13 +1322,7 @@
 
       FAST_FILTERS.forEach(function(def,index){
         const masterValues=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
-        let vals=masterValues.length?masterValues:Array.from(facets[index]);
-        // V93: Category/Sub Category are mapped facets. Keep them dependent on the
-        // rows allowed by the other active filters instead of showing unrelated master values.
-        if((def.id==='categoryFilter'||def.id==='subCategoryFilter')&&masterValues.length){
-          const allowed=new Set(Array.from(facets[index]).map(function(v){return normalizedSearch(v)}));
-          vals=masterValues.filter(function(v){return allowed.has(normalizedSearch(v))});
-        }
+        let vals=def.id==='subCategoryFilter'&&typeof v94SubCategoryOptions==='function'?v94SubCategoryOptions(ctx.selected[FAST_FILTERS.findIndex(x=>x.id==='categoryFilter')]||''):(masterValues.length?masterValues:Array.from(facets[index]));
         // V82.1: GROUP / BRAND is always the complete list from Filter Master
         // (preferred) or directly from bundled price data, even during quick start.
         if(def.id==='groupFilter')vals=masterValues.length?masterValues:v821AllGroupNames();

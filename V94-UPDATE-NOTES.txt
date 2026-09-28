@@ -1,0 +1,9 @@
+RAJ LIVE PRICEBOOK V94
+
+- Segment / Vehicle / Model / Category / Sub Category dropdowns come only from latest filter-master.xlsx clean single-value lists.
+- Source price-book rows are matched token/contains-wise, so MAHINDRA matches TATA, MAHINDRA and model 1210 matches source rows containing 1210.
+- MODEL MAP drives canonical model aliases when mappings exist; direct contains fallback covers canonical models without alias rows.
+- CATEGORY MAP drives Category -> Sub Category mapping against source CATAGORIES.
+- Product price-list PDF no longer has the # / serial-number column; opening Main Index keeps SR NO.
+- Main Index Raj Group logo is tightly cropped and aspect-fit inside its box.
+- Existing V92 PDF/index/image/watermark/admin behavior otherwise remains unchanged.

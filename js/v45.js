@@ -95,11 +95,15 @@ function specialCascade(){
     ['subGroupFilter','All sub groups',row=>subGroupValue(row),(row,v)=>subGroupValue(row)===v],
     ['segmentFilter','All segments',row=>clean(field(row,'SEGMENT')),(row,v)=>multiValueMatch(field(row,'SEGMENT'),v,'SEGMENT')||multiValueMatch(field(row,'SEGMENT'),'UNIVERSAL','SEGMENT')],
     ['vehicleFilter','All vehicles',row=>clean(field(row,'VEHICLE')),(row,v)=>multiValueMatch(field(row,'VEHICLE'),v,'VEHICLE')],
-    ['modelFilter','All models',row=>typeof V93_SOURCE_MODEL_MAP!=='undefined'?(V93_SOURCE_MODEL_MAP.get(v93Norm(field(row,'MODEL')))||clean(field(row,'MODEL'))):clean(field(row,'MODEL')),(row,v)=>typeof v93ModelMatch==='function'?v93ModelMatch(row,v):multiValueMatch(field(row,'MODEL'),v,'MODEL')],
-    ['categoryFilter','All categories',row=>typeof v93CategoryInfo==='function'?v93CategoryInfo(row).category:clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY')),(row,v)=>typeof v93CategoryMatch==='function'?v93CategoryMatch(row,v):clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY'))===v],
-    ['subCategoryFilter','All sub categories',row=>typeof v93CategoryInfo==='function'?v93CategoryInfo(row).subCategory:clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY')),(row,v)=>typeof v93SubCategoryMatch==='function'?v93SubCategoryMatch(row,v):clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY'))===v]
+    ['modelFilter','All models',row=>clean(field(row,'MODEL')),(row,v)=>v94ModelMatch(row,v)],
+    ['categoryFilter','All categories',row=>v94FilterDisplayValue(row,'categoryFilter'),(row,v)=>v94CategoryMatch(row,v)],
+    ['subCategoryFilter','All sub categories',row=>v94FilterDisplayValue(row,'subCategoryFilter'),(row,v)=>v94SubCategoryMatch(row,v)]
   ];
-  for(const [id,label,getter,matcher] of defs){const el=q('#'+id),cur=el?.value||'';const values=id==='segmentFilter'?uniqueSorted(r.flatMap(row=>segmentTokens(getter(row)))):uniqueSorted(r.map(getter));setOptions(el,values,label);if(cur&&values.includes(cur))el.value=cur;const active=el?.value||'';if(active)r=r.filter(row=>matcher(row,active));}
+  for(const [id,label,getter,matcher] of defs){
+    const el=q('#'+id),cur=el?.value||'';
+    let values;if(['segmentFilter','vehicleFilter','modelFilter','categoryFilter'].includes(id))values=masterValuesForFilter(id);else if(id==='subCategoryFilter')values=v94SubCategoryOptions(q('#categoryFilter')?.value||'');else values=uniqueSorted(r.map(getter));
+    setOptions(el,values,label);if(cur&&values.includes(cur))el.value=cur;const active=el?.value||'';if(active)r=r.filter(row=>matcher(row,active));
+  }
 }
 window.RAJ_V45_SPECIAL_CONTEXT=function(){
   return {
@@ -119,7 +123,7 @@ applyFilters=function(resetPage=true,doCascade=false){
   if(doCascade){if(V45.special)specialCascade();else cascade();}
   const searchEl=q('#searchInput'); const raw=searchEl?searchEl.value:''; const sq=normalizeSearchText(raw);
   const groupText=normalizeSearchText(filterSearchTerm('groupFilter')),subGroupText=normalizeSearchText(filterSearchTerm('subGroupFilter'));
-  const segmentText=filterSearchTerm('segmentFilter'),vehicleText=filterSearchTerm('vehicleFilter'),modelText=filterSearchTerm('modelFilter'),categoryText=normalizeSearchText(filterSearchTerm('categoryFilter')),subCategoryText=normalizeSearchText(filterSearchTerm('subCategoryFilter'));
+  const segmentText=filterSearchTerm('segmentFilter'),vehicleText=filterSearchTerm('vehicleFilter'),modelText=filterSearchTerm('modelFilter'),categoryText=filterSearchTerm('categoryFilter'),subCategoryText=filterSearchTerm('subCategoryFilter');
   const gv=q('#groupFilter')?.value||'',sv=q('#subGroupFilter')?.value||'',segv=q('#segmentFilter')?.value||'',vv=q('#vehicleFilter')?.value||'',mv=q('#modelFilter')?.value||'',cv=q('#categoryFilter')?.value||'',scv=q('#subCategoryFilter')?.value||'',fsn=q('#fsnFilter')?.value||'';
   const out=[];
   for(let i=0;i<FAST_ROWS.length;i++){
@@ -127,10 +131,10 @@ applyFilters=function(resetPage=true,doCascade=false){
     if(V45.special==='new'&&!isNew(r))continue;if(V45.special==='dead'&&!isDead(r))continue;
     if(fsn&&normalizeFsnClass(fsnValue(r))!==normalizeFsnClass(fsn))continue;
     if(gv&&x.group!==gv)continue;if(sv&&x.sub!==sv)continue;
-    if(segv&&!(multiValueMatch(x.segment,segv,'SEGMENT')||multiValueMatch(x.segment,'UNIVERSAL','SEGMENT')))continue;
-    if(vv&&!multiValueMatch(x.vehicle,vv,'VEHICLE'))continue;if(mv&&!(typeof v93ModelMatch==='function'?v93ModelMatch(r,mv):multiValueMatch(x.model,mv,'MODEL')))continue;if(cv&&!(typeof v93CategoryMatch==='function'?v93CategoryMatch(r,cv):x.category===cv))continue;if(scv&&!(typeof v93SubCategoryMatch==='function'?v93SubCategoryMatch(r,scv):x.category===scv))continue;
+    if(segv&&!v94SegmentMatch(r,segv))continue;
+    if(vv&&!v94VehicleMatch(r,vv))continue;if(mv&&!v94ModelMatch(r,mv))continue;if(cv&&!v94CategoryMatch(r,cv))continue;if(scv&&!v94SubCategoryMatch(r,scv))continue;
     if(groupText&&!x.groupN.includes(groupText))continue;if(subGroupText&&!x.subN.includes(subGroupText))continue;
-    if(segmentText&&!multiValueMatch(x.segment,segmentText,'SEGMENT'))continue;if(vehicleText&&!multiValueMatch(x.vehicle,vehicleText,'VEHICLE'))continue;if(modelText&&!(typeof v93ModelMatch==='function'?v93ModelMatch(r,modelText):multiValueMatch(x.model,modelText,'MODEL')))continue;if(categoryText&&!normalizeSearchText(typeof v93CategoryInfo==='function'?v93CategoryInfo(r).category:x.category).includes(categoryText))continue;if(subCategoryText&&!normalizeSearchText(typeof v93CategoryInfo==='function'?v93CategoryInfo(r).subCategory:x.category).includes(subCategoryText))continue;
+    if(segmentText&&!v94FilterSearchMatch(r,'segmentFilter',segmentText))continue;if(vehicleText&&!v94FilterSearchMatch(r,'vehicleFilter',vehicleText))continue;if(modelText&&!v94FilterSearchMatch(r,'modelFilter',modelText))continue;if(categoryText&&!v94FilterSearchMatch(r,'categoryFilter',categoryText))continue;if(subCategoryText&&!v94FilterSearchMatch(r,'subCategoryFilter',subCategoryText))continue;
     if(sq&&!smartUniversalRowMatch(x,raw))continue;
     out.push(r);
   }
