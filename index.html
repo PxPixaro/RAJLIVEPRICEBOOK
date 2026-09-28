@@ -22,13 +22,14 @@
   } catch (error) {}
   </script>
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
-<script defer src="js/app.js?v=94-filter-master-map-pdf"></script>
-  <script defer src="js/v45-config.js?v=87"></script>
+<script defer src="js/filter-master-v95.js?v=95"></script>
+<script defer src="js/app.js?v=95-filter-master-boot-fix"></script>
+  <script defer src="js/v45-config.js?v=95"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=94-filter-master-map-pdf"></script>
+  <script defer src="js/v45.js?v=95-filter-master-boot-fix"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -1417,10 +1418,28 @@
     reset=clearToDefaultGroup;
     document.getElementById('resetBtn').onclick=clearToDefaultGroup;
 
-    // V69: Aayub gets priority so the first dashboard view is instant.
-    v69StartAayubQuickWarmup();
-    // Full 44k cache continues quietly in the background.
-    v68StartFastCacheWarmup();
+    // V95: build mapped filter metadata only after FILTER MASTER / MODEL MAP / CATEGORY MAP are ready.
+    // This prevents raw comma-separated MODEL/CATEGORY values from appearing in dropdowns on first load.
+    let v95FilterCachesStarted=false;
+    const v95StartMappedFilterCaches=function(forceRebuild){
+      if(forceRebuild){
+        v69QuickReady=false;v69QuickBuilding=false;v69QuickIndex=0;v69QuickRows=[];v69QuickSource=null;
+        v68CacheReady=false;v68CacheBuilding=false;v68CacheBuildIndex=0;v68CacheSource=null;cacheData=null;cacheLength=0;
+      }
+      if(v95FilterCachesStarted&&!forceRebuild)return;
+      v95FilterCachesStarted=true;
+      v69StartAayubQuickWarmup();
+      v68StartFastCacheWarmup();
+      // Refresh the visible dropdowns immediately with canonical master values.
+      if(typeof cascade==='function')cascade();
+      if(typeof applyFilters==='function')applyFilters(true);
+    };
+    window.addEventListener('raj-filter-master-ready',function(){v95StartMappedFilterCaches(true)});
+    if(window.RAJ_FILTER_MASTER_READY)v95StartMappedFilterCaches(true);
+    else{
+      // Safety fallback: if hosted master cannot be fetched, do not leave the app unusable.
+      setTimeout(function(){if(!v95FilterCachesStarted)v95StartMappedFilterCaches(false)},8000);
+    }
 
     // V65: do not build/filter 44k rows while the user is typing login credentials.
     let v65FastStarted=false;

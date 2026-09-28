@@ -6,7 +6,7 @@ window.RAJ_BOOT_MARK=window.RAJ_BOOT_MARK||function(key,value=true){
   s[key]=!!value;
   // V74: customer never waits for the full 44k cache or hosted refresh.
   // Aayub quick cache is the only technical readiness requirement.
-  if(s.quick&&!s.ready){
+  if(s.quick&&window.RAJ_FILTER_MASTER_READY!==false&&!s.ready){
     s.ready=true;
     window.dispatchEvent(new CustomEvent('raj-boot-ready',{detail:{...s}}));
   }
@@ -319,7 +319,7 @@ function setDefaultGroupBrand(force=false){
 // MODEL and CATEGORY. If a column is blank the app falls back to values found
 // directly in price-book.xlsx. A master cell may contain one value (407) or
 // several OR aliases (407,709,1109).
-const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V35';
+const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V95';
 const FILTER_MASTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'];
 let filterMasterLists=Object.fromEntries(FILTER_MASTER_IDS.map(id=>[id,[]]));
 function masterHeaderKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
@@ -378,11 +378,11 @@ function parseFilterMasterRows(rows){
   });
   return normalizeMasterLists(result);
 }
-// V94 FILTER MASTER MAPPING -------------------------------------------------
+// V95 FILTER MASTER MAPPING -------------------------------------------------
 // FILTER MASTER provides clean dropdown values. Main price-book.xlsx keeps the
 // source SEGMENT / VEHICLE / MODEL / CATAGORIES text. MODEL MAP and CATEGORY MAP
 // bridge clean filter values to those source values.
-const V94_FILTER_MAP_STORAGE='RAJ_FILTER_MAPS_V94';
+const V94_FILTER_MAP_STORAGE='RAJ_FILTER_MAPS_V95';
 let V94_MODEL_TO_SOURCES=new Map();
 let V94_SOURCE_TO_MODELS=new Map();
 let V94_CATEGORY_BY_SOURCE=new Map();
@@ -524,13 +524,50 @@ async function readFilterMasterWorkbookBuffer(buffer){
   v94PersistMaps();
   return parseFilterMasterRows(rows);
 }
+function v95MarkFilterMasterReady(ok){
+  window.RAJ_FILTER_MASTER_READY=true;
+  window.RAJ_FILTER_MASTER_OK=!!ok;
+  window.dispatchEvent(new CustomEvent('raj-filter-master-ready',{detail:{ok:!!ok,count:filterMasterItemCount()}}));
+  // If the Aayub quick cache completed first, release the normal boot-ready event now.
+  const state=window.RAJ_BOOT_STATE;
+  if(state&&state.quick&&!state.ready){state.ready=true;window.dispatchEvent(new CustomEvent('raj-boot-ready',{detail:{...state}}));}
+}
+function v95ApplyBundledFilterMaster(){
+  const src=window.RAJ_FILTER_MASTER_V95;if(!src||!Array.isArray(src.filterMaster))return false;
+  try{
+    if(Array.isArray(src.categoryMap))v94ParseCategoryMap(src.categoryMap);
+    if(Array.isArray(src.modelMap))v94ParseModelMap(src.modelMap);
+    if(Array.isArray(src.voiceAliases)){
+      USER_VOICE_ALIASES=parseVoiceAliasRows(src.voiceAliases);
+      try{localStorage.setItem('RAJ_VOICE_ALIASES_V37',JSON.stringify(USER_VOICE_ALIASES))}catch(_e){}
+    }
+    const lists=parseFilterMasterRows(src.filterMaster);
+    setFilterMasterLists(lists,{persist:true,rerender:false});v94PersistMaps();
+    return filterMasterItemCount()>0;
+  }catch(error){console.warn('Bundled V95 Filter Master failed',error);return false}
+}
+async function v95LoadHostedFilterMaster(){
+  if(window.RAJ_FILTER_MASTER_LOADING)return window.RAJ_FILTER_MASTER_LOADING;
+  window.RAJ_FILTER_MASTER_READY=false;window.RAJ_FILTER_MASTER_OK=false;
+  window.RAJ_FILTER_MASTER_LOADING=(async()=>{
+    // V95 ships a precompiled copy of FILTER MASTER + MODEL MAP + CATEGORY MAP.
+    // This makes dropdowns correct immediately and removes the XLSX/CDN race from first load.
+    if(v95ApplyBundledFilterMaster()){v95MarkFilterMasterReady(true);return true}
+    // Fallback for custom deployments that omit the generated JS file.
+    const ok=await refreshHostedFilterMaster();v95MarkFilterMasterReady(ok);return ok;
+  })().catch(error=>{console.warn('V95 Filter Master boot failed',error);v95MarkFilterMasterReady(false);return false});
+  return window.RAJ_FILTER_MASTER_LOADING;
+}
+
 async function refreshHostedFilterMaster(){
   if(!/^https?:$/.test(location.protocol))return false;
   const paths=['data/filter-master.xlsx','assets/data/filter-master.xlsx'];
   for(const path of paths){
     try{
-      const response=await fetch(path+'?ts='+Date.now(),{cache:'no-store'});if(!response.ok)continue;
-      const lists=await readFilterMasterWorkbookBuffer(await response.arrayBuffer());setFilterMasterLists(lists,{persist:false,rerender:true});return true;
+      const response=await fetch(path+'?v=95&ts='+Date.now(),{cache:'no-store'});if(!response.ok)continue;
+      const lists=await readFilterMasterWorkbookBuffer(await response.arrayBuffer());
+      setFilterMasterLists(lists,{persist:true,rerender:false});
+      return true;
     }catch(error){console.warn('Filter Master refresh skipped for '+path,error)}
   }
   return false;
@@ -2309,6 +2346,9 @@ async function refreshHostedPriceWorkbook(){
 }
 
 (function init(){
+  // V95: Filter Master is a boot dependency. Start it before any model/category cache is built.
+  // The Preparing screen remains visible until this resolves (or the existing safety cap opens the UI).
+  v95LoadHostedFilterMaster();
   // V63: keep login immediately responsive. Heavy search/index work starts after first paint.
   rowIndexMap=new WeakMap();
   filtered=[];
