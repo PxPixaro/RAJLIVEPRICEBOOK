@@ -320,7 +320,7 @@ function setDefaultGroupBrand(force=false){
 // directly in price-book.xlsx. A master cell may contain one value (407) or
 // several OR aliases (407,709,1109).
 const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V35';
-const FILTER_MASTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'];
+const FILTER_MASTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'];
 let filterMasterLists=Object.fromEntries(FILTER_MASTER_IDS.map(id=>[id,[]]));
 function masterHeaderKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
 function masterFilterIdForHeader(header){
@@ -331,6 +331,7 @@ function masterFilterIdForHeader(header){
   if(['VEHICLE','VEHICLES'].includes(key))return 'vehicleFilter';
   if(['MODEL','MODELS','SERIES','MODELSERIES'].includes(key))return 'modelFilter';
   if(['CATEGORY','CATEGORIES','CATAGORIES','CATAGORY'].includes(key))return 'categoryFilter';
+  if(['SUBCATEGORY','SUBCATEGORIES','SUBCATAGORY','SUBCATAGORIES'].includes(key))return 'subCategoryFilter';
   return '';
 }
 function normalizeMasterLists(input){
@@ -383,6 +384,32 @@ function parseVoiceAliasRows(rows){
   if(spokenIndex<0||searchIndex<0)return out;
   for(let i=1;i<rows.length;i++){const spoken=normalizeSearchText((rows[i]||[])[spokenIndex]),search=clean((rows[i]||[])[searchIndex]);if(spoken&&search)out[spoken]=search;}return out;
 }
+// V93: canonical MODEL MAP + CATEGORY MAP from Filter Master workbook.
+let V93_MODEL_MAP=new Map(),V93_SOURCE_MODEL_MAP=new Map(),V93_CATEGORY_MAP=new Map();
+function v93Norm(v){return normalizeSearchText(v)}
+function v93ParseModelMap(rows){
+  const byMaster=new Map(),bySource=new Map();if(!Array.isArray(rows)||rows.length<2)return;
+  const h=(rows[0]||[]).map(masterHeaderKey),mi=h.indexOf('MODEL'),si=h.indexOf('SOURCEMODEL');if(mi<0||si<0)return;
+  for(let i=1;i<rows.length;i++){const master=clean(rows[i]?.[mi]),source=clean(rows[i]?.[si]);if(!master||!source)continue;const mk=v93Norm(master),sk=v93Norm(source);if(!byMaster.has(mk))byMaster.set(mk,new Set());byMaster.get(mk).add(sk);bySource.set(sk,master)}
+  V93_MODEL_MAP=byMaster;V93_SOURCE_MODEL_MAP=bySource;
+}
+function v93ParseCategoryMap(rows){
+  const map=new Map();if(!Array.isArray(rows)||rows.length<2)return;
+  const h=(rows[0]||[]).map(masterHeaderKey),ci=h.indexOf('CATEGORY'),si=h.indexOf('SUBCATEGORY'),ri=h.indexOf('SOURCECATEGORY');if(ci<0||si<0||ri<0)return;
+  for(let i=1;i<rows.length;i++){const category=clean(rows[i]?.[ci]),subCategory=clean(rows[i]?.[si]),source=clean(rows[i]?.[ri]);if(!category||!source)continue;map.set(v93Norm(source),{category,subCategory:subCategory||source,source})}
+  V93_CATEGORY_MAP=map;
+}
+function v93SourceCategory(row){return clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY'))}
+function v93CategoryInfo(row){const raw=v93SourceCategory(row);return V93_CATEGORY_MAP.get(v93Norm(raw))||{category:raw,subCategory:raw,source:raw}}
+function v93CategoryMatch(row,selected){return !selected||v93Norm(v93CategoryInfo(row).category)===v93Norm(selected)}
+function v93SubCategoryMatch(row,selected){return !selected||v93Norm(v93CategoryInfo(row).subCategory)===v93Norm(selected)}
+function v93ModelMatch(row,selected){
+  if(!selected)return true;const raw=clean(getField(row,'MODEL')),rk=v93Norm(raw),mk=v93Norm(selected),set=V93_MODEL_MAP.get(mk);
+  if(set&&set.has(rk))return true;
+  return multiValueMatch(raw,selected,'MODEL');
+}
+function v93MappedValues(rows,kind){const seen=new Map();for(const row of rows){let v='';if(kind==='category')v=v93CategoryInfo(row).category;else if(kind==='subCategory')v=v93CategoryInfo(row).subCategory;else if(kind==='model')v=V93_SOURCE_MODEL_MAP.get(v93Norm(getField(row,'MODEL')))||clean(getField(row,'MODEL'));if(v&&!seen.has(v93Norm(v)))seen.set(v93Norm(v),v)}return [...seen.values()].sort(natural)}
+
 async function readFilterMasterWorkbookBuffer(buffer){
   const ready=await ensureExcelReader();
   if(!ready)throw new Error('Excel reader unavailable');
@@ -392,6 +419,10 @@ async function readFilterMasterWorkbookBuffer(buffer){
   const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
   const aliasName=wb.SheetNames.find(name=>['VOICEALIASES','VOICEALIAS','ALIASES'].includes(masterHeaderKey(name)));
   if(aliasName){const aliasRows=XLSX.utils.sheet_to_json(wb.Sheets[aliasName],{header:1,defval:'',raw:true});USER_VOICE_ALIASES=parseVoiceAliasRows(aliasRows);try{localStorage.setItem('RAJ_VOICE_ALIASES_V37',JSON.stringify(USER_VOICE_ALIASES))}catch(e){}}
+  const categoryMapName=wb.SheetNames.find(name=>masterHeaderKey(name)==='CATEGORYMAP');
+  if(categoryMapName)v93ParseCategoryMap(XLSX.utils.sheet_to_json(wb.Sheets[categoryMapName],{header:1,defval:'',raw:true}));
+  const modelMapName=wb.SheetNames.find(name=>masterHeaderKey(name)==='MODELMAP');
+  if(modelMapName)v93ParseModelMap(XLSX.utils.sheet_to_json(wb.Sheets[modelMapName],{header:1,defval:'',raw:true}));
   return parseFilterMasterRows(rows);
 }
 async function refreshHostedFilterMaster(){
@@ -465,7 +496,7 @@ function openProductImage(row){
   $('#imageModal').setAttribute('aria-hidden','false');
 }
 function clearFilterSelections(){
-  ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).value='');
+  ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>$('#'+id).value='');
   document.querySelectorAll('.filter-search').forEach(x=>x.value='');
   $('#searchInput').value='';
 }
@@ -514,7 +545,7 @@ function bestVoiceFilter(term){
 }
 let USER_FILTER_SCOPE_ACTIVE=false;
 function clearUpperFilterScope(){
-  ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).value='');
+  ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>$('#'+id).value='');
   document.querySelectorAll('.filter-search').forEach(x=>x.value='');
 }
 // V44: remove known group/brand names from a longer natural query before searching
@@ -1571,14 +1602,16 @@ function downloadSelectedPriceList(){
 function cascade(){
  const base=FAST_ROWS.length===allData.length?FAST_ROWS:allData.map((row,index)=>({row,index,group:clean(getField(row,'GROUP')),sub:subGroupValue(row),segment:clean(getField(row,'SEGMENT')),vehicle:clean(getField(row,'VEHICLE')),model:clean(getField(row,'MODEL')),category:clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY'))}));
  const uniq=v=>[...new Set(v.filter(Boolean))].sort(natural);
- options($('#groupFilter'),uniq(base.map(x=>x.group)),'All groups');
- setDefaultGroupBrand(false);
+ options($('#groupFilter'),uniq(base.map(x=>x.group)),'All groups');setDefaultGroupBrand(false);
  let r=base;if($('#groupFilter').value)r=r.filter(x=>x.group===$('#groupFilter').value);
  options($('#subGroupFilter'),uniq(r.map(x=>x.sub)),'All sub groups');if($('#subGroupFilter').value)r=r.filter(x=>x.sub===$('#subGroupFilter').value);
- options($('#segmentFilter'),uniq(r.flatMap(x=>segmentTokens(x.segment))),'All segments');if($('#segmentFilter').value)r=r.filter(x=>multiValueMatch(x.segment,$('#segmentFilter').value,'SEGMENT')||multiValueMatch(x.segment,'UNIVERSAL','SEGMENT'));
- options($('#vehicleFilter'),uniq(r.map(x=>x.vehicle)),'All vehicles');if($('#vehicleFilter').value)r=r.filter(x=>multiValueMatch(x.vehicle,$('#vehicleFilter').value,'VEHICLE'));
- options($('#modelFilter'),uniq(r.map(x=>x.model)),'All models');if($('#modelFilter').value)r=r.filter(x=>multiValueMatch(x.model,$('#modelFilter').value,'MODEL'));
- options($('#categoryFilter'),uniq(r.map(x=>x.category)),'All categories');
+ options($('#segmentFilter'),filterMasterHasValues('segmentFilter')?masterValuesForFilter('segmentFilter'):uniq(r.flatMap(x=>segmentTokens(x.segment))),'All segments');if($('#segmentFilter').value)r=r.filter(x=>multiValueMatch(x.segment,$('#segmentFilter').value,'SEGMENT')||multiValueMatch(x.segment,'UNIVERSAL','SEGMENT'));
+ options($('#vehicleFilter'),filterMasterHasValues('vehicleFilter')?masterValuesForFilter('vehicleFilter'):uniq(r.map(x=>x.vehicle)),'All vehicles');if($('#vehicleFilter').value)r=r.filter(x=>multiValueMatch(x.vehicle,$('#vehicleFilter').value,'VEHICLE'));
+ options($('#modelFilter'),filterMasterHasValues('modelFilter')?masterValuesForFilter('modelFilter'):v93MappedValues(r.map(x=>x.row),'model'),'All models');if($('#modelFilter').value)r=r.filter(x=>v93ModelMatch(x.row,$('#modelFilter').value));
+ const categoryValues=filterMasterHasValues('categoryFilter')?masterValuesForFilter('categoryFilter'):v93MappedValues(r.map(x=>x.row),'category');
+ options($('#categoryFilter'),categoryValues,'All categories');if($('#categoryFilter').value)r=r.filter(x=>v93CategoryMatch(x.row,$('#categoryFilter').value));
+ let subValues=v93MappedValues(r.map(x=>x.row),'subCategory');const masterSubs=masterValuesForFilter('subCategoryFilter');if(masterSubs.length){const allowed=new Set(subValues.map(v93Norm));subValues=masterSubs.filter(v=>allowed.has(v93Norm(v)))}
+ options($('#subCategoryFilter'),subValues,'All sub categories');
 }
 
 function compactFieldKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
@@ -1698,7 +1731,7 @@ function sortedRows(rows){
   });
 }
 function hasActiveUpperFilters(){
-  return ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].some(id=>clean($('#'+id)?.value)) ||
+  return ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].some(id=>clean($('#'+id)?.value)) ||
     [...document.querySelectorAll('.filter-search')].some(input=>clean(input.value));
 }
 function isDefaultAllView(){
@@ -1829,7 +1862,8 @@ function applyFilters(resetPage=true,doCascade=false){
   const vehicleText=filterSearchTerm('vehicleFilter');
   const modelText=filterSearchTerm('modelFilter');
   const categoryText=normalizeSearchText(filterSearchTerm('categoryFilter'));
-  const gv=$('#groupFilter').value, sv=$('#subGroupFilter').value, segv=$('#segmentFilter').value, vv=$('#vehicleFilter').value, mv=$('#modelFilter').value, cv=$('#categoryFilter').value;
+  const subCategoryText=normalizeSearchText(filterSearchTerm('subCategoryFilter'));
+  const gv=$('#groupFilter').value, sv=$('#subGroupFilter').value, segv=$('#segmentFilter').value, vv=$('#vehicleFilter').value, mv=$('#modelFilter').value, cv=$('#categoryFilter').value, scv=$('#subCategoryFilter')?.value||'';
   const out=[];
   for(let i=0;i<FAST_ROWS.length;i++){
     const x=FAST_ROWS[i];
@@ -1837,9 +1871,9 @@ function applyFilters(resetPage=true,doCascade=false){
     // blank this naturally becomes a full-Excel / All-Groups universal search.
     if(gv&&x.group!==gv)continue;if(sv&&x.sub!==sv)continue;
     if(segv&&!(multiValueMatch(x.segment,segv,'SEGMENT')||multiValueMatch(x.segment,'UNIVERSAL','SEGMENT')))continue;
-    if(vv&&!multiValueMatch(x.vehicle,vv,'VEHICLE'))continue;if(mv&&!multiValueMatch(x.model,mv,'MODEL'))continue;if(cv&&x.category!==cv)continue;
+    if(vv&&!multiValueMatch(x.vehicle,vv,'VEHICLE'))continue;if(mv&&!v93ModelMatch(x.row,mv))continue;if(cv&&!v93CategoryMatch(x.row,cv))continue;if(scv&&!v93SubCategoryMatch(x.row,scv))continue;
     if(groupText&&!x.groupN.includes(groupText))continue;if(subGroupText&&!x.subN.includes(subGroupText))continue;
-    if(segmentText&&!multiValueMatch(x.segment,segmentText,'SEGMENT'))continue;if(vehicleText&&!multiValueMatch(x.vehicle,vehicleText,'VEHICLE'))continue;if(modelText&&!multiValueMatch(x.model,modelText,'MODEL'))continue;if(categoryText&&!x.categoryN.includes(categoryText))continue;
+    if(segmentText&&!multiValueMatch(x.segment,segmentText,'SEGMENT'))continue;if(vehicleText&&!multiValueMatch(x.vehicle,vehicleText,'VEHICLE'))continue;if(modelText&&!v93ModelMatch(x.row,modelText))continue;if(categoryText&&!normalizeSearchText(v93CategoryInfo(x.row).category).includes(categoryText))continue;if(subCategoryText&&!normalizeSearchText(v93CategoryInfo(x.row).subCategory).includes(subCategoryText))continue;
     // SEARCH ANYTHING checks every Excel column, but only after the optional upper
     // filter scope above. Space/punctuation-insensitive fallback supports 12-10 / 1210.
     if(q && !smartUniversalRowMatch(x,q))continue;
@@ -1947,7 +1981,7 @@ function render(){
 
 function reset(){
   USER_FILTER_SCOPE_ACTIVE=false;
-  ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).value='');
+  ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>$('#'+id).value='');
   $('#searchInput').value=''; $('#universalSearchInput').value=''; document.querySelectorAll('.filter-search').forEach(x=>x.value='');
   cascade();
   applyFilters();
@@ -2149,7 +2183,7 @@ if(filterMasterSyncBtn&&filterMasterFile){
 
 // Pricelist download uses a dedicated lightweight print iframe above.
 $('#resetBtn').onclick=reset;
-['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>$('#'+id).onchange=()=>{USER_FILTER_SCOPE_ACTIVE=true;flushPendingFilterApply();applyFilters(true,true)});
+['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>$('#'+id).onchange=()=>{USER_FILTER_SCOPE_ACTIVE=true;flushPendingFilterApply();applyFilters(true,true)});
 $('#searchInput').oninput=()=>scheduleFilterApply();
 $('#pageSize').onchange=()=>{page=1;render()};
 $('#prevBtn').onclick=()=>{page--;render()};

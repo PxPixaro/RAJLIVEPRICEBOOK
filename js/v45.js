@@ -95,8 +95,9 @@ function specialCascade(){
     ['subGroupFilter','All sub groups',row=>subGroupValue(row),(row,v)=>subGroupValue(row)===v],
     ['segmentFilter','All segments',row=>clean(field(row,'SEGMENT')),(row,v)=>multiValueMatch(field(row,'SEGMENT'),v,'SEGMENT')||multiValueMatch(field(row,'SEGMENT'),'UNIVERSAL','SEGMENT')],
     ['vehicleFilter','All vehicles',row=>clean(field(row,'VEHICLE')),(row,v)=>multiValueMatch(field(row,'VEHICLE'),v,'VEHICLE')],
-    ['modelFilter','All models',row=>clean(field(row,'MODEL')),(row,v)=>multiValueMatch(field(row,'MODEL'),v,'MODEL')],
-    ['categoryFilter','All categories',row=>clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY')),(row,v)=>clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY'))===v]
+    ['modelFilter','All models',row=>typeof V93_SOURCE_MODEL_MAP!=='undefined'?(V93_SOURCE_MODEL_MAP.get(v93Norm(field(row,'MODEL')))||clean(field(row,'MODEL'))):clean(field(row,'MODEL')),(row,v)=>typeof v93ModelMatch==='function'?v93ModelMatch(row,v):multiValueMatch(field(row,'MODEL'),v,'MODEL')],
+    ['categoryFilter','All categories',row=>typeof v93CategoryInfo==='function'?v93CategoryInfo(row).category:clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY')),(row,v)=>typeof v93CategoryMatch==='function'?v93CategoryMatch(row,v):clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY'))===v],
+    ['subCategoryFilter','All sub categories',row=>typeof v93CategoryInfo==='function'?v93CategoryInfo(row).subCategory:clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY')),(row,v)=>typeof v93SubCategoryMatch==='function'?v93SubCategoryMatch(row,v):clean(field(row,'CATAGORIES','CATEGORIES','CATEGORY'))===v]
   ];
   for(const [id,label,getter,matcher] of defs){const el=q('#'+id),cur=el?.value||'';const values=id==='segmentFilter'?uniqueSorted(r.flatMap(row=>segmentTokens(getter(row)))):uniqueSorted(r.map(getter));setOptions(el,values,label);if(cur&&values.includes(cur))el.value=cur;const active=el?.value||'';if(active)r=r.filter(row=>matcher(row,active));}
 }
@@ -118,8 +119,8 @@ applyFilters=function(resetPage=true,doCascade=false){
   if(doCascade){if(V45.special)specialCascade();else cascade();}
   const searchEl=q('#searchInput'); const raw=searchEl?searchEl.value:''; const sq=normalizeSearchText(raw);
   const groupText=normalizeSearchText(filterSearchTerm('groupFilter')),subGroupText=normalizeSearchText(filterSearchTerm('subGroupFilter'));
-  const segmentText=filterSearchTerm('segmentFilter'),vehicleText=filterSearchTerm('vehicleFilter'),modelText=filterSearchTerm('modelFilter'),categoryText=normalizeSearchText(filterSearchTerm('categoryFilter'));
-  const gv=q('#groupFilter')?.value||'',sv=q('#subGroupFilter')?.value||'',segv=q('#segmentFilter')?.value||'',vv=q('#vehicleFilter')?.value||'',mv=q('#modelFilter')?.value||'',cv=q('#categoryFilter')?.value||'',fsn=q('#fsnFilter')?.value||'';
+  const segmentText=filterSearchTerm('segmentFilter'),vehicleText=filterSearchTerm('vehicleFilter'),modelText=filterSearchTerm('modelFilter'),categoryText=normalizeSearchText(filterSearchTerm('categoryFilter')),subCategoryText=normalizeSearchText(filterSearchTerm('subCategoryFilter'));
+  const gv=q('#groupFilter')?.value||'',sv=q('#subGroupFilter')?.value||'',segv=q('#segmentFilter')?.value||'',vv=q('#vehicleFilter')?.value||'',mv=q('#modelFilter')?.value||'',cv=q('#categoryFilter')?.value||'',scv=q('#subCategoryFilter')?.value||'',fsn=q('#fsnFilter')?.value||'';
   const out=[];
   for(let i=0;i<FAST_ROWS.length;i++){
     const x=FAST_ROWS[i],r=x.row;
@@ -127,9 +128,9 @@ applyFilters=function(resetPage=true,doCascade=false){
     if(fsn&&normalizeFsnClass(fsnValue(r))!==normalizeFsnClass(fsn))continue;
     if(gv&&x.group!==gv)continue;if(sv&&x.sub!==sv)continue;
     if(segv&&!(multiValueMatch(x.segment,segv,'SEGMENT')||multiValueMatch(x.segment,'UNIVERSAL','SEGMENT')))continue;
-    if(vv&&!multiValueMatch(x.vehicle,vv,'VEHICLE'))continue;if(mv&&!multiValueMatch(x.model,mv,'MODEL'))continue;if(cv&&x.category!==cv)continue;
+    if(vv&&!multiValueMatch(x.vehicle,vv,'VEHICLE'))continue;if(mv&&!(typeof v93ModelMatch==='function'?v93ModelMatch(r,mv):multiValueMatch(x.model,mv,'MODEL')))continue;if(cv&&!(typeof v93CategoryMatch==='function'?v93CategoryMatch(r,cv):x.category===cv))continue;if(scv&&!(typeof v93SubCategoryMatch==='function'?v93SubCategoryMatch(r,scv):x.category===scv))continue;
     if(groupText&&!x.groupN.includes(groupText))continue;if(subGroupText&&!x.subN.includes(subGroupText))continue;
-    if(segmentText&&!multiValueMatch(x.segment,segmentText,'SEGMENT'))continue;if(vehicleText&&!multiValueMatch(x.vehicle,vehicleText,'VEHICLE'))continue;if(modelText&&!multiValueMatch(x.model,modelText,'MODEL'))continue;if(categoryText&&!x.categoryN.includes(categoryText))continue;
+    if(segmentText&&!multiValueMatch(x.segment,segmentText,'SEGMENT'))continue;if(vehicleText&&!multiValueMatch(x.vehicle,vehicleText,'VEHICLE'))continue;if(modelText&&!(typeof v93ModelMatch==='function'?v93ModelMatch(r,modelText):multiValueMatch(x.model,modelText,'MODEL')))continue;if(categoryText&&!normalizeSearchText(typeof v93CategoryInfo==='function'?v93CategoryInfo(r).category:x.category).includes(categoryText))continue;if(subCategoryText&&!normalizeSearchText(typeof v93CategoryInfo==='function'?v93CategoryInfo(r).subCategory:x.category).includes(subCategoryText))continue;
     if(sq&&!smartUniversalRowMatch(x,raw))continue;
     out.push(r);
   }
@@ -682,7 +683,7 @@ q('#v45ImageFile')?.addEventListener('change',async e=>{
     msg.textContent=err?.message||'Image search failed.';
   }
 });
-q('#v45DrawerContent')?.addEventListener('click',e=>{const h=e.target.closest('[data-image-code]');if(h){const code=h.dataset.imageCode;closeDrawer();V45.special='';['fsnFilter','groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});document.querySelectorAll('.filter-search').forEach(x=>x.value='');if(q('#universalSearchInput'))q('#universalSearchInput').value='';q('#searchInput').value=code;applyFilters(true,false)}});
+q('#v45DrawerContent')?.addEventListener('click',e=>{const h=e.target.closest('[data-image-code]');if(h){const code=h.dataset.imageCode;closeDrawer();V45.special='';['fsnFilter','groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});document.querySelectorAll('.filter-search').forEach(x=>x.value='');if(q('#universalSearchInput'))q('#universalSearchInput').value='';q('#searchInput').value=code;applyFilters(true,false)}});
 
 async function liveApiSync(){const url=apiUrl(CFG.LIVE_PRODUCTS_ENDPOINT);if(!url){notify('Live ERP API not configured yet. See API Flow Word document and js/v45-config.js.');return}const b=q('#liveApiSyncBtn');b.disabled=true;try{const r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('API sync failed');const d=await r.json(),rows=Array.isArray(d)?d:(d.products||d.data||[]);if(!rows.length)throw new Error('API returned no products');allData=rows.map(x=>{const o={};Object.keys(x).forEach(k=>o[keyOf(k)]=x[k]);return o});rebuildRowIndexMap();refreshSpecialFacets(false);applyFilters();lastUpdated=new Date();notify(rows.length.toLocaleString('en-IN')+' products loaded from Live API')}catch(e){console.error(e);notify(e.message||'API sync error')}finally{b.disabled=false}}
 
@@ -693,7 +694,7 @@ function setSpecial(type){
   V45.special=V45.special===type?'':type;
   q('#newLaunchBtn')?.classList.toggle('active',V45.special==='new');
   q('#deadStockBtn')?.classList.toggle('active',V45.special==='dead');
-  ['subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});
+  ['subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});
   refreshSpecialFacets(true);
   if(gf&&keepGroup&&[...gf.options].some(o=>o.value===keepGroup))gf.value=keepGroup;
   if(V45.special)specialCascade();else cascade();
@@ -710,7 +711,7 @@ window.RAJ_V45_DATA_RELOADED=function(){
 };
 function enhanceVoice(){const b=q('#voiceSearchBtn');if(!b)return;b.title='Advanced Voice Search — speak part no., company code, competitor/alternate code, model or product';const s=q('#voiceStatus');if(s)s.textContent='Speak or type: part no., company code, competitor/alternate code, model, vehicle or any Excel detail'}
 function bindMain(){
-  q('#resetBtn').onclick=()=>{V45.special='';if(q('#fsnFilter'))q('#fsnFilter').value='';USER_FILTER_SCOPE_ACTIVE=false;['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});q('#searchInput').value='';q('#universalSearchInput').value='';document.querySelectorAll('.filter-search').forEach(x=>x.value='');cascade();const gf=q('#groupFilter');if(gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)gf.value=a.value}cascade();refreshSpecialFacets(true);applyFilters();};q('#newLaunchBtn').onclick=()=>setSpecial('new');q('#deadStockBtn').onclick=()=>setSpecial('dead');q('#fsnFilter').onchange=()=>{
+  q('#resetBtn').onclick=()=>{V45.special='';if(q('#fsnFilter'))q('#fsnFilter').value='';USER_FILTER_SCOPE_ACTIVE=false;['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});q('#searchInput').value='';q('#universalSearchInput').value='';document.querySelectorAll('.filter-search').forEach(x=>x.value='');cascade();const gf=q('#groupFilter');if(gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)gf.value=a.value}cascade();refreshSpecialFacets(true);applyFilters();};q('#newLaunchBtn').onclick=()=>setSpecial('new');q('#deadStockBtn').onclick=()=>setSpecial('dead');q('#fsnFilter').onchange=()=>{
     const gf=q('#groupFilter');let keep=gf?.value||'';
     if(!keep&&gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)keep=a.value}
     q('#fsnFilter')?.closest('.v45-command,.v45-fsn-card,.filter-item')?.classList.toggle('active',!!q('#fsnFilter')?.value);
