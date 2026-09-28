@@ -319,8 +319,8 @@ function setDefaultGroupBrand(force=false){
 // MODEL and CATEGORY. If a column is blank the app falls back to values found
 // directly in price-book.xlsx. A master cell may contain one value (407) or
 // several OR aliases (407,709,1109).
-const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V95';
-const FILTER_MASTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'];
+const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V96';
+const FILTER_MASTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'];
 let filterMasterLists=Object.fromEntries(FILTER_MASTER_IDS.map(id=>[id,[]]));
 function masterHeaderKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
 function masterFilterIdForHeader(header){
@@ -382,7 +382,7 @@ function parseFilterMasterRows(rows){
 // FILTER MASTER provides clean dropdown values. Main price-book.xlsx keeps the
 // source SEGMENT / VEHICLE / MODEL / CATAGORIES text. MODEL MAP and CATEGORY MAP
 // bridge clean filter values to those source values.
-const V94_FILTER_MAP_STORAGE='RAJ_FILTER_MAPS_V95';
+const V94_FILTER_MAP_STORAGE='RAJ_FILTER_MAPS_V96';
 let V94_MODEL_TO_SOURCES=new Map();
 let V94_SOURCE_TO_MODELS=new Map();
 let V94_CATEGORY_BY_SOURCE=new Map();
@@ -392,8 +392,10 @@ function v94Norm(value){return normalizeSearchText(value)}
 function v94SourceParts(value){return String(value==null?'':value).split(/[,;|]+/).map(clean).filter(Boolean)}
 function v94Contains(source,wanted){
   const h=v94Norm(source),n=v94Norm(wanted);if(!h||!n)return false;
-  if(h===n||h.includes(n))return true;
-  return v94SourceParts(source).some(part=>{const p=v94Norm(part);return p===n||p.includes(n)});
+  if(h===n)return true;
+  const esc=n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  if(/^\d+(?:\.\d+)?$/.test(n))return new RegExp('(^|[^0-9])'+esc+'(?=$|[^0-9])','i').test(h);
+  return new RegExp('(^|[^A-Z0-9])'+esc+'(?=$|[^A-Z0-9])','i').test(h);
 }
 function v94UniquePush(map,key,value){if(!key||!value)return;if(!map.has(key))map.set(key,new Set());map.get(key).add(value)}
 function v94ParseModelMap(rows){
@@ -459,14 +461,14 @@ function v94CategoryMappings(row){
   }
   V94_CATEGORY_RESOLVE_CACHE.set(rawKey,found);return found;
 }
-function v94CategoryMatch(row,selected){if(!selected)return true;const n=v94Norm(selected),items=v94CategoryMappings(row);return items.some(item=>v94Norm(item.category)===n)}
+function v94CategoryMatch(row,selected){
+  if(!selected)return true;
+  return v94Norm(getField(row,'CATAGORIES','CATEGORIES','CATEGORY'))===v94Norm(selected);
+}
 function v94SubCategoryMatch(row,selected){if(!selected)return true;const n=v94Norm(selected),items=v94CategoryMappings(row);return items.some(item=>v94Norm(item.subCategory)===n)}
 function v94ModelMatch(row,selected){
-  if(!selected)return true;const raw=clean(getField(row,'MODEL')),key=v94Norm(selected),sources=V94_MODEL_TO_SOURCES.get(key);
-  if(sources&&sources.size)return [...sources].some(source=>v94Contains(raw,source));
-  // Some canonical values such as 1210 intentionally need direct contains matching
-  // even when MODEL MAP has no separate aliases.
-  return v94Contains(raw,selected);
+  if(!selected)return true;
+  return v94Contains(getField(row,'MODEL'),selected);
 }
 function v94SegmentMatch(row,selected){return !selected||v94Contains(getField(row,'SEGMENT'),selected)||v94Contains(getField(row,'SEGMENT'),'UNIVERSAL')}
 function v94VehicleMatch(row,selected){return !selected||v94Contains(getField(row,'VEHICLE'),selected)}
@@ -481,7 +483,7 @@ function v94FilterMatch(row,id,selected){
 }
 function v94FilterSearchMatch(row,id,typed){
   if(!typed)return true;const n=v94Norm(typed);
-  if(id==='categoryFilter')return v94CategoryMappings(row).some(item=>v94Norm(item.category).includes(n));
+  if(id==='categoryFilter')return v94Norm(getField(row,'CATAGORIES','CATEGORIES','CATEGORY')).includes(n);
   if(id==='subCategoryFilter')return v94CategoryMappings(row).some(item=>v94Norm(item.subCategory).includes(n));
   if(id==='modelFilter')return v94Contains(getField(row,'MODEL'),typed)||v94ModelMatch(row,typed);
   if(id==='vehicleFilter')return v94Contains(getField(row,'VEHICLE'),typed);
@@ -495,7 +497,7 @@ function v94SubCategoryOptions(categoryValue=''){
 }
 function v94FilterDisplayValue(row,id){
   if(id==='modelFilter')return clean(getField(row,'MODEL'));
-  if(id==='categoryFilter'){const x=v94CategoryMappings(row)[0];return x?x.category:''}
+  if(id==='categoryFilter')return clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY'));
   if(id==='subCategoryFilter'){const x=v94CategoryMappings(row)[0];return x?x.subCategory:''}
   if(id==='segmentFilter')return clean(getField(row,'SEGMENT'));
   if(id==='vehicleFilter')return clean(getField(row,'VEHICLE'));
@@ -564,7 +566,7 @@ async function refreshHostedFilterMaster(){
   const paths=['data/filter-master.xlsx','assets/data/filter-master.xlsx'];
   for(const path of paths){
     try{
-      const response=await fetch(path+'?v=95&ts='+Date.now(),{cache:'no-store'});if(!response.ok)continue;
+      const response=await fetch(path+'?v=96&ts='+Date.now(),{cache:'no-store'});if(!response.ok)continue;
       const lists=await readFilterMasterWorkbookBuffer(await response.arrayBuffer());
       setFilterMasterLists(lists,{persist:true,rerender:false});
       return true;
