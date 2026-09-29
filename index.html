@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Raj Agencies — Live Price Book</title>
+  <!-- V100 consolidated fast filter engine -->
   <link rel="stylesheet" href="css/style.css?v=91-logo-watermark">
   <script defer src="js/data.js?v=82.11-viewby-canonical"></script>
   <script defer src="js/brand-logos.js?v=35-filter-master-large-watermark"></script>
@@ -22,14 +23,12 @@
   } catch (error) {}
   </script>
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
-<script defer src="js/filter-master-v98.js?v=98"></script>
-<script defer src="js/app.js?v=98-deep-cascade"></script>
-  <script defer src="js/v45-config.js?v=98"></script>
+<script defer src="js/filter-master-v98.js?v=100-fast-engine"></script>
+<script defer src="js/app.js?v=100-fast-engine"></script>
+  <script defer src="js/v45-config.js?v=100-fast-engine"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
-  <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
-  <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=98-deep-cascade"></script>
+  <script defer src="js/v45.js?v=100-fast-engine"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -1032,6 +1031,58 @@
     // dropdown look incomplete until the full 44k-row cache finished.
     let v821GroupNamesSource=null,v821GroupNames=[];
     const v821OnDemandGroups=new Map();
+    // V100: lightweight caches used by the one authoritative HTML filter engine.
+    // They avoid rescanning 44k rows and avoid rebuilding thousands of <option>
+    // elements just because Segment changed.
+    let v100AllSubGroupsSource=null,v100AllSubGroups=[];
+    let v100AllCategoriesSource=null,v100AllCategories=[];
+    const v100SegmentMetaIndex=new Map();
+    const v100LazyOptions=new Map();
+    const V100_COLUMN_SAMPLE_LIMIT=1600;
+    function v100ResetFacetCaches(){
+      v100AllSubGroupsSource=null;v100AllSubGroups=[];
+      v100AllCategoriesSource=null;v100AllCategories=[];
+      v100SegmentMetaIndex.clear();v100LazyOptions.clear();
+    }
+    function v100AllSubGroupValues(){
+      if(v100AllSubGroupsSource===allData&&v100AllSubGroups.length)return v100AllSubGroups.slice();
+      const seen=new Map();
+      for(let i=0;i<allData.length;i++){
+        const value=clean(subGroupValue(allData[i])),key=normalizedSearch(value);
+        if(value&&key&&!seen.has(key))seen.set(key,value);
+      }
+      v100AllSubGroups=Array.from(seen.values()).sort(natural);v100AllSubGroupsSource=allData;
+      return v100AllSubGroups.slice();
+    }
+    function v100AllCategoryValues(){
+      if(v100AllCategoriesSource===allData&&v100AllCategories.length)return v100AllCategories.slice();
+      const seen=new Map();
+      for(let i=0;i<allData.length;i++){
+        const value=clean(getField(allData[i],'CATAGORIES','CATEGORIES','CATEGORY')),key=normalizedSearch(value);
+        if(value&&key&&!seen.has(key))seen.set(key,value);
+      }
+      v100AllCategories=Array.from(seen.values()).sort(natural);v100AllCategoriesSource=allData;
+      return v100AllCategories.slice();
+    }
+    function v100IndexSegmentMeta(meta){
+      (meta.segments||[]).forEach(function(segment){
+        const key=normalizedSearch(segment);if(!key)return;
+        let list=v100SegmentMetaIndex.get(key);if(!list){list=[];v100SegmentMetaIndex.set(key,list)}
+        list.push(meta);
+      });
+    }
+    function v100SegmentMetas(segment){
+      const key=normalizedSearch(normalizeSegmentToken(segment));if(!key)return [];
+      const main=v100SegmentMetaIndex.get(key)||[];
+      if(key==='universal')return main;
+      const universal=v100SegmentMetaIndex.get('universal')||[];
+      if(!universal.length)return main;
+      if(!main.length)return universal;
+      // Same row can theoretically contain both labels; avoid duplicates cheaply.
+      const seen=new Set(main.map(function(meta){return meta.row}));
+      const merged=main.slice();universal.forEach(function(meta){if(!seen.has(meta.row)){seen.add(meta.row);merged.push(meta)}});
+      return merged;
+    }
     function v821AllGroupNames(){
       if(v821GroupNamesSource===allData&&v821GroupNames.length)return v821GroupNames.slice();
       const seen=new Map();
@@ -1076,31 +1127,17 @@
         cachedColumns=dataColumns();
         cachedColumnBits=cachedColumns.map(function(_,index){return 1n<<BigInt(index)});
       }
-      v69QuickRows=[];v69QuickIndex=0;v69QuickBuilding=true;v69QuickReady=false;v69QuickSource=allData;
-      const run=function(deadline){
-        if(v69QuickSource!==allData){v69QuickBuilding=false;return v69StartAayubQuickWarmup()}
-        const started=performance.now();let processed=0;
-        while(v69QuickIndex<allData.length&&processed<1600){
-          if(processed>180&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<2)break;
-          if(processed>180&&!deadline&&performance.now()-started>7)break;
-          const row=allData[v69QuickIndex++];processed++;
-          const g=normalizedSearch(clean(getField(row,'GROUP','GROUP / BRAND','BRAND')));
-          if(g==='aayub'){
-            const meta=v69MakeMeta(row);
-            if(meta.code)exactCodes.add(meta.code);
-            v69QuickRows.push(meta);
-          }
-        }
-        if(v69QuickIndex<allData.length){
-          if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:70});
-          else setTimeout(function(){run(null)},5);
-        }else{
-          v69QuickBuilding=false;v69QuickReady=true;
-          window.RAJ_BOOT_MARK?.('quick',true);window.dispatchEvent(new CustomEvent('raj-v69-aayub-ready'));
-        }
-      };
-      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:70});
-      else setTimeout(function(){run(null)},5);
+      // V100: scanning GROUP for 44k compact rows is cheap; spreading that same scan
+      // across hundreds of idle callbacks was what kept the Preparing screen visible
+      // for several seconds. Build metadata only for AAYUB rows synchronously.
+      v69QuickBuilding=true;v69QuickReady=false;v69QuickSource=allData;v69QuickRows=[];v69QuickIndex=allData.length;
+      for(let i=0;i<allData.length;i++){
+        const row=allData[i];
+        if(normalizedSearch(clean(getField(row,'GROUP','GROUP / BRAND','BRAND')))!=='aayub')continue;
+        const meta=v69MakeMeta(row);if(meta.code)exactCodes.add(meta.code);v69QuickRows.push(meta);
+      }
+      v69QuickBuilding=false;v69QuickReady=true;
+      window.RAJ_BOOT_MARK?.('quick',true);window.dispatchEvent(new CustomEvent('raj-v69-aayub-ready'));
     }
 
     let v68CacheBuildIndex=0,v68CacheBuilding=false,v68CacheReady=false,v68CacheSource=null;
@@ -1109,25 +1146,26 @@
       window.RAJ_BOOT_MARK?.('v27',false);
       cachedColumns=dataColumns();cachedColumnBits=cachedColumns.map(function(_,index){return 1n<<BigInt(index)});
       exactCodes=new Set();cachedRows=new Array(allData.length);v68CacheBuildIndex=0;v68CacheBuilding=true;v68CacheReady=false;v68CacheSource=allData;
+      v100SegmentMetaIndex.clear();
       const run=function(deadline){
         if(v68CacheSource!==allData){v68CacheBuilding=false;return v68StartFastCacheWarmup()}
         const started=performance.now();let processed=0;
-        while(v68CacheBuildIndex<allData.length&&processed<90){
-          if(processed>14&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<4)break;
-          if(processed>14&&!deadline&&performance.now()-started>2.5)break;
-          const i=v68CacheBuildIndex++,row=allData[i],values=FAST_FILTERS.map(function(def){return fieldValue(row,def)}),lowers=values.map(function(value){return value.toLowerCase()}),segments=segmentTokens(values[2]),code=clean(getField(row,'CODE','PART NUMBER','PART NO')).toLowerCase(),product=clean(getField(row,'PRODUCT NAME','DESCRIPTION')).toLowerCase();
-          if(code)exactCodes.add(code);
-          cachedRows[i]={row:row,values:values,lowers:lowers,segments:segments,code:code,product:product,blob:null,nonEmptyMask:null};processed++;
+        while(v68CacheBuildIndex<allData.length&&processed<650){
+          if(processed>80&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<2)break;
+          if(processed>80&&!deadline&&performance.now()-started>6)break;
+          const i=v68CacheBuildIndex++,row=allData[i],meta=v69MakeMeta(row);processed++;
+          if(meta.code)exactCodes.add(meta.code);
+          cachedRows[i]=meta;v100IndexSegmentMeta(meta);
         }
         if(v68CacheBuildIndex<allData.length){
-          if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(function(){run(null)},8);
+          if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:45});else setTimeout(function(){run(null)},0);
         }else{
           cacheData=allData;cacheLength=allData.length;blobWarmIndex=0;v68CacheBuilding=false;v68CacheReady=true;scheduleSearchWarmup();window.RAJ_BOOT_MARK?.('v27',true);window.dispatchEvent(new CustomEvent('raj-v27-cache-ready'));
         }
       };
       if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(function(){run(null)},8);
     }
-    function rebuildFastCache(){v68CacheReady=false;v68CacheBuilding=false;v68StartFastCacheWarmup()}
+    function rebuildFastCache(){v68CacheReady=false;v68CacheBuilding=false;v100ResetFacetCaches();v68StartFastCacheWarmup()}
     function ensureFastCache(){
       if(cacheData!==allData||cacheLength!==allData.length||!v68CacheReady){v68StartFastCacheWarmup();return false}
       return true;
@@ -1222,12 +1260,17 @@
       const fieldName=def.fields[0]||'';
       const masterActive=typeof filterMasterHasValues==='function'&&filterMasterHasValues(def.id);
       if(selected){
-        if(typeof v94FilterMatch==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id)){
+        if(def.id==='segmentFilter'){
+          const wanted=normalizeSegmentToken(selected);
+          if(!meta.segments.includes(wanted)&&!meta.segments.includes('UNIVERSAL'))return false;
+        }else if(typeof v94FilterMatch==='function'&&['vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id)){
           if(!v94FilterMatch(meta.row,def.id,selected))return false;
         }else if(meta.values[index]!==selected)return false;
       }
       if(typed){
-        if(typeof v94FilterSearchMatch==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id)){
+        if(def.id==='segmentFilter'){
+          if(!normalizedSearch(meta.values[index]).includes(normalizedSearch(typed)))return false;
+        }else if(typeof v94FilterSearchMatch==='function'&&['vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id)){
           if(!v94FilterSearchMatch(meta.row,def.id,typed))return false;
         }else if(!multiValueMatch(meta.values[index],typed,fieldName))return false;
       }
@@ -1271,6 +1314,20 @@
       for(let i=0;i<values.length;i++)if(select.options[i+1].value!==values[i])return false;
       return true;
     }
+    function v100MaterializeLazyOptions(id){
+      const pending=v100LazyOptions.get(id);if(!pending)return;
+      const select=document.getElementById(id);if(!select)return;
+      options(select,pending.values,pending.label);
+      if(pending.current&&pending.values.includes(pending.current))select.value=pending.current;
+      v100LazyOptions.delete(id);delete select.dataset.v100PendingCount;
+    }
+    ['modelFilter','categoryFilter'].forEach(function(id){
+      const select=document.getElementById(id);if(!select)return;
+      const materialize=function(){v100MaterializeLazyOptions(id)};
+      select.addEventListener('pointerdown',materialize);
+      select.addEventListener('focus',materialize);
+      select.addEventListener('keydown',materialize);
+    });
     function refreshSelect(def,values,current){
       const select=document.getElementById(def.id);
       if(current&&!values.includes(current))values.push(current);
@@ -1302,6 +1359,18 @@
         if(hit)chosen=hit;
         else if(keepInvalid){values.push(current);chosen=current;values=v98UniqueSorted(values)}
       }
+      // Native SELECT rendering becomes the dominant delay with 2k-5k options.
+      // Defer only broad MODEL/CATEGORY lists. After Vehicle/Model narrows the
+      // scope the smaller list is rendered immediately, so normal deep search is fast.
+      const lazyLimit=def.id==='modelFilter'?500:(def.id==='categoryFilter'?750:Infinity);
+      if(!chosen&&values.length>lazyLimit){
+        v100LazyOptions.set(def.id,{values:values.slice(),label:def.label,current:''});
+        const onlyLabel=select.options.length===1&&select.options[0].value===''&&select.options[0].textContent===def.label;
+        if(!onlyLabel)select.innerHTML='<option value="">'+def.label+'</option>';
+        select.value='';select.dataset.v100PendingCount=String(values.length);select.title=values.length.toLocaleString('en-IN')+' options — click to load';
+        return '';
+      }
+      v100LazyOptions.delete(def.id);delete select.dataset.v100PendingCount;select.title='';
       if(!sameValues(select,values))options(select,values,def.label);
       select.value=chosen;
       return chosen;
@@ -1316,11 +1385,26 @@
       return v98SameValue(fieldValue(row,def),selected);
     }
     function v98CascadeValues(def,rows,segment,vehicle){
+      const group=clean(document.getElementById('groupFilter')?.value||'');
+      const sub=clean(document.getElementById('subGroupFilter')?.value||'');
       if(def.id==='groupFilter'){
         const master=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
         return master.length?master:v821AllGroupNames();
       }
-      if(def.id==='subGroupFilter')return v98UniqueSorted(rows.map(function(row){return subGroupValue(row)}));
+      if(def.id==='subGroupFilter')return !group?v100AllSubGroupValues():v98UniqueSorted(rows.map(function(row){return subGroupValue(row)}));
+      if(def.id==='segmentFilter'&&!group&&!sub){
+        const master=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
+        if(master.length)return master;
+      }
+      if(def.id==='vehicleFilter'&&!group&&!sub&&!segment){
+        const master=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
+        if(master.length)return master;
+      }
+      if(def.id==='modelFilter'&&!group&&!sub&&!segment&&!vehicle){
+        const master=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
+        if(master.length)return master;
+      }
+      if(def.id==='categoryFilter'&&!group&&!sub&&!segment&&!vehicle)return v100AllCategoryValues();
       if(typeof v97FacetValuesForRows==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter'].includes(def.id)){
         return v97FacetValuesForRows(rows,def.id,{segment:segment||'',vehicle:vehicle||''});
       }
@@ -1342,7 +1426,11 @@
       if(selected[1])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[1],selected[1])});
 
       selected[2]=v98SetCascadeOptions(FAST_FILTERS[2],v98CascadeValues(FAST_FILTERS[2],rows,'',''),selected[2],false);
-      if(selected[2])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[2],selected[2])});
+      if(selected[2]){
+        if(!selected[0]&&!selected[1]&&v68CacheReady){
+          rows=v100SegmentMetas(selected[2]).map(function(meta){return meta.row});
+        }else rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[2],selected[2])});
+      }
 
       selected[3]=v98SetCascadeOptions(FAST_FILTERS[3],v98CascadeValues(FAST_FILTERS[3],rows,selected[2],''),selected[3],false);
       if(selected[3])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[3],selected[3])});
@@ -1370,14 +1458,19 @@
       // V82.1: if another brand is chosen before the complete cache is ready,
       // build only that brand's tiny metadata set immediately instead of showing
       // an empty grid or waiting for the full background warm-up.
-      const rowsSource=fullReady
+      let rowsSource=fullReady
         ? cachedRows
         : (selectedStartupGroup&&selectedStartupKey!=='aayub'
             ? v821RowsForGroup(selectedStartupGroup)
             : v69QuickRows);
+      // Broad Segment was the slow case: do not rescan all 44k metadata rows when
+      // the segment index already points directly to the relevant rows.
+      if(fullReady&&!selectedStartupGroup&&!clean(ctx.selected[1])&&clean(ctx.selected[2])){
+        rowsSource=v100SegmentMetas(ctx.selected[2]);
+      }
       const facets=FAST_FILTERS.map(function(){return new Set()});
       const result=[];
-      let activeMask=0n;
+      let activeMask=0n,maskSamples=0;
 
       rowsSource.forEach(function(meta){
         if(!passesSpecial(meta,ctx))return;
@@ -1393,7 +1486,7 @@
         }
         if(failures===0){
           result.push(meta.row);
-          activeMask|=nonEmptyMask(meta);
+          if(maskSamples<V100_COLUMN_SAMPLE_LIMIT){activeMask|=nonEmptyMask(meta);maskSamples++}
           for(let index=0;index<FAST_FILTERS.length;index++)addFacet(facets[index],meta,index);
         }else if(failures===1){
           addFacet(facets[failedIndex],meta,failedIndex);
@@ -1405,7 +1498,8 @@
       filtered=result;
 
       const keys=cachedColumns;
-      const activeViewByColumns=viewByColumnKeysForRows(filtered);
+      const columnRows=filtered.length>V100_COLUMN_SAMPLE_LIMIT?filtered.slice(0,V100_COLUMN_SAMPLE_LIMIT):filtered;
+      const activeViewByColumns=viewByColumnKeysForRows(columnRows);
       visibleColumns=keys.filter(function(column,index){
         const normalized=keyOf(column);
         return !HIDDEN_COLUMNS.has(normalized)&&
@@ -1498,6 +1592,7 @@
       if(forceRebuild){
         v69QuickReady=false;v69QuickBuilding=false;v69QuickIndex=0;v69QuickRows=[];v69QuickSource=null;
         v68CacheReady=false;v68CacheBuilding=false;v68CacheBuildIndex=0;v68CacheSource=null;cacheData=null;cacheLength=0;
+        v100ResetFacetCaches();
       }
       if(v95FilterCachesStarted&&!forceRebuild)return;
       v95FilterCachesStarted=true;
@@ -1584,6 +1679,6 @@
   </script>
 
   <script src="js/v49.js?v=74-preparing-splash"></script>
-  <script src="js/v50.js?v=65-special-engine"></script>
+  <script src="js/v50.js?v=100-fast-engine"></script>
 </body>
 </html>
