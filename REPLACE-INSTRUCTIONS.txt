@@ -1,4 +1,39 @@
-Replace only:
-/index.html
-/js/app.js
-Do not replace price-book.xlsx for this patch.
+RAJ LIVE PRICE BOOK — V99 SEGMENT FAST PATCH
+==============================================
+
+Replace ONLY these files in your V98 website:
+
+1) index.html                 -> project root/index.html
+2) js/app.js                  -> project root/js/app.js
+3) js/v50.js                  -> project root/js/v50.js
+4) js/v45-config.js           -> project root/js/v45-config.js
+
+DO NOT replace/change:
+- js/v45.js
+- js/data.js
+- js/filter-master-v98.js
+- Excel files
+- images / PDF / cart / login files
+
+WHAT THIS PATCH CHANGES
+-----------------------
+- Removes the expensive runtime 44k-row Segment compatibility rebuild.
+- Segment -> Vehicle and Segment -> Model compatibility is precomputed from the
+  uploaded Price-Book + verified Vehicle Master using the V98 compatibility rules.
+- All Groups + Segment uses direct precomputed Vehicle/Model lists.
+- Group/Sub Group scoped Segment still uses live Price Book rows, with cached results.
+- Vehicle / Model / Category filtering logic is otherwise unchanged.
+- Restores js/v50.js to the original mobile shell so the earlier experimental
+  dynamic-master patch cannot invalidate/rebuild the facet engine.
+- Version/cache strings updated to V99.
+
+AFTER UPLOAD
+------------
+Do one hard refresh in Chrome: Ctrl+F5.
+If Cloudflare/CDN is in front of the site, purge cache once.
+
+TEST
+----
+All Groups -> CAR -> SUZUKI -> 800 CAR
+All Groups -> 2 WHEELERS -> relevant vehicle -> relevant model
+Category / direct Vehicle / direct Model should behave exactly as before.
