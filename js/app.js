@@ -2060,10 +2060,13 @@ function isDefaultAllView(){
   return !hasActiveUpperFilters() && !clean($('#searchInput')?.value) && !clean($('#universalSearchInput')?.value);
 }
 function currentSortedFiltered(){
-  // V40 fast landing mode: when everything is "All", do not sort 40k-60k rows
-  // before showing page 1. Excel order is used for the paged grid; heavy sorting is
-  // still performed for actual filtered results and PDF generation.
-  if(isDefaultAllView() && !printingAll)return filtered;
+  // V99.4 SEGMENT RENDER FAST PATH:
+  // A broad Segment (for example CAR) can still contain 10k+ products. Sorting the
+  // entire filtered array before showing only the first 50 rows was the remaining
+  // UI freeze. Keep original Excel order for large paged screen results; the source
+  // file is already brand-grouped. Full sorting is preserved for PDF/print and for
+  // smaller filtered result sets where it is cheap.
+  if(!printingAll && (isDefaultAllView() || filtered.length>2000))return filtered;
   if(sortedFilteredSource!==filtered){
     sortedFilteredSource=filtered;
     sortedFilteredCache=sortedRows(filtered);
