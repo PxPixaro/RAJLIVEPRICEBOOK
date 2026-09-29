@@ -1,4 +1,4 @@
-/* RAJ LIVE PRICEBOOK V45
+/* RAJ LIVE PRICEBOOK V100 (V45 feature layer)
    New/Dead/FSN filters, cross-reference-ready search, cart/order, customer login hook,
    offer posters, vehicle API hook, image-search API hook and live ERP API hook. */
 (function(){
@@ -645,7 +645,29 @@ async function openOffers(){const admin=V45.customer?.role==='admin'&&normalizeS
 function v71BlobToDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)})}
 window.RAJ_V71_EXPORT_OFFERS=async function(){const out=[];for(const o of V71_OFFERS){let file=o.file||'';if(!file&&o.fileBlob instanceof Blob)file=await v71BlobToDataUrl(o.fileBlob);out.push({id:o.id,brand:o.brand,title:o.title,narration:o.narration,validTill:o.validTill,file,fileName:o.fileName,mime:o.mime,createdAt:o.createdAt,source:'embedded'})}return out};
 
-function openImageSearch(){const input=q('#v45ImageFile');if(!input)return;input.value='';input.click()}
+let v100ImageSearchLoadPromise=null;
+function v100LoadScriptOnce(src,id){
+  if(id&&document.getElementById(id))return Promise.resolve(true);
+  return new Promise(resolve=>{const el=document.createElement('script');if(id)el.id=id;el.src=src;el.async=true;el.onload=()=>resolve(true);el.onerror=()=>resolve(false);document.head.appendChild(el)});
+}
+async function v100EnsureImageSearchEngine(){
+  if(window.RAJ_IMAGE_SEARCH_V82?.search)return true;
+  if(v100ImageSearchLoadPromise)return v100ImageSearchLoadPromise;
+  v100ImageSearchLoadPromise=(async()=>{
+    const a=await v100LoadScriptOnce('js/image-search-index.js?v=100-lazy','v100ImageIndexScript');
+    const b=await v100LoadScriptOnce('js/image-search-v82.js?v=100-lazy','v100ImageEngineScript');
+    return !!(a&&b&&window.RAJ_IMAGE_SEARCH_V82?.search);
+  })();
+  return v100ImageSearchLoadPromise;
+}
+async function openImageSearch(){
+  const input=q('#v45ImageFile');if(!input)return;
+  input.value='';
+  // V100: the 500KB+ visual-search index no longer competes with startup/filtering.
+  // Load it only when the customer actually opens Image Search.
+  try{await v100EnsureImageSearchEngine()}catch(_e){}
+  input.click();
+}
 function v82ImageProduct(code){
   const n=normalizeSearchText(code);if(!n)return null;
   // V82.2: FAST_ROWS is filled in small background chunks for a faster startup.
@@ -708,7 +730,10 @@ function setSpecial(type){
 }
 window.RAJ_V45_DATA_RELOADED=function(){
   rebuildSpecialIndex();
-  if(typeof buildFastRows==='function')buildFastRows();
+  // V100: reuse the app's chunked background preload instead of a synchronous
+  // 44k-row buildFastRows() on the UI thread.
+  if(typeof v68StartBackgroundPreload==='function')v68StartBackgroundPreload();
+  else if(typeof buildFastRows==='function')setTimeout(buildFastRows,0);
   refreshSpecialFacets(true);
   if(V45.special)specialCascade();
   applyFilters(true,false);
@@ -759,6 +784,18 @@ function v68WarmSpecialIndex(){
   };
   if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:120});else setTimeout(()=>run(null),8);
 }
-v68WarmSpecialIndex();
+// V100: NEW/DEAD/FSN indexing is useful, but it must not compete with the
+// first dashboard/filter interaction. Start it after the main UI is ready.
+let v100SpecialWarmQueued=false;
+function v100QueueSpecialWarmup(){
+  if(v100SpecialWarmQueued||v68SpecialReady||v68SpecialWarming)return;
+  v100SpecialWarmQueued=true;
+  const start=()=>{v100SpecialWarmQueued=false;v68WarmSpecialIndex()};
+  if('requestIdleCallback' in window)requestIdleCallback(start,{timeout:2200});
+  else setTimeout(start,1200);
+}
+if(window.RAJ_BOOT_STATE?.ready)v100QueueSpecialWarmup();
+else window.addEventListener('raj-boot-ready',v100QueueSpecialWarmup,{once:true});
+setTimeout(v100QueueSpecialWarmup,5000);
 window.RAJ_V45=V45;
 })();
