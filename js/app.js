@@ -319,7 +319,7 @@ function setDefaultGroupBrand(force=false){
 // MODEL and CATEGORY. If a column is blank the app falls back to values found
 // directly in price-book.xlsx. A master cell may contain one value (407) or
 // several OR aliases (407,709,1109).
-const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V96';
+const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V97';
 const FILTER_MASTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'];
 let filterMasterLists=Object.fromEntries(FILTER_MASTER_IDS.map(id=>[id,[]]));
 function masterHeaderKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
@@ -354,6 +354,7 @@ function filterMasterItemCount(){return FILTER_MASTER_IDS.reduce((sum,id)=>sum+(
 function setFilterMasterLists(input,{persist=false,rerender=true}={}){
   filterMasterLists=normalizeMasterLists(input);
   multiValueMatcherCache.clear();
+  if(typeof v97InvalidateFacetEngine==='function')v97InvalidateFacetEngine();
   if(persist){
     try{localStorage.setItem(FILTER_MASTER_STORAGE,JSON.stringify(filterMasterLists))}catch(error){}
   }
@@ -382,7 +383,7 @@ function parseFilterMasterRows(rows){
 // FILTER MASTER provides clean dropdown values. Main price-book.xlsx keeps the
 // source SEGMENT / VEHICLE / MODEL / CATAGORIES text. MODEL MAP and CATEGORY MAP
 // bridge clean filter values to those source values.
-const V94_FILTER_MAP_STORAGE='RAJ_FILTER_MAPS_V96';
+const V94_FILTER_MAP_STORAGE='RAJ_FILTER_MAPS_V97';
 let V94_MODEL_TO_SOURCES=new Map();
 let V94_SOURCE_TO_MODELS=new Map();
 let V94_CATEGORY_BY_SOURCE=new Map();
@@ -471,7 +472,7 @@ function v94ModelMatch(row,selected){
   return v94Contains(getField(row,'MODEL'),selected);
 }
 function v94SegmentMatch(row,selected){return !selected||v94Contains(getField(row,'SEGMENT'),selected)||v94Contains(getField(row,'SEGMENT'),'UNIVERSAL')}
-function v94VehicleMatch(row,selected){return !selected||v94Contains(getField(row,'VEHICLE'),selected)}
+function v94VehicleMatch(row,selected){if(!selected)return true;const source=getField(row,'VEHICLE');if(v94Contains(source,selected))return true;return typeof v97VehicleLooseMatch==='function'?v97VehicleLooseMatch(source,selected):false}
 function v94FilterMatch(row,id,selected){
   if(!selected)return true;
   if(id==='segmentFilter')return v94SegmentMatch(row,selected);
@@ -490,6 +491,171 @@ function v94FilterSearchMatch(row,id,typed){
   if(id==='segmentFilter')return v94Contains(getField(row,'SEGMENT'),typed);
   return v94FilterMatch(row,id,typed);
 }
+
+// V97 SMART CASCADING FACETS ------------------------------------------------
+// Downstream dropdowns are limited to values that occur in the Price Book rows
+// left by the filters above them. The clean verified Vehicle Master remains the
+// display vocabulary for Segment / Vehicle / Model.
+let V97_FACET_ENGINE={data:null,signature:'',automata:{},compat:null};
+function v97FacetNorm(value){return v94Norm(value)}
+function v97FacetMasterSignature(){
+  return ['segmentFilter','vehicleFilter','modelFilter'].map(id=>masterValuesForFilter(id).map(v97FacetNorm).join('\u0001')).join('\u0002');
+}
+function v97BuildAutomaton(values){
+  const next=[Object.create(null)],fail=[0],out=[[]];
+  (values||[]).forEach(value=>{
+    const norm=v97FacetNorm(value);if(!norm)return;
+    const pattern=' '+norm+' ';let state=0;
+    for(const ch of pattern){
+      let target=next[state][ch];
+      if(target===undefined){target=next.length;next[state][ch]=target;next.push(Object.create(null));fail.push(0);out.push([])}
+      state=target;
+    }
+    out[state].push(value);
+  });
+  const queue=[];
+  for(const ch in next[0]){const state=next[0][ch];queue.push(state);fail[state]=0}
+  for(let head=0;head<queue.length;head++){
+    const parent=queue[head];
+    for(const ch in next[parent]){
+      const state=next[parent][ch];queue.push(state);let fallback=fail[parent];
+      while(fallback&&next[fallback][ch]===undefined)fallback=fail[fallback];
+      fail[state]=next[fallback][ch]??0;
+      if(out[fail[state]].length)out[state]=out[state].concat(out[fail[state]]);
+    }
+  }
+  return {next,fail,out,cache:new Map()};
+}
+function v97EnsureFacetEngine(){
+  const signature=v97FacetMasterSignature();
+  if(V97_FACET_ENGINE.data===allData&&V97_FACET_ENGINE.signature===signature&&V97_FACET_ENGINE.compat)return V97_FACET_ENGINE;
+  V97_FACET_ENGINE={
+    data:allData,signature,
+    automata:{
+      segmentFilter:v97BuildAutomaton(masterValuesForFilter('segmentFilter')),
+      vehicleFilter:v97BuildAutomaton(masterValuesForFilter('vehicleFilter')),
+      modelFilter:v97BuildAutomaton(masterValuesForFilter('modelFilter'))
+    },
+    compat:{vehicleSegment:new Map(),modelSegment:new Map(),modelVehicle:new Map(),vehicleSegmentEvidence:new Map()}
+  };
+  const compat=V97_FACET_ENGINE.compat;
+  for(const row of allData){
+    const segments=v97FacetSourceMatches('segmentFilter',getField(row,'SEGMENT')).filter(v=>v97FacetNorm(v)!=='UNIVERSAL');
+    const vehicles=v97FacetSourceMatches('vehicleFilter',getField(row,'VEHICLE')).filter(v=>v97FacetNorm(v)!=='UNIVERSAL');
+    const models=v97FacetSourceMatches('modelFilter',getField(row,'MODEL'));
+    const strongSegment=segments.length===1,strongVehicle=vehicles.length===1,rawModelEvidence=v97FacetNorm(getField(row,'MODEL'));
+    for(const vehicle of vehicles)for(const segment of segments){
+      v97CompatRecord(compat.vehicleSegment,vehicle,segment,strongSegment);
+      v97VehicleSegmentEvidence(compat.vehicleSegmentEvidence,vehicle,segment,rawModelEvidence);
+    }
+    for(const model of models){
+      for(const segment of segments)v97CompatRecord(compat.modelSegment,model,segment,strongSegment);
+      for(const vehicle of vehicles)v97CompatRecord(compat.modelVehicle,model,vehicle,strongVehicle);
+    }
+  }
+  return V97_FACET_ENGINE;
+}
+function v97EditDistance(a,b){
+  a=clean(a);b=clean(b);if(a===b)return 0;if(!a)return b.length;if(!b)return a.length;
+  let prev=Array.from({length:b.length+1},(_,i)=>i);
+  for(let i=1;i<=a.length;i++){const cur=[i];for(let j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=cur}
+  return prev[b.length];
+}
+function v97VehicleFuzzyCandidates(source,found){
+  const master=masterValuesForFilter('vehicleFilter').map(value=>({value,norm:v97FacetNorm(value),compact:v97FacetNorm(value).replace(/\s+/g,'')}));
+  const chunks=String(source==null?'':source).split(/[,;|/&+]+/).map(v97FacetNorm).filter(Boolean);
+  for(const chunk of chunks){
+    if(found.has(chunk))continue;
+    const compact=chunk.replace(/\s+/g,'');if(compact.length<4)continue;
+    let best=null,bestScore=0;
+    for(const item of master){
+      const maxLen=Math.max(compact.length,item.compact.length);if(!maxLen)continue;
+      if(Math.abs(compact.length-item.compact.length)>Math.max(2,Math.floor(maxLen*.18)))continue;
+      const dist=v97EditDistance(compact,item.compact),score=1-dist/maxLen;
+      if(score>bestScore){bestScore=score;best=item}
+    }
+    if(best&&bestScore>=.86)found.set(best.norm,best.value);
+  }
+}
+function v97FacetSourceMatches(id,source){
+  const norm=v97FacetNorm(source);if(!norm)return [];
+  const engine=(V97_FACET_ENGINE.data===allData&&V97_FACET_ENGINE.automata[id])?V97_FACET_ENGINE:v97EnsureFacetEngine(),automaton=engine.automata[id];if(!automaton)return [];
+  if(automaton.cache.has(norm))return automaton.cache.get(norm);
+  let state=0;const found=new Map();
+  for(const ch of ' '+norm+' '){
+    while(state&&automaton.next[state][ch]===undefined)state=automaton.fail[state];
+    state=automaton.next[state][ch]??0;
+    for(const value of automaton.out[state])found.set(v97FacetNorm(value),value);
+  }
+  if(id==='vehicleFilter')v97VehicleFuzzyCandidates(source,found);
+  const result=[...found.values()];automaton.cache.set(norm,result);return result;
+}
+function v97VehicleLooseMatch(source,selected){return v97FacetSourceMatches('vehicleFilter',source).some(value=>v97FacetNorm(value)===v97FacetNorm(selected))}
+function v97CompatRecord(map,key,value,strong){
+  const k=v97FacetNorm(key),v=v97FacetNorm(value);if(!k||!v)return;
+  let entry=map.get(k);if(!entry){entry={strong:new Map(),weak:new Map()};map.set(k,entry)}
+  const bucket=strong?entry.strong:entry.weak;bucket.set(v,(bucket.get(v)||0)+1);
+}
+function v97VehicleSegmentEvidence(map,vehicle,segment,rawModel){
+  const k=v97FacetNorm(vehicle),s=v97FacetNorm(segment);if(!k||!s)return;
+  let bySegment=map.get(k);if(!bySegment){bySegment=new Map();map.set(k,bySegment)}
+  let item=bySegment.get(s);if(!item){item={rows:0,models:new Set()};bySegment.set(s,item)}
+  item.rows++;if(rawModel)item.models.add(rawModel);
+}
+function v97CompatAllows(map,key,value){
+  const entry=map.get(v97FacetNorm(key));if(!entry)return true;
+  const bucket=entry.strong.size?entry.strong:entry.weak;if(!bucket.size)return true;
+  const target=v97FacetNorm(value),count=bucket.get(target)||0;if(!count)return false;
+  let max=0;for(const n of bucket.values())if(n>max)max=n;
+  if(max<=3)return true;
+  if(count<2||count<max*0.08)return false;
+  // Vehicle -> Segment needs one extra quality check. Price-book cells can contain
+  // broad/composite application text, so a repeated generic model must not make a
+  // truck brand appear under CAR. Real segment families normally have either a
+  // healthy variety of model texts or a dominant share for that vehicle.
+  if(V97_FACET_ENGINE.compat&&map===V97_FACET_ENGINE.compat.vehicleSegment){
+    if(count===max)return true;
+    const evidence=V97_FACET_ENGINE.compat.vehicleSegmentEvidence?.get(v97FacetNorm(key))?.get(target);
+    if(!evidence)return true;
+    const uniqueModels=evidence.models.size,diversity=uniqueModels/Math.max(1,evidence.rows);
+    return uniqueModels>=25||diversity>=0.10||count>=max*0.60;
+  }
+  return true;
+}
+function v97FacetRow(item){return item&&item.row!==undefined?item.row:item}
+function v97FacetValuesForRows(rows,id,{segment='',vehicle=''}={}){
+  const result=new Map();
+  if(id==='categoryFilter'){
+    const canonical=new Map(masterValuesForFilter('categoryFilter').map(v=>[v97FacetNorm(v),v]));
+    for(const item of rows){
+      const raw=clean(getField(v97FacetRow(item),'CATAGORIES','CATEGORIES','CATEGORY'));if(!raw)continue;
+      const norm=v97FacetNorm(raw);result.set(norm,canonical.get(norm)||raw);
+    }
+    return [...result.values()].sort(natural);
+  }
+  const field=id==='segmentFilter'?'SEGMENT':id==='vehicleFilter'?'VEHICLE':'MODEL';
+  const compat=v97EnsureFacetEngine().compat;
+  for(const item of rows){
+    const row=v97FacetRow(item);
+    for(const value of v97FacetSourceMatches(id,getField(row,field))){
+      if(id==='vehicleFilter'&&segment&&!v97CompatAllows(compat.vehicleSegment,value,segment))continue;
+      if(id==='modelFilter'&&segment&&!v97CompatAllows(compat.modelSegment,value,segment))continue;
+      if(id==='modelFilter'&&vehicle&&!v97CompatAllows(compat.modelVehicle,value,vehicle))continue;
+      result.set(v97FacetNorm(value),value);
+    }
+  }
+  return [...result.values()].sort(natural);
+}
+function v97StrictFacetMatch(row,id,selected){
+  if(!selected)return true;
+  if(id==='segmentFilter')return v97FacetSourceMatches(id,getField(row,'SEGMENT')).some(v=>v97FacetNorm(v)===v97FacetNorm(selected));
+  if(id==='vehicleFilter')return v94VehicleMatch(row,selected);
+  if(id==='modelFilter')return v94ModelMatch(row,selected);
+  if(id==='categoryFilter')return v94CategoryMatch(row,selected);
+  return true;
+}
+function v97InvalidateFacetEngine(){V97_FACET_ENGINE={data:null,signature:'',automata:{},compat:null}}
+
 function v94SubCategoryOptions(categoryValue=''){
   const master=masterValuesForFilter('subCategoryFilter');if(!categoryValue)return master;
   const allowed=V94_CATEGORY_TO_SUBS.get(v94Norm(categoryValue));if(!allowed||!allowed.size)return [];
@@ -566,7 +732,7 @@ async function refreshHostedFilterMaster(){
   const paths=['data/filter-master.xlsx','assets/data/filter-master.xlsx'];
   for(const path of paths){
     try{
-      const response=await fetch(path+'?v=96&ts='+Date.now(),{cache:'no-store'});if(!response.ok)continue;
+      const response=await fetch(path+'?v=97&ts='+Date.now(),{cache:'no-store'});if(!response.ok)continue;
       const lists=await readFilterMasterWorkbookBuffer(await response.arrayBuffer());
       setFilterMasterLists(lists,{persist:true,rerender:false});
       return true;
@@ -1736,15 +1902,19 @@ function downloadSelectedPriceList(){
 function cascade(){
  const base=FAST_ROWS.length===allData.length?FAST_ROWS:allData.map((row,index)=>({row,index,group:clean(getField(row,'GROUP')),sub:subGroupValue(row)}));
  const uniq=v=>[...new Set(v.filter(Boolean))].sort(natural);
- options($('#groupFilter'),uniq(base.map(x=>x.group)),'All groups');setDefaultGroupBrand(false);
+ options($('#groupFilter'),uniq(base.map(x=>x.group)),'All groups');
+ if(!USER_FILTER_SCOPE_ACTIVE)setDefaultGroupBrand(false);
  let r=base;if($('#groupFilter').value)r=r.filter(x=>x.group===$('#groupFilter').value);
  options($('#subGroupFilter'),uniq(r.map(x=>x.sub)),'All sub groups');if($('#subGroupFilter').value)r=r.filter(x=>x.sub===$('#subGroupFilter').value);
- const defs=[
-   ['segmentFilter','All segments'],['vehicleFilter','All vehicles'],['modelFilter','All models'],['categoryFilter','All categories']
- ];
- defs.forEach(([id,label])=>{options($('#'+id),masterValuesForFilter(id),label);const selected=$('#'+id).value;if(selected)r=r.filter(x=>v94FilterMatch(x.row,id,selected))});
- const selectedCategory=$('#categoryFilter').value;
- options($('#subCategoryFilter'),v94SubCategoryOptions(selectedCategory),'All sub categories');
+ const segmentEl=$('#segmentFilter');options(segmentEl,v97FacetValuesForRows(r,'segmentFilter'),'All segments');
+ const segment=segmentEl.value;if(segment)r=r.filter(x=>v97StrictFacetMatch(x.row,'segmentFilter',segment));
+ const vehicleEl=$('#vehicleFilter');options(vehicleEl,v97FacetValuesForRows(r,'vehicleFilter',{segment}),'All vehicles');
+ const vehicle=vehicleEl.value;if(vehicle)r=r.filter(x=>v97StrictFacetMatch(x.row,'vehicleFilter',vehicle));
+ const modelEl=$('#modelFilter');options(modelEl,v97FacetValuesForRows(r,'modelFilter',{segment,vehicle}),'All models');
+ const model=modelEl.value;if(model)r=r.filter(x=>v97StrictFacetMatch(x.row,'modelFilter',model));
+ const categoryEl=$('#categoryFilter');options(categoryEl,v97FacetValuesForRows(r,'categoryFilter'),'All categories');
+ const category=categoryEl.value;if(category)r=r.filter(x=>v97StrictFacetMatch(x.row,'categoryFilter',category));
+ const selectedCategory=$('#categoryFilter').value;options($('#subCategoryFilter'),v94SubCategoryOptions(selectedCategory),'All sub categories');
 }
 
 function compactFieldKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
