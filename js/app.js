@@ -319,7 +319,7 @@ function setDefaultGroupBrand(force=false){
 // MODEL and CATEGORY. If a column is blank the app falls back to values found
 // directly in price-book.xlsx. A master cell may contain one value (407) or
 // several OR aliases (407,709,1109).
-const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V97';
+const FILTER_MASTER_STORAGE='RAJ_FILTER_MASTER_V98';
 const FILTER_MASTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'];
 let filterMasterLists=Object.fromEntries(FILTER_MASTER_IDS.map(id=>[id,[]]));
 function masterHeaderKey(value){return keyOf(value).replace(/[^A-Z0-9]/g,'')}
@@ -383,7 +383,7 @@ function parseFilterMasterRows(rows){
 // FILTER MASTER provides clean dropdown values. Main price-book.xlsx keeps the
 // source SEGMENT / VEHICLE / MODEL / CATAGORIES text. MODEL MAP and CATEGORY MAP
 // bridge clean filter values to those source values.
-const V94_FILTER_MAP_STORAGE='RAJ_FILTER_MAPS_V97';
+const V94_FILTER_MAP_STORAGE='RAJ_FILTER_MAPS_V98';
 let V94_MODEL_TO_SOURCES=new Map();
 let V94_SOURCE_TO_MODELS=new Map();
 let V94_CATEGORY_BY_SOURCE=new Map();
@@ -492,7 +492,7 @@ function v94FilterSearchMatch(row,id,typed){
   return v94FilterMatch(row,id,typed);
 }
 
-// V97 SMART CASCADING FACETS ------------------------------------------------
+// V98 SMART CASCADING FACETS ------------------------------------------------
 // Downstream dropdowns are limited to values that occur in the Price Book rows
 // left by the filters above them. The clean verified Vehicle Master remains the
 // display vocabulary for Segment / Vehicle / Model.
@@ -623,6 +623,53 @@ function v97CompatAllows(map,key,value){
   return true;
 }
 function v97FacetRow(item){return item&&item.row!==undefined?item.row:item}
+
+// V98 vehicle/segment compatibility: combine strong single-segment evidence with
+// weaker comma/slash multi-segment rows. This keeps legitimate multi-segment makes
+// (for example TATA / MAHINDRA / BAJAJ / HONDA) while suppressing noisy composite
+// rows that used to leak tractor, two-wheeler and earthmover makes into CAR.
+function v98VehicleSegmentAllows(vehicle,segment){
+  if(!segment)return true;
+  const compat=v97EnsureFacetEngine().compat,entry=compat.vehicleSegment.get(v97FacetNorm(vehicle));
+  if(!entry)return false;
+  const target=v97FacetNorm(segment),strong=entry.strong.get(target)||0,weak=entry.weak.get(target)||0;
+  if(!strong&&!weak)return false;
+  const keys=new Set([...entry.strong.keys(),...entry.weak.keys()]);
+  let maxScore=0,maxWeak=0,weakPositive=0,weakTies=0;
+  for(const key of keys){
+    const sv=entry.strong.get(key)||0,wv=entry.weak.get(key)||0,score=sv+wv*.35;
+    if(score>maxScore)maxScore=score;
+    if(wv>maxWeak){maxWeak=wv;weakTies=1}else if(wv&&wv===maxWeak)weakTies++;
+    if(wv)weakPositive++;
+  }
+  // No clean single-segment evidence: keep only concentrated weak evidence.
+  // Broad one-row combinations such as MATADOR/RTV/MINIDOR across every segment
+  // are intentionally omitted. Ambiguous weak-only CAR evidence is also omitted.
+  if(!entry.strong.size){
+    if(target==='CAR'&&weakTies>=2&&weak===maxWeak)return false;
+    if(maxWeak<=1&&weakPositive>=4)return false;
+    if(maxWeak&&weak<maxWeak*.55)return false;
+    return weak>=2||weakPositive<=2;
+  }
+  const score=strong+weak*.35,ratio=maxScore?score/maxScore:1;
+  if(score===maxScore)return true;
+  const evidence=compat.vehicleSegmentEvidence?.get(v97FacetNorm(vehicle))?.get(target);
+  const uniqueModels=evidence?.models?.size||0,rows=evidence?.rows||0,diversity=uniqueModels/Math.max(1,rows);
+  // CAR needs stronger evidence because many source rows contain broad commercial
+  // vehicle application text together with CAR. This removes obvious HCV/tractor noise.
+  if(target==='CAR'&&ratio<.35)return false;
+  // TWO WHEELERS also receives many broad multi-application rows. Keep a secondary
+  // make only when it has a meaningful share or a healthy set of distinct 2W models.
+  if(target==='2 WHEELERS'){
+    if(ratio>=.15&&(uniqueModels>=4||diversity>=.10||strong>=3))return true;
+    if(uniqueModels>=8&&diversity>=.12)return true;
+    return false;
+  }
+  if(ratio>=.08&&(uniqueModels>=25||diversity>=.08||strong>=5))return true;
+  if(uniqueModels>=12&&diversity>=.12)return true;
+  return false;
+}
+
 function v97FacetValuesForRows(rows,id,{segment='',vehicle=''}={}){
   const result=new Map();
   if(id==='categoryFilter'){
@@ -638,7 +685,7 @@ function v97FacetValuesForRows(rows,id,{segment='',vehicle=''}={}){
   for(const item of rows){
     const row=v97FacetRow(item);
     for(const value of v97FacetSourceMatches(id,getField(row,field))){
-      if(id==='vehicleFilter'&&segment&&!v97CompatAllows(compat.vehicleSegment,value,segment))continue;
+      if(id==='vehicleFilter'&&segment&&!v98VehicleSegmentAllows(value,segment))continue;
       if(id==='modelFilter'&&segment&&!v97CompatAllows(compat.modelSegment,value,segment))continue;
       if(id==='modelFilter'&&vehicle&&!v97CompatAllows(compat.modelVehicle,value,vehicle))continue;
       result.set(v97FacetNorm(value),value);
@@ -732,7 +779,7 @@ async function refreshHostedFilterMaster(){
   const paths=['data/filter-master.xlsx','assets/data/filter-master.xlsx'];
   for(const path of paths){
     try{
-      const response=await fetch(path+'?v=97&ts='+Date.now(),{cache:'no-store'});if(!response.ok)continue;
+      const response=await fetch(path+'?v=98&ts='+Date.now(),{cache:'no-store'});if(!response.ok)continue;
       const lists=await readFilterMasterWorkbookBuffer(await response.arrayBuffer());
       setFilterMasterLists(lists,{persist:true,rerender:false});
       return true;

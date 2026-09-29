@@ -22,14 +22,14 @@
   } catch (error) {}
   </script>
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
-<script defer src="js/filter-master-v97.js?v=97"></script>
-<script defer src="js/app.js?v=97-smart-cascade"></script>
-  <script defer src="js/v45-config.js?v=97"></script>
+<script defer src="js/filter-master-v98.js?v=98"></script>
+<script defer src="js/app.js?v=98-deep-cascade"></script>
+  <script defer src="js/v45-config.js?v=98"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=97-smart-cascade"></script>
+  <script defer src="js/v45.js?v=98-deep-cascade"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -1278,6 +1278,85 @@
       if(!sameValues(select,values))options(select,values,def.label);
       select.value=current;
     }
+
+    // V98: strict downstream cascade for deep product search.
+    // GROUP -> SUB GROUP -> SEGMENT -> VEHICLE -> MODEL -> CATEGORY.
+    // Segment / Vehicle / Model labels still come from the clean verified Vehicle Master,
+    // while their availability is derived from the actual Price Book rows above them.
+    function v98SameValue(a,b){return normalizedSearch(a)===normalizedSearch(b)}
+    function v98UniqueSorted(values){
+      const seen=new Map();
+      (values||[]).forEach(function(value){
+        value=clean(value);const key=normalizedSearch(value);
+        if(value&&key&&!seen.has(key))seen.set(key,value);
+      });
+      return Array.from(seen.values()).sort(natural);
+    }
+    function v98SetCascadeOptions(def,values,current,keepInvalid){
+      const select=document.getElementById(def.id);
+      if(!select)return '';
+      values=v98UniqueSorted(values);
+      let chosen='';
+      if(current){
+        const hit=values.find(function(value){return v98SameValue(value,current)});
+        if(hit)chosen=hit;
+        else if(keepInvalid){values.push(current);chosen=current;values=v98UniqueSorted(values)}
+      }
+      if(!sameValues(select,values))options(select,values,def.label);
+      select.value=chosen;
+      return chosen;
+    }
+    function v98StrictRowMatch(row,def,selected){
+      if(!selected)return true;
+      if(def.id==='groupFilter')return v98SameValue(clean(getField(row,'GROUP','GROUP / BRAND','BRAND')),selected);
+      if(def.id==='subGroupFilter')return v98SameValue(subGroupValue(row),selected);
+      if(typeof v97StrictFacetMatch==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter'].includes(def.id)){
+        return v97StrictFacetMatch(row,def.id,selected);
+      }
+      return v98SameValue(fieldValue(row,def),selected);
+    }
+    function v98CascadeValues(def,rows,segment,vehicle){
+      if(def.id==='groupFilter'){
+        const master=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
+        return master.length?master:v821AllGroupNames();
+      }
+      if(def.id==='subGroupFilter')return v98UniqueSorted(rows.map(function(row){return subGroupValue(row)}));
+      if(typeof v97FacetValuesForRows==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter'].includes(def.id)){
+        return v97FacetValuesForRows(rows,def.id,{segment:segment||'',vehicle:vehicle||''});
+      }
+      return v98UniqueSorted(rows.map(function(row){return fieldValue(row,def)}));
+    }
+    function v98ApplyDeepCascade(){
+      // Do not let an early boot call replace the verified master with empty lists.
+      if(typeof v97FacetValuesForRows!=='function'||typeof masterValuesForFilter!=='function')return currentContext();
+      let rows=allData;
+      const selected=FAST_FILTERS.map(function(def){
+        const el=document.getElementById(def.id);return el?clean(el.value):'';
+      });
+
+      // GROUP always keeps the complete group list. Every later dropdown is downstream-only.
+      selected[0]=v98SetCascadeOptions(FAST_FILTERS[0],v98CascadeValues(FAST_FILTERS[0],rows,'',''),selected[0],true);
+      if(selected[0])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[0],selected[0])});
+
+      selected[1]=v98SetCascadeOptions(FAST_FILTERS[1],v98CascadeValues(FAST_FILTERS[1],rows,'',''),selected[1],false);
+      if(selected[1])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[1],selected[1])});
+
+      selected[2]=v98SetCascadeOptions(FAST_FILTERS[2],v98CascadeValues(FAST_FILTERS[2],rows,'',''),selected[2],false);
+      if(selected[2])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[2],selected[2])});
+
+      selected[3]=v98SetCascadeOptions(FAST_FILTERS[3],v98CascadeValues(FAST_FILTERS[3],rows,selected[2],''),selected[3],false);
+      if(selected[3])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[3],selected[3])});
+
+      selected[4]=v98SetCascadeOptions(FAST_FILTERS[4],v98CascadeValues(FAST_FILTERS[4],rows,selected[2],selected[3]),selected[4],false);
+      if(selected[4])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[4],selected[4])});
+
+      selected[5]=v98SetCascadeOptions(FAST_FILTERS[5],v98CascadeValues(FAST_FILTERS[5],rows,selected[2],selected[3]),selected[5],false);
+
+      // Sub-category is intentionally not part of the V96+ public filter flow.
+      const sub=document.getElementById('subCategoryFilter');if(sub)sub.value='';
+      return currentContext();
+    }
+
     function fastApplyNow(resetPage){
       const fullReady=ensureFastCache();
       if(!fullReady&&!v69QuickReady){
@@ -1285,7 +1364,7 @@
         window.addEventListener('raj-v69-aayub-ready',function(){fastApplyNow(resetPage)},{once:true});
         return;
       }
-      const ctx=currentContext();
+      const ctx=v98ApplyDeepCascade();
       const selectedStartupGroup=clean(ctx.selected[0]);
       const selectedStartupKey=normalizedSearch(selectedStartupGroup);
       // V82.1: if another brand is chosen before the complete cache is ready,
@@ -1321,14 +1400,8 @@
         }
       });
 
-      FAST_FILTERS.forEach(function(def,index){
-        const masterValues=typeof masterValuesForFilter==='function'?masterValuesForFilter(def.id):[];
-        let vals=def.id==='subCategoryFilter'&&typeof v94SubCategoryOptions==='function'?v94SubCategoryOptions(ctx.selected[FAST_FILTERS.findIndex(x=>x.id==='categoryFilter')]||''):(masterValues.length?masterValues:Array.from(facets[index]));
-        // V82.1: GROUP / BRAND is always the complete list from Filter Master
-        // (preferred) or directly from bundled price data, even during quick start.
-        if(def.id==='groupFilter')vals=masterValues.length?masterValues:v821AllGroupNames();
-        refreshSelect(def,vals,ctx.selected[index]);
-      });
+      // V98 dropdowns were already rebuilt in strict hierarchy order above.
+      // Do not overwrite them here with the complete master lists.
       filtered=result;
 
       const keys=cachedColumns;
