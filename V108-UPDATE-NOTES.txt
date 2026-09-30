@@ -1,0 +1,6 @@
+V108 UPDATE
+1. Mobile: CLEAR closes the open multi-select dropdown immediately.
+2. Mobile/page scroll: any open filter dropdown closes automatically; scrolling inside long option lists still works.
+3. Desktop/web price table remains unchanged.
+4. Mobile <=700px: product rows render as compact product cards using the same live row data, with larger image, code/product details, prices/fields, qty +/- ADD, and per-product Remark input.
+5. Remark entered on the mobile card is stored with the cart item when ADD is pressed.

@@ -24,13 +24,13 @@
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
 <script defer src="js/filter-master-v98.js?v=102"></script>
 <script defer src="js/facet-index-v102.js?v=102"></script>
-<script defer src="js/app.js?v=106-sticky-search-multi"></script>
+<script defer src="js/app.js?v=108-mobile-card-ux"></script>
   <script defer src="js/v45-config.js?v=107"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=106-sticky-search-multi"></script>
+  <script defer src="js/v45.js?v=108-mobile-card-ux"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -487,6 +487,32 @@
   <style id="v82-12-clean-admin-tools">
     #syncBtn,#syncFilterMasterBtn,#syncCatalogBtn,#liveApiSyncBtn{display:none!important}
   </style>
+
+
+<style id="v108-mobile-product-cards">
+/* V108: desktop keeps the existing professional grid exactly as-is. */
+@media (max-width:700px){
+  #priceTable{display:block!important;width:100%!important;border:0!important;background:transparent!important}
+  #priceTable thead{display:none!important}
+  #priceTable tbody{display:block!important;width:100%!important}
+  #priceTable tbody tr.v108-product-card{display:grid!important;grid-template-columns:86px 1fr!important;gap:0 10px!important;width:calc(100% - 12px)!important;margin:8px 6px!important;padding:10px!important;box-sizing:border-box!important;background:#fff!important;border:1px solid #c7d8ea!important;border-radius:12px!important;box-shadow:0 2px 7px rgba(13,62,111,.08)!important}
+  #priceTable tbody tr.v108-product-card>td{display:block!important;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;padding:4px 0!important;border:0!important;background:transparent!important;text-align:left!important;white-space:normal!important;overflow-wrap:anywhere!important;font-size:12px!important;line-height:1.28!important}
+  #priceTable tbody tr.v108-product-card>td.index-col{display:none!important}
+  #priceTable tbody tr.v108-product-card>td:not(.image-col){grid-column:2!important}
+  #priceTable tbody tr.v108-product-card>td:not(.image-col)::before{content:attr(data-mobile-label);display:inline-block!important;min-width:68px!important;margin-right:5px!important;color:#748296!important;font:400 11px/1.2 Calibri,"Segoe UI",Arial,sans-serif!important}
+  #priceTable tbody tr.v108-product-card>td[data-col="CODE"]{font-size:14px!important;font-weight:700!important;color:#102f63!important}
+  #priceTable tbody tr.v108-product-card>td[data-col="PRODUCT NAME"]{font-size:13px!important;font-weight:600!important;color:#15263d!important}
+  #priceTable tbody tr.v108-product-card>td.image-col{display:block!important;grid-column:1!important;grid-row:1 / span 30!important;width:86px!important;min-width:86px!important;max-width:86px!important;padding:0!important}
+  #priceTable tbody tr.v108-product-card .v46-image-order-line{display:flex!important;flex-direction:column!important;width:86px!important;gap:7px!important;align-items:stretch!important}
+  #priceTable tbody tr.v108-product-card .product-thumb-btn{order:0!important;width:86px!important;min-width:86px!important;max-width:86px!important;height:86px!important;border-radius:10px!important}
+  #priceTable tbody tr.v108-product-card .product-thumb{width:100%!important;height:100%!important;object-fit:contain!important}
+  #priceTable tbody tr.v108-product-card .v45-product-actions{order:1!important;display:grid!important;grid-template-columns:24px 32px 24px!important;gap:3px!important;justify-content:center!important}
+  #priceTable tbody tr.v108-product-card .v45-add{grid-column:1/-1!important;width:86px!important;min-width:86px!important;height:28px!important}
+  #priceTable tbody tr.v108-product-card .v108-mobile-remark{order:2!important;width:86px!important;box-sizing:border-box!important;border:1px solid #b8cee5!important;border-radius:6px!important;padding:5px 6px!important;font:400 10px Calibri,"Segoe UI",Arial,sans-serif!important}
+  #priceTable tbody tr.brand-section-heading,#priceTable tbody tr.group-heading{display:block!important;width:calc(100% - 12px)!important;margin:5px 6px!important}
+  #priceTable tbody tr.brand-section-heading>td,#priceTable tbody tr.group-heading>td{display:block!important;width:100%!important;box-sizing:border-box!important}
+}
+</style>
 
 </head>
 <body><div class="print-watermark-layer" aria-hidden="true">
@@ -1698,8 +1724,8 @@
           const typed=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');
           if(typed)typed.value='';
           v103RenderMulti(def.id);
+          wrap.classList.remove('open');
           USER_FILTER_SCOPE_ACTIVE=true;if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();applyFilters(true);
-          if(typed)requestAnimationFrame(function(){if(wrap.classList.contains('open'))typed.focus()});
         });
         panel.addEventListener('change',function(event){
           const input=event.target;if(!(input instanceof HTMLInputElement))return;
@@ -1722,6 +1748,15 @@
       document.addEventListener('click',function(event){if(!event.target.closest('.v103-multi-wrap'))document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){x.classList.remove('open')})});
     }
     v103InstallMultiControls();
+
+    // V108 mobile UX: when the page itself is scrolled, close any open filter dropdown.
+    // Scrolling inside the option list remains available for long Model/Vehicle lists.
+    let v108LastPageY=window.scrollY||0;
+    window.addEventListener('scroll',function(){
+      const y=window.scrollY||0;
+      if(Math.abs(y-v108LastPageY)>3)document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){x.classList.remove('open')});
+      v108LastPageY=y;
+    },{passive:true});
 
     // V95: build mapped filter metadata only after FILTER MASTER / MODEL MAP / CATEGORY MAP are ready.
     // This prevents raw comma-separated MODEL/CATEGORY values from appearing in dropdowns on first load.

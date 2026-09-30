@@ -130,8 +130,8 @@ function v83ThumbMarkup(row,idx){
 }
 gridProductRow=function(row,serial){
   const idx=rowSourceIndex(row); const qtyId='v45qty-'+idx;
-  return '<tr><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'">'+escapeHtml(value)+'</td>'}).join('')+
-  '<td class="image-col"><div class="v46-image-order-line"><div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD</button></div>'+v83ThumbMarkup(row,idx)+'</div></td></tr>';
+  return '<tr class="v108-product-card"><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'" data-mobile-label="'+escAttr(column)+'">'+escapeHtml(value)+'</td>'}).join('')+
+  '<td class="image-col"><div class="v46-image-order-line"><div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD</button></div>'+v83ThumbMarkup(row,idx)+'<input class="v108-mobile-remark" data-row-index="'+idx+'" placeholder="Remark"></div></td></tr>';
 };
 
 // Cycle image candidates without re-rendering the row.
@@ -147,7 +147,7 @@ document.addEventListener('error',function(e){
 function loadCart(){try{V45.cart=JSON.parse(localStorage.getItem('rajCartV45')||'[]');if(!Array.isArray(V45.cart))V45.cart=[]}catch(e){V45.cart=[]}updateCartBadge()}
 function saveCart(){localStorage.setItem('rajCartV45',JSON.stringify(V45.cart));updateCartBadge()}
 function updateCartBadge(){const count=V45.cart.length,el=q('#cartCount');if(el)el.textContent=String(count)}
-function addToCart(row,qty){qty=Math.max(1,Math.floor(Number(qty)||1));const code=partCode(row),key=group(row)+'|'+code;let item=V45.cart.find(x=>x.key===key);if(item)item.qty+=qty;else V45.cart.push({key,group:group(row),code,description:desc(row),gst:gst(row),unit:unitValue(row),qty,remark:''});saveCart();notify(code+' × '+qty+' added to cart')}
+function addToCart(row,qty,remark){qty=Math.max(1,Math.floor(Number(qty)||1));const code=partCode(row),key=group(row)+'|'+code;remark=String(remark||'').trim();let item=V45.cart.find(x=>x.key===key);if(item){item.qty+=qty;if(remark)item.remark=remark}else V45.cart.push({key,group:group(row),code,description:desc(row),gst:gst(row),unit:unitValue(row),qty,remark:remark});saveCart();notify(code+' × '+qty+' added to cart')}
 function drawer(html){q('#v45DrawerContent').innerHTML=html;q('#v45Drawer').classList.add('open');q('#v45Drawer').setAttribute('aria-hidden','false')}
 function closeDrawer(){q('#v45Drawer').classList.remove('open');q('#v45Drawer').setAttribute('aria-hidden','true')}
 function escAttr(v){return escapeHtml(v).replace(/`/g,'&#96;')}
@@ -703,7 +703,7 @@ function bindMain(){
   q('#liveApiSyncBtn')?.addEventListener('click',liveApiSync);
   q('#v45DrawerClose')?.addEventListener('click',closeDrawer);
   q('#v45Drawer')?.addEventListener('click',e=>{if(e.target===q('#v45Drawer'))closeDrawer()});
-  q('#priceTable tbody')?.addEventListener('click',e=>{const qb=e.target.closest('.v45-qbtn[data-row-index]');if(qb){const inp=q('#v45qty-'+qb.dataset.rowIndex);if(inp)inp.value=Math.max(1,(Number(inp.value)||1)+(qb.dataset.act==='plus'?1:-1));return}const add=e.target.closest('.v45-add');if(add){const row=allData[Number(add.dataset.rowIndex)],inp=q('#v45qty-'+add.dataset.rowIndex);if(row)addToCart(row,inp?.value||1)}});
+  q('#priceTable tbody')?.addEventListener('click',e=>{const qb=e.target.closest('.v45-qbtn[data-row-index]');if(qb){const inp=q('#v45qty-'+qb.dataset.rowIndex);if(inp)inp.value=Math.max(1,(Number(inp.value)||1)+(qb.dataset.act==='plus'?1:-1));return}const add=e.target.closest('.v45-add');if(add){const row=allData[Number(add.dataset.rowIndex)],inp=q('#v45qty-'+add.dataset.rowIndex);if(row){const remark=q('.v108-mobile-remark[data-row-index="'+add.dataset.rowIndex+'"]')?.value||'';addToCart(row,inp?.value||1,remark)}}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 }
 
