@@ -130,8 +130,12 @@ function v83ThumbMarkup(row,idx){
 }
 gridProductRow=function(row,serial){
   const idx=rowSourceIndex(row); const qtyId='v45qty-'+idx;
-  return '<tr class="v108-product-card"><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'" data-mobile-label="'+escAttr(column)+'">'+escapeHtml(value)+'</td>'}).join('')+
-  '<td class="image-col"><div class="v46-image-order-line"><div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD</button></div>'+v83ThumbMarkup(row,idx)+'<input class="v108-mobile-remark" data-row-index="'+idx+'" placeholder="Remark"></div></td></tr>';
+  // V109: mobile detail cards are used only after the user narrows the list.
+  // The default All Groups screen keeps the existing grid/table presentation.
+  const mobileDetail=!!window.RAJ_V109_MOBILE_DETAIL_ACTIVE?.() || !!USER_FILTER_SCOPE_ACTIVE;
+  const groupCell='<td class="v109-mobile-group" data-col="GROUP" data-mobile-label="GROUP">'+escapeHtml(group(row))+'</td>';
+  return '<tr class="v108-product-card'+(mobileDetail?' v109-mobile-detail':' v109-mobile-grid')+'"><td class="index-col">'+serial+'</td>'+groupCell+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'" data-mobile-label="'+escAttr(column)+'">'+escapeHtml(value)+'</td>'}).join('')+
+  '<td class="image-col"><div class="v46-image-order-line">'+v83ThumbMarkup(row,idx)+'<div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD TO CART</button></div><input class="v108-mobile-remark" data-row-index="'+idx+'" placeholder="Product remark"></div></td></tr>';
 };
 
 // Cycle image candidates without re-rendering the row.
@@ -703,7 +707,7 @@ function bindMain(){
   q('#liveApiSyncBtn')?.addEventListener('click',liveApiSync);
   q('#v45DrawerClose')?.addEventListener('click',closeDrawer);
   q('#v45Drawer')?.addEventListener('click',e=>{if(e.target===q('#v45Drawer'))closeDrawer()});
-  q('#priceTable tbody')?.addEventListener('click',e=>{const qb=e.target.closest('.v45-qbtn[data-row-index]');if(qb){const inp=q('#v45qty-'+qb.dataset.rowIndex);if(inp)inp.value=Math.max(1,(Number(inp.value)||1)+(qb.dataset.act==='plus'?1:-1));return}const add=e.target.closest('.v45-add');if(add){const row=allData[Number(add.dataset.rowIndex)],inp=q('#v45qty-'+add.dataset.rowIndex);if(row){const remark=q('.v108-mobile-remark[data-row-index="'+add.dataset.rowIndex+'"]')?.value||'';addToCart(row,inp?.value||1,remark)}}});
+  q('#priceTable tbody')?.addEventListener('click',e=>{const qb=e.target.closest('.v45-qbtn[data-row-index]');if(qb){const inp=q('#v45qty-'+qb.dataset.rowIndex);if(inp)inp.value=Math.max(1,(Number(inp.value)||1)+(qb.dataset.act==='plus'?1:-1));return}const add=e.target.closest('.v45-add');if(add){const row=allData[Number(add.dataset.rowIndex)],inp=q('#v45qty-'+add.dataset.rowIndex);if(row){const remarkInput=q('.v108-mobile-remark[data-row-index="'+add.dataset.rowIndex+'"]');const remark=remarkInput?.value||'';addToCart(row,inp?.value||1,remark);if(inp)inp.value=1;if(remarkInput)remarkInput.value=''}}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 }
 
