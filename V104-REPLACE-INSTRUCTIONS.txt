@@ -1,0 +1,15 @@
+V104 REPLACEMENT FILES
+
+Replace these files on the server:
+1. index.html
+2. js/app.js
+3. js/v45-config.js
+
+Then hard refresh the browser (Ctrl+F5).
+
+V104 changes:
+- Search box moved inside checkbox dropdown for Group/Sub Group/Segment/Vehicle/Model/Category.
+- Search is dropdown-only; product results change only after checking an option.
+- Multiple selections remain selected while searching another option.
+- PAGE NO. column removed from every Price Book index PDF.
+- Group index rows remain internally clickable to jump to the group's product pages.

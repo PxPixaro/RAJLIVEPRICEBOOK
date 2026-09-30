@@ -1,0 +1,9 @@
+RAJ LIVE PRICE BOOK V104 UPDATE
+
+1. Group / Sub Group / Segment / Vehicle / Model / Category ke external search boxes hata diye gaye.
+2. Ab har checkbox multi-select dropdown kholte hi sabse upar Search box aata hai.
+3. Search karke ek option select karne ke baad same dropdown me next value search/select kar sakte hain; existing multiple selections safe rehti hain.
+4. Ye behavior sab 6 product filters par apply hai.
+5. Group-wise / INDEX-wise PDF ke index table se PAGE NO. column completely remove kar diya gaya hai.
+6. SR NO., GROUP logo/name aur DETAILS same rakhe gaye hain; GROUP cell ka internal clickable jump link retained hai.
+7. V103 ke INDEX Pricelist / Download Only Index / fast filtering / PDF layout ke baaki behavior me koi intentional change nahi.

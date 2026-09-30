@@ -1205,6 +1205,9 @@ function runUniversalSearch(term){
 
 function filterSearchTerm(targetId){
   const input=document.querySelector(`.filter-search[data-target="${targetId}"]`);
+  // V104: search fields inside checkbox dropdowns only search dropdown options.
+  // They must not act as a second product-row filter.
+  if(input&&input.classList.contains('v104-panel-search'))return '';
   return input ? clean(input.value).toLowerCase() : '';
 }
 function containsField(row, term, ...fieldNames){
@@ -1736,8 +1739,8 @@ function buildGroupIndexPages(productPages){
   const margin=portrait?18:22,baseRowH=portrait?18.5:16.5,wrapRowH=portrait?29:26,heroH=64,headerH=21,top=24,bottom=20;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
   const usable=W-margin*2;
-  // SR NO. / GROUP / DETAILS / PAGE NO. — Sub Group intentionally omitted.
-  const base=portrait?[34,160,288,77]:[40,195,477,86];
+  // V104: SR NO. / GROUP / DETAILS only. PAGE NO. removed from every index PDF.
+  const base=portrait?[34,160,365]:[40,195,563];
   const scale=usable/base.reduce((a,b)=>a+b,0),widths=base.map(v=>v*scale);
 
   // Merge duplicate group labels (case/punctuation variants) into one index entry.
@@ -1790,15 +1793,15 @@ function buildGroupIndexPages(productPages){
     cmd.push(`BT /F2 8.2 Tf 1 0.76 0.08 rg ${printBoxX+18} ${H-y-44} Td (${pdfAscii(printDate)}) Tj ET`);
     y+=heroH;
     cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${usable} ${headerH} re f`);
-    let x=margin;const heads=['SR NO.','GROUP','DETAILS','PAGE NO.'];
+    let x=margin;const heads=['SR NO.','GROUP','DETAILS'];
     heads.forEach((h,i)=>{const size=pdfIndexFitFont(h,widths[i],8.3,5.8);cmd.push(`BT /F2 ${size.toFixed(2)} Tf 1 1 1 rg ${x+3} ${H-y-13.2} Td (${pdfAscii(h)}) Tj ET`);x+=widths[i]});y+=headerH;
 
     slice.forEach(e=>{
       const oi=entries.indexOf(e),rowH=e.rowH;
-      const a=e.first+pageCount,b=e.last+pageCount,pageText=a===b?String(a):`${a}-${b}`;
+      const a=e.first+pageCount;
       if(oi%2===1)cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${usable} ${rowH} re f`);
       cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${usable} ${rowH} re S`);x=margin;
-      const vals=[String(oi+1),e.group,e.details,pageText];
+      const vals=[String(oi+1),e.group,e.details];
       for(let i=0;i<widths.length;i++){
         if(i>0)cmd.push(`0.82 0.85 0.89 RG ${x} ${H-y-rowH} m ${x} ${H-y} l S`);
         const val=vals[i];
@@ -1825,13 +1828,13 @@ function buildGroupIndexPages(productPages){
           }
         }else{
           const size=pdfIndexFitFont(val,widths[i],8.1,5.6),textY=H-y-rowH/2-size*.34;
-          cmd.push(`BT /${i===3?'F2':'F1'} ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
+          cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
         }
         x+=widths[i];
       }
-      const groupX=margin+widths[0],pageX=margin+widths[0]+widths[1]+widths[2];
+      const groupX=margin+widths[0];
+      // Group name/logo remains clickable even though the visible PAGE NO. column is removed.
       indexLinks.push({x:groupX,y:H-y-rowH,w:widths[1],h:rowH,targetPageNumber:a});
-      indexLinks.push({x:pageX,y:H-y-rowH,w:widths[3],h:rowH,targetPageNumber:a});
       y+=rowH;
     });
     pages.push({group:'INDEX',cols:heads,widths,cmd,brandLogoB64:'',indexLogos,indexLinks,W,H,adminPortrait:portrait,isIndex:true});
@@ -2384,7 +2387,7 @@ function sortedRows(rows){
 function hasActiveUpperFilters(){
   const multiActive=V103_MULTI_FILTER_IDS.some(id=>v103MultiValues(id).length);
   return multiActive || ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].some(id=>clean($('#'+id)?.value)) ||
-    [...document.querySelectorAll('.filter-search')].some(input=>clean(input.value));
+    [...document.querySelectorAll('.filter-search')].some(input=>!input.classList.contains('v104-panel-search')&&clean(input.value));
 }
 function isDefaultAllView(){
   return !hasActiveUpperFilters() && !clean($('#searchInput')?.value) && !clean($('#universalSearchInput')?.value);
@@ -2718,8 +2721,10 @@ function flushPendingFilterApply(){
 
 document.querySelectorAll('.filter-search').forEach(inp=>{
   inp.addEventListener('input',()=>{
+    // V104 dropdown search is local to the option list; selecting the checkbox
+    // is what changes products. This keeps Model/Vehicle searching instant.
+    if(inp.classList.contains('v104-panel-search'))return;
     USER_FILTER_SCOPE_ACTIVE=true;
-    // Typed text is a contains-filter; it does not force-select only the first dropdown option.
     const sel=$('#'+inp.dataset.target);
     sel.value='';
     scheduleFilterApply();

@@ -24,13 +24,13 @@
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
 <script defer src="js/filter-master-v98.js?v=102"></script>
 <script defer src="js/facet-index-v102.js?v=102"></script>
-<script defer src="js/app.js?v=103-checkbox-multi-index-only"></script>
-  <script defer src="js/v45-config.js?v=103"></script>
+<script defer src="js/app.js?v=104-multi-search-index-no-page"></script>
+  <script defer src="js/v45-config.js?v=104"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=103-checkbox-multi-index-only"></script>
+  <script defer src="js/v45.js?v=104-multi-search-index-no-page"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -70,15 +70,22 @@
     .filter-clear:focus-visible{outline:3px solid rgba(0,105,217,.22);outline-offset:2px}
     .filter-panel{position:relative}
 
-    /* V103: checkbox multi-select for all product filters + INDEX-wise PDF actions */
+    /* V104: searchable checkbox multi-select inside dropdowns + INDEX-wise PDF actions */
     .v103-multi-hint{font:700 9px/1.1 Arial,sans-serif;color:#6b7b91;text-transform:none;letter-spacing:0;margin-left:4px}
     .v103-native-select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
     .v103-multi-wrap{position:relative;width:100%}
     .v103-multi-button{width:100%;min-height:42px;border:1px solid #b6cce6;border-radius:9px;background:#fff;padding:0 34px 0 12px;color:#102c55;font:500 13px/1.2 Arial,sans-serif;text-align:left;cursor:pointer;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .v103-multi-button:after{content:'⌄';position:absolute;right:12px;top:50%;transform:translateY(-55%);font-size:16px;color:#0e337e}
     .v103-multi-button.active{border-color:#0b70d1;box-shadow:0 0 0 2px rgba(11,112,209,.08);font-weight:700;color:#073d82}
-    .v103-multi-panel{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:2500;max-height:330px;overflow:auto;background:#fff;border:1px solid #8fb9e5;border-radius:9px;box-shadow:0 10px 28px rgba(8,48,97,.22);padding:5px}
+    .v103-multi-panel{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:2500;background:#fff;border:1px solid #8fb9e5;border-radius:9px;box-shadow:0 10px 28px rgba(8,48,97,.22);padding:0;overflow:hidden}
     .v103-multi-wrap.open .v103-multi-panel{display:block}
+    /* V104: the search field lives INSIDE the opened multi-select dropdown. */
+    .filters-grid label>.filter-search{display:none!important}
+    .v104-multi-search-host{position:relative;padding:8px 8px 7px;background:#fff;border-bottom:1px solid #dce9f6;z-index:3}
+    .v104-panel-search{display:block!important;width:100%!important;min-width:0!important;height:36px!important;box-sizing:border-box!important;margin:0!important;padding:0 34px 0 11px!important;border:1px solid #9fc2e7!important;border-radius:7px!important;background:#fff!important;color:#102c55!important;font:500 12px/1 Arial,sans-serif!important;outline:none!important}
+    .v104-panel-search:focus{border-color:#0874d1!important;box-shadow:0 0 0 2px rgba(8,116,209,.10)!important}
+    .v104-multi-search-host:after{content:'⌕';position:absolute;right:18px;top:50%;transform:translateY(-50%);color:#53779c;font:700 15px/1 Arial,sans-serif;pointer-events:none}
+    .v104-multi-options{max-height:285px;overflow:auto;padding:5px;overscroll-behavior:contain}
     .v103-check-row{display:flex;align-items:center;gap:9px;min-height:32px;padding:5px 7px;border-radius:6px;cursor:pointer;color:#102c55;font:500 13px/1.15 Arial,sans-serif;user-select:none}
     .v103-check-row:hover{background:#eef6ff}
     .v103-check-row.v103-all{font-weight:800;color:#073d82;border-bottom:1px solid #e3edf8;margin-bottom:3px;border-radius:5px 5px 0 0}
@@ -674,6 +681,7 @@
     }
     function filterText(def){
       const input=document.querySelector('.filter-search[data-target="'+def.id+'"]');
+      if(input&&input.classList.contains('v104-panel-search'))return '';
       return input ? clean(input.value).toLowerCase() : '';
     }
     function currentSearchContext(){
@@ -872,7 +880,7 @@
         let active=!!((control&&clean(control.value))||(multi&&multi.length));
         if(FILTER_DEFS.some(function(def){return def.id===target})){
           const typed=document.querySelector('.filter-search[data-target="'+target+'"]');
-          active=active||!!(typed&&clean(typed.value));
+          active=active||!!(typed&&!typed.classList.contains('v104-panel-search')&&clean(typed.value));
         }
         button.classList.toggle('active',active);
       });
@@ -1274,7 +1282,7 @@
         selected:FAST_FILTERS.map(function(def){return document.getElementById(def.id).value}),
         typed:FAST_FILTERS.map(function(def){
           const input=document.querySelector('.filter-search[data-target="'+def.id+'"]');
-          return input?clean(input.value).toLowerCase():'';
+          return input&&!input.classList.contains('v104-panel-search')?clean(input.value).toLowerCase():'';
         }),
         q:q,
         exactCode:!!q&&exactCodes.has(q),
@@ -1539,7 +1547,7 @@
         const control=document.getElementById(target);
         const typed=document.querySelector('.filter-search[data-target="'+target+'"]');
         const multi=typeof window.RAJ_V103_GET_MULTI_SELECTIONS==='function'?window.RAJ_V103_GET_MULTI_SELECTIONS(target):[];
-        button.classList.toggle('active',!!((control&&clean(control.value))||(typed&&clean(typed.value))||(multi&&multi.length)));
+        button.classList.toggle('active',!!((control&&clean(control.value))||(typed&&!typed.classList.contains('v104-panel-search')&&clean(typed.value))||(multi&&multi.length)));
       });
     }
 
@@ -1640,14 +1648,16 @@
     function v103RenderMulti(id){
       const wrap=v103Control(id),select=document.getElementById(id);if(!wrap||!select)return;
       const selected=v103State(id),available=v103Available(id),button=wrap.querySelector('.v103-multi-button'),panel=wrap.querySelector('.v103-multi-panel');
-      const query=normalizedSearch(document.querySelector('.filter-search[data-target="'+id+'"]')?.value||'');
+      const search=wrap.querySelector('.filter-search[data-target="'+id+'"]')||document.querySelector('.filter-search[data-target="'+id+'"]');
+      const query=normalizedSearch(search?.value||'');
       const shown=query?available.filter(function(v){return normalizedSearch(v).includes(query)}):available;
       button.textContent=v103ButtonText(id,selected);button.classList.toggle('active',selected.length>0);button.title=selected.length?selected.join(', '):button.textContent;
       const allLabel=(FAST_FILTERS.find(function(x){return x.id===id})||{}).label||'All';
       let html='<label class="v103-check-row v103-all"><input type="checkbox" data-v103-all="1" '+(!selected.length?'checked':'')+'><span>'+escapeHtml(allLabel)+'</span></label>';
       if(shown.length){html+=shown.map(function(value){const checked=selected.some(function(x){return v98SameValue(x,value)});return '<label class="v103-check-row"><input type="checkbox" data-v103-value="'+escapeHtml(value)+'" '+(checked?'checked':'')+'><span>'+escapeHtml(value)+'</span></label>'}).join('')}
       else html+='<div class="v103-empty-options">No matching option</div>';
-      panel.innerHTML=html;
+      const optionsHost=wrap.querySelector('.v104-multi-options');
+      if(optionsHost)optionsHost.innerHTML=html;else panel.innerHTML=html;
     }
     window.RAJ_V103_RENDER_MULTI=v103RenderMulti;
     window.RAJ_V103_RENDER_ALL_MULTI=function(){V103_MULTI_IDS.forEach(v103RenderMulti)};
@@ -1657,20 +1667,22 @@
         const select=document.getElementById(def.id);if(!select||v103Control(def.id))return;
         select.classList.add('v103-native-select');
         const wrap=document.createElement('div');wrap.className='v103-multi-wrap';wrap.dataset.filterId=def.id;
-        wrap.innerHTML='<button class="v103-multi-button" type="button" aria-haspopup="listbox"></button><div class="v103-multi-panel" role="listbox" aria-multiselectable="true"></div>';
+        wrap.innerHTML='<button class="v103-multi-button" type="button" aria-haspopup="listbox"></button><div class="v103-multi-panel" role="listbox" aria-multiselectable="true"><div class="v104-multi-search-host"></div><div class="v104-multi-options"></div></div>';
         select.insertAdjacentElement('afterend',wrap);
         const button=wrap.querySelector('.v103-multi-button'),panel=wrap.querySelector('.v103-multi-panel');
-        button.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){if(x!==wrap)x.classList.remove('open')});wrap.classList.toggle('open');v103RenderMulti(def.id)});
+        const search=document.querySelector('.filter-search[data-target="'+def.id+'"]');
+        if(search){search.classList.add('v104-panel-search');wrap.querySelector('.v104-multi-search-host').appendChild(search);search.addEventListener('click',function(event){event.stopPropagation()});search.addEventListener('keydown',function(event){if(event.key==='Escape'){event.preventDefault();wrap.classList.remove('open');button.focus()}})}
+        button.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){if(x!==wrap)x.classList.remove('open')});const opening=!wrap.classList.contains('open');wrap.classList.toggle('open');v103RenderMulti(def.id);if(opening&&search)requestAnimationFrame(function(){search.focus();search.select()})});
         panel.addEventListener('change',function(event){
           const input=event.target;if(!(input instanceof HTMLInputElement))return;
           let values=v103State(def.id);
           if(input.dataset.v103All){values=[]}
           else{const value=clean(input.dataset.v103Value);if(input.checked){if(value&&!values.some(function(x){return v98SameValue(x,value)}))values.push(value)}else values=values.filter(function(x){return !v98SameValue(x,value)})}
           window.RAJ_V103_SET_MULTI_SELECTIONS(def.id,values,{silent:true});select.value='';
-          const typed=document.querySelector('.filter-search[data-target="'+def.id+'"]');if(typed)typed.value='';
+          const typed=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');if(typed)typed.value='';
           USER_FILTER_SCOPE_ACTIVE=true;if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();applyFilters(true);
+          if(typed)requestAnimationFrame(function(){if(wrap.classList.contains('open'))typed.focus()});
         });
-        const search=document.querySelector('.filter-search[data-target="'+def.id+'"]');
         if(search)search.addEventListener('input',function(){if(wrap.classList.contains('open'))v103RenderMulti(def.id)});
         new MutationObserver(function(){v103RenderMulti(def.id)}).observe(select,{childList:true,subtree:true});
         v103RenderMulti(def.id);
