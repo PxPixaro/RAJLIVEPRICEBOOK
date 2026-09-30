@@ -25,7 +25,7 @@
 <script defer src="js/filter-master-v98.js?v=102"></script>
 <script defer src="js/facet-index-v102.js?v=102"></script>
 <script defer src="js/app.js?v=106-sticky-search-multi"></script>
-  <script defer src="js/v45-config.js?v=106"></script>
+  <script defer src="js/v45-config.js?v=107"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
@@ -70,7 +70,7 @@
     .filter-clear:focus-visible{outline:3px solid rgba(0,105,217,.22);outline-offset:2px}
     .filter-panel{position:relative}
 
-    /* V106: sticky searchable checkbox multi-select + Calibri dropdown typography */
+    /* V107: V106 sticky searchable multi-select + per-filter CLEAR action */
     .v103-multi-hint{font:700 9px/1.1 Arial,sans-serif;color:#6b7b91;text-transform:none;letter-spacing:0;margin-left:4px}
     .v103-native-select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
     .v103-multi-wrap{position:relative;width:100%}
@@ -97,6 +97,11 @@
     /* V105: all dropdown option text uses Calibri and regular weight. */
     .v103-multi-wrap,.v103-multi-panel,.v103-multi-panel label,.v103-multi-panel span,.v103-multi-button,.v104-panel-search{font-family:Calibri,"Segoe UI",Arial,sans-serif!important}
     .v103-multi-button,.v103-multi-button.active,.v103-check-row,.v103-check-row.v103-all,.v103-check-row span{font-weight:400!important}
+    /* V107: per-filter clear action. Clearing returns that filter to its All... default. */
+    .v107-multi-clear-host{display:flex;justify-content:flex-end;align-items:center;padding:5px 8px;background:#f8fbff;border-bottom:1px solid #dce9f6}
+    .v107-multi-clear{appearance:none;border:1px solid #8fb9e5;border-radius:6px;background:#fff;color:#0867c7;padding:5px 10px;font:400 12px/1 Calibri,"Segoe UI",Arial,sans-serif;cursor:pointer}
+    .v107-multi-clear:hover:not(:disabled){background:#eaf5ff;border-color:#0874d1}
+    .v107-multi-clear:disabled{opacity:.42;cursor:default}
     .v102-special-bar{grid-template-columns:repeat(2,minmax(0,1fr))!important}
     .v102-index-divider{margin-top:12px!important}
     .v102-index-download{display:grid;grid-template-columns:minmax(220px,1.25fr) minmax(210px,.75fr) auto auto;gap:10px;align-items:center;border:1px solid #9bc9f7;border-left:5px solid #0867c7;border-radius:13px;padding:12px 14px;background:linear-gradient(180deg,#ffffff,#f5faff);box-shadow:0 3px 10px rgba(14,51,126,.05)}
@@ -1665,6 +1670,7 @@
       const query=normalizedSearch(search?.value||'');
       const shown=query?available.filter(function(v){return normalizedSearch(v).includes(query)}):available;
       button.textContent=v103ButtonText(id,selected);button.classList.toggle('active',selected.length>0);button.title=selected.length?selected.join(', '):button.textContent;
+      const clearButton=wrap.querySelector('.v107-multi-clear');if(clearButton)clearButton.disabled=!selected.length;
       const allLabel=(FAST_FILTERS.find(function(x){return x.id===id})||{}).label||'All';
       let html='<label class="v103-check-row v103-all"><input type="checkbox" data-v103-all="1" '+(!selected.length?'checked':'')+'><span>'+escapeHtml(allLabel)+'</span></label>';
       if(shown.length){html+=shown.map(function(value){const checked=selected.some(function(x){return v98SameValue(x,value)});return '<label class="v103-check-row"><input type="checkbox" data-v103-value="'+escapeHtml(value)+'" '+(checked?'checked':'')+'><span>'+escapeHtml(value)+'</span></label>'}).join('')}
@@ -1680,12 +1686,21 @@
         const select=document.getElementById(def.id);if(!select||v103Control(def.id))return;
         select.classList.add('v103-native-select');
         const wrap=document.createElement('div');wrap.className='v103-multi-wrap';wrap.dataset.filterId=def.id;
-        wrap.innerHTML='<button class="v103-multi-button" type="button" aria-haspopup="listbox"></button><div class="v103-multi-panel" role="listbox" aria-multiselectable="true"><div class="v104-multi-search-host"></div><div class="v104-multi-options"></div></div>';
+        wrap.innerHTML='<button class="v103-multi-button" type="button" aria-haspopup="listbox"></button><div class="v103-multi-panel" role="listbox" aria-multiselectable="true"><div class="v104-multi-search-host"></div><div class="v107-multi-clear-host"><button class="v107-multi-clear" type="button">CLEAR</button></div><div class="v104-multi-options"></div></div>';
         select.insertAdjacentElement('afterend',wrap);
-        const button=wrap.querySelector('.v103-multi-button'),panel=wrap.querySelector('.v103-multi-panel');
+        const button=wrap.querySelector('.v103-multi-button'),panel=wrap.querySelector('.v103-multi-panel'),clearButton=wrap.querySelector('.v107-multi-clear');
         const search=document.querySelector('.filter-search[data-target="'+def.id+'"]');
         if(search){search.classList.add('v104-panel-search');wrap.querySelector('.v104-multi-search-host').appendChild(search);search.addEventListener('click',function(event){event.stopPropagation()});search.addEventListener('keydown',function(event){if(event.key==='Escape'){event.preventDefault();wrap.classList.remove('open');button.focus()}})}
         button.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){if(x!==wrap)x.classList.remove('open')});const opening=!wrap.classList.contains('open');wrap.classList.toggle('open');v103RenderMulti(def.id);if(opening&&search)requestAnimationFrame(function(){search.focus();search.select()})});
+        if(clearButton)clearButton.addEventListener('click',function(event){
+          event.preventDefault();event.stopPropagation();
+          window.RAJ_V103_SET_MULTI_SELECTIONS(def.id,[],{silent:true});select.value='';
+          const typed=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');
+          if(typed)typed.value='';
+          v103RenderMulti(def.id);
+          USER_FILTER_SCOPE_ACTIVE=true;if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();applyFilters(true);
+          if(typed)requestAnimationFrame(function(){if(wrap.classList.contains('open'))typed.focus()});
+        });
         panel.addEventListener('change',function(event){
           const input=event.target;if(!(input instanceof HTMLInputElement))return;
           let values=v103State(def.id);

@@ -1,0 +1,10 @@
+RAJ LIVE PRICE BOOK V107
+
+Sirf ek requested update:
+- Group, Sub Group, Segment, Vehicle, Model aur Category ke checkbox multi-select dropdown me search ke neeche CLEAR button add kiya gaya hai.
+- CLEAR click karte hi sirf us filter ki multiple selections clear hongi.
+- Us filter ka default All groups / All sub groups / All segments / All vehicles / All models / All categories automatically active ho jayega.
+- Search text bhi clear hoga.
+- Dusre filters ki selected values, PDF/index/design/performance logic me koi change nahi kiya gaya.
+
+V106 ke baaki sab features same hain.
