@@ -128,11 +128,26 @@ function v83ThumbMarkup(row,idx){
     '<span class="thumb-coming-soon" '+(first?'hidden':'')+'>Coming<br>Soon…</span>'+
     '<span class="thumb-magnifier" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></button>';
 }
+function v110MobileDetailActive(){
+  // V110: mobile cards must also be active for the default specific brand/group
+  // (for example AAYUB). Only a true All Groups + no other product filter state
+  // keeps the old grid/table view on mobile.
+  const ids=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'];
+  for(const id of ids){
+    try{
+      const multi=typeof window.RAJ_V103_GET_MULTI_SELECTIONS==='function'?window.RAJ_V103_GET_MULTI_SELECTIONS(id):[];
+      if(Array.isArray(multi)&&multi.length)return true;
+    }catch(_e){}
+    const el=q('#'+id);
+    if(el&&String(el.value||'').trim())return true;
+  }
+  return !!USER_FILTER_SCOPE_ACTIVE;
+}
+window.RAJ_V110_MOBILE_DETAIL_ACTIVE=v110MobileDetailActive;
+
 gridProductRow=function(row,serial){
   const idx=rowSourceIndex(row); const qtyId='v45qty-'+idx;
-  // V109: mobile detail cards are used only after the user narrows the list.
-  // The default All Groups screen keeps the existing grid/table presentation.
-  const mobileDetail=!!window.RAJ_V109_MOBILE_DETAIL_ACTIVE?.() || !!USER_FILTER_SCOPE_ACTIVE;
+  const mobileDetail=v110MobileDetailActive();
   const groupCell='<td class="v109-mobile-group" data-col="GROUP" data-mobile-label="GROUP">'+escapeHtml(group(row))+'</td>';
   return '<tr class="v108-product-card'+(mobileDetail?' v109-mobile-detail':' v109-mobile-grid')+'"><td class="index-col">'+serial+'</td>'+groupCell+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'" data-mobile-label="'+escAttr(column)+'">'+escapeHtml(value)+'</td>'}).join('')+
   '<td class="image-col"><div class="v46-image-order-line">'+v83ThumbMarkup(row,idx)+'<div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD TO CART</button></div><input class="v108-mobile-remark" data-row-index="'+idx+'" placeholder="Product remark"></div></td></tr>';
