@@ -220,10 +220,11 @@ function v102IndexPriceBookTags(){return [...v102EnsureIndexMap().values()].map(
 function v102IndexRows(tag){return (v102EnsureIndexMap().get(v102IndexTagKey(tag))?.rows||[]).slice()}
 function v102InvalidateIndexMap(){V102_INDEX_MAP_SOURCE=null;V102_INDEX_MAP=new Map()}
 function v102UpdateIndexDownloadState(){
-  const select=$('#indexPriceBookFilter'),button=$('#indexPriceBookDownloadBtn'),status=$('#indexPriceBookStatus');
+  const select=$('#indexPriceBookFilter'),button=$('#indexPriceBookDownloadBtn'),onlyButton=$('#indexOnlyDownloadBtn'),status=$('#indexPriceBookStatus');
   if(!select)return;
   const tag=clean(select.value),count=tag?v102IndexRows(tag).length:0;
   if(button)button.disabled=!tag||!count;
+  if(onlyButton)onlyButton.disabled=!tag||!count;
   if(status)status.textContent=tag?(count.toLocaleString('en-IN')+' products ready for '+tag+' price book'):'Select an INDEX to download its complete price book';
 }
 function refreshIndexPriceBookOptions(){
@@ -713,6 +714,35 @@ function v102FacetValuesForRowsMulti(rows,id,{segments=[],vehicle=''}={}){
 }
 window.RAJ_V102_MULTI_SEGMENT_MATCH=v102MultiSegmentMatch;
 window.RAJ_V102_MULTI_FACET_VALUES=v102FacetValuesForRowsMulti;
+
+// V103 generic OR multi-select helpers. UI state lives on window so the fast
+// inline cascade and app/PDF logic share one source of truth.
+const V103_MULTI_FILTER_IDS=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'];
+window.RAJ_MULTI_FILTERS_V103=window.RAJ_MULTI_FILTERS_V103||Object.fromEntries(V103_MULTI_FILTER_IDS.map(id=>[id,[]]));
+function v103MultiValues(id){
+  const raw=Array.isArray(window.RAJ_MULTI_FILTERS_V103?.[id])?window.RAJ_MULTI_FILTERS_V103[id]:[];
+  const out=[],seen=new Set();for(const value of raw){const v=clean(value),k=v94Norm(v);if(v&&k&&!seen.has(k)){seen.add(k);out.push(v)}}return out;
+}
+function v103SetMultiValues(id,values){
+  if(!V103_MULTI_FILTER_IDS.includes(id))return [];
+  const out=[],seen=new Set();for(const value of values||[]){const v=clean(value),k=v94Norm(v);if(v&&k&&!seen.has(k)){seen.add(k);out.push(v)}}
+  window.RAJ_MULTI_FILTERS_V103[id]=out;if(id==='segmentFilter')window.RAJ_SEGMENT_MULTI_V102=out.slice();return out;
+}
+function v103MultiMatch(row,id,selections){
+  const values=(Array.isArray(selections)?selections:v103MultiValues(id)).filter(Boolean);if(!values.length)return true;
+  if(id==='groupFilter'){const raw=v94Norm(getField(row,'GROUP','GROUP / BRAND','BRAND'));return values.some(v=>raw===v94Norm(v))}
+  if(id==='subGroupFilter'){const raw=v94Norm(subGroupValue(row));return values.some(v=>raw===v94Norm(v))}
+  if(id==='segmentFilter')return v102MultiSegmentMatch(row,values);
+  if(id==='vehicleFilter')return values.some(v=>v94VehicleMatch(row,v));
+  if(id==='modelFilter')return values.some(v=>v94ModelMatch(row,v));
+  if(id==='categoryFilter')return values.some(v=>v94CategoryMatch(row,v));
+  return true;
+}
+window.RAJ_V103_GET_MULTI_SELECTIONS=id=>v103MultiValues(id);
+window.RAJ_V103_GET_ALL_MULTI_SELECTIONS=()=>Object.fromEntries(V103_MULTI_FILTER_IDS.map(id=>[id,v103MultiValues(id)]));
+window.RAJ_V103_SET_MULTI_SELECTIONS=(id,values,opts)=>{const out=v103SetMultiValues(id,values);if(!(opts&&opts.silent)&&typeof window.RAJ_V103_RENDER_MULTI==='function')window.RAJ_V103_RENDER_MULTI(id);return out};
+window.RAJ_V103_CLEAR_MULTI_FILTERS=(ids)=>{for(const id of (Array.isArray(ids)?ids:V103_MULTI_FILTER_IDS))v103SetMultiValues(id,[]);if(typeof window.RAJ_V103_RENDER_ALL_MULTI==='function')window.RAJ_V103_RENDER_ALL_MULTI()};
+window.RAJ_V103_MULTI_MATCH=v103MultiMatch;
 
 // V98 SMART CASCADING FACETS ------------------------------------------------
 // Downstream dropdowns are limited to values that occur in the Price Book rows
@@ -1699,7 +1729,9 @@ function buildGroupIndexPages(productPages){
   // V102: normal group PDFs keep the old behavior. INDEX-wise downloads force an
   // index page regardless of the currently selected screen Group.
   const forceIndex=!!V102_PDF_CONTEXT?.forceAllGroupsIndex;
-  if((clean($('#groupFilter').value)&&!forceIndex)||!productPages.length)return [];
+  const selectedGroups=v103MultiValues('groupFilter');
+  const oneGroupSelected=selectedGroups.length===1||!!clean($('#groupFilter').value);
+  if((oneGroupSelected&&!forceIndex)||!productPages.length)return [];
   const portrait=!!productPages[0].adminPortrait,W=productPages[0].W||842,H=productPages[0].H||595;
   const margin=portrait?18:22,baseRowH=portrait?18.5:16.5,wrapRowH=portrait?29:26,heroH=64,headerH=21,top=24,bottom=20;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
@@ -1943,7 +1975,9 @@ function fastPdfPages(){
 }
 
 async function buildFastPdfBlob(){
-  const productPages=fastPdfPages(),pages=[...buildGroupIndexPages(productPages),...productPages],jpeg=b64Bytes(FAST_WATERMARK_JPEG_B64),company=b64Bytes(V77_COMPANY_LOGO_JPEG_B64),objects=[];
+  const productPages=fastPdfPages(),indexPages=buildGroupIndexPages(productPages);
+  if(V102_PDF_CONTEXT?.onlyIndex)indexPages.forEach(page=>{page.indexLinks=[]});
+  const pages=V102_PDF_CONTEXT?.onlyIndex?indexPages:[...indexPages,...productPages],jpeg=b64Bytes(FAST_WATERMARK_JPEG_B64),company=b64Bytes(V77_COMPANY_LOGO_JPEG_B64),objects=[];
   const add=o=>{objects.push(o);return objects.length};
   const catalog=add(''),pagesObj=add(''),f1=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'),f2=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
   const gs=add('<< /Type /ExtGState /ca 0.065 /CA 0.065 >>');
@@ -2050,7 +2084,9 @@ async function buildFastPdfBlob(){
 
 function priceListPdfFileName(){
   if(V102_PDF_CONTEXT?.fileName)return safePdfName(V102_PDF_CONTEXT.fileName);
-  return safePdfName(clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST')+'.pdf';
+  const groups=v103MultiValues('groupFilter');
+  const label=groups.length===1?groups[0]:(groups.length>1?'MULTI GROUP FILTERED PRICELIST':clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST');
+  return safePdfName(label)+'.pdf';
 }
 async function createCompletePriceListPdfBlob(){
   // V102: normal filter downloads use `filtered`; INDEX-wise downloads provide a
@@ -2121,6 +2157,20 @@ async function downloadIndexPriceBook(){
     if(button){button.disabled=false;button.textContent='Download Index Pricelist'}
     v102UpdateIndexDownloadState();
   }
+}
+
+async function downloadOnlyIndex(){
+  const select=$('#indexPriceBookFilter'),button=$('#indexOnlyDownloadBtn');
+  const tag=clean(select?.value);if(!tag){toast('Download Price Book INDEX select karein.');return}
+  const rows=v102IndexRows(tag);if(!rows.length){toast(tag+' INDEX me koi product nahi mila.');return}
+  const previous=V102_PDF_CONTEXT;
+  V102_PDF_CONTEXT={rows,forceAllGroupsIndex:true,indexLabel:tag,docTitle:tag+' Price Book Index',fileName:tag+' INDEX ONLY.pdf',onlyIndex:true};
+  if(button){button.disabled=true;button.textContent='Creating Index…'}
+  try{
+    const blob=await createCompletePriceListPdfBlob();downloadPdfBlob(blob,priceListPdfFileName());
+    toast(tag+' Only Index PDF ready.');
+  }catch(err){console.error('V103 only-index PDF error:',err);toast('Only INDEX PDF create nahi hua. Please try again.');}
+  finally{V102_PDF_CONTEXT=previous;if(button){button.disabled=false;button.textContent='Download Only Index'}v102UpdateIndexDownloadState()}
 }
 
 async function downloadSelectedPriceListFast(){
@@ -2332,7 +2382,8 @@ function sortedRows(rows){
   });
 }
 function hasActiveUpperFilters(){
-  return ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].some(id=>clean($('#'+id)?.value)) ||
+  const multiActive=V103_MULTI_FILTER_IDS.some(id=>v103MultiValues(id).length);
+  return multiActive || ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].some(id=>clean($('#'+id)?.value)) ||
     [...document.querySelectorAll('.filter-search')].some(input=>clean(input.value));
 }
 function isDefaultAllView(){
@@ -2349,7 +2400,8 @@ function currentSortedFiltered(){
     !clean($('#groupFilter')?.value)&&!clean($('#subGroupFilter')?.value)&&!clean($('#vehicleFilter')?.value)&&
     !clean($('#modelFilter')?.value)&&!clean($('#categoryFilter')?.value)&&!clean($('#searchInput')?.value)&&
     !clean($('#universalSearchInput')?.value);
-  if(broadSegmentOnly)return filtered;
+  const broadMulti=!printingAll&&filtered.length>2000&&V103_MULTI_FILTER_IDS.some(id=>v103MultiValues(id).length);
+  if(broadSegmentOnly||broadMulti)return filtered;
   if(sortedFilteredSource!==filtered){
     sortedFilteredSource=filtered;
     sortedFilteredCache=sortedRows(filtered);
@@ -2467,12 +2519,18 @@ function applyFilters(resetPage=true,doCascade=false){
   const subGroupText=normalizeSearchText(filterSearchTerm('subGroupFilter'));
   const segmentText=filterSearchTerm('segmentFilter'),vehicleText=filterSearchTerm('vehicleFilter'),modelText=filterSearchTerm('modelFilter'),categoryText=filterSearchTerm('categoryFilter'),subCategoryText=filterSearchTerm('subCategoryFilter');
   const gv=$('#groupFilter').value,sv=$('#subGroupFilter').value,segv=$('#segmentFilter').value,vv=$('#vehicleFilter').value,mv=$('#modelFilter').value,cv=$('#categoryFilter').value,scv=$('#subCategoryFilter')?.value||'';
-  const segmentMulti=v102SelectedSegments();
+  const multi=Object.fromEntries(V103_MULTI_FILTER_IDS.map(id=>[id,v103MultiValues(id)]));
+  const segmentMulti=multi.segmentFilter;
   const out=[];
   for(let i=0;i<FAST_ROWS.length;i++){
     const x=FAST_ROWS[i],row=x.row;
-    if(gv&&x.group!==gv)continue;if(sv&&x.sub!==sv)continue;
-    if(segmentMulti.length){if(!v102MultiSegmentMatch(row,segmentMulti))continue}else if(segv&&!v94SegmentMatch(row,segv))continue;if(vv&&!v94VehicleMatch(row,vv))continue;if(mv&&!v94ModelMatch(row,mv))continue;if(cv&&!v94CategoryMatch(row,cv))continue;if(scv&&!v94SubCategoryMatch(row,scv))continue;
+    if(multi.groupFilter.length){if(!v103MultiMatch(row,'groupFilter',multi.groupFilter))continue}else if(gv&&x.group!==gv)continue;
+    if(multi.subGroupFilter.length){if(!v103MultiMatch(row,'subGroupFilter',multi.subGroupFilter))continue}else if(sv&&x.sub!==sv)continue;
+    if(segmentMulti.length){if(!v102MultiSegmentMatch(row,segmentMulti))continue}else if(segv&&!v94SegmentMatch(row,segv))continue;
+    if(multi.vehicleFilter.length){if(!v103MultiMatch(row,'vehicleFilter',multi.vehicleFilter))continue}else if(vv&&!v94VehicleMatch(row,vv))continue;
+    if(multi.modelFilter.length){if(!v103MultiMatch(row,'modelFilter',multi.modelFilter))continue}else if(mv&&!v94ModelMatch(row,mv))continue;
+    if(multi.categoryFilter.length){if(!v103MultiMatch(row,'categoryFilter',multi.categoryFilter))continue}else if(cv&&!v94CategoryMatch(row,cv))continue;
+    if(scv&&!v94SubCategoryMatch(row,scv))continue;
     if(groupText&&!x.groupN.includes(groupText))continue;if(subGroupText&&!x.subN.includes(subGroupText))continue;
     if(segmentText&&!v94FilterSearchMatch(row,'segmentFilter',segmentText))continue;if(vehicleText&&!v94FilterSearchMatch(row,'vehicleFilter',vehicleText))continue;if(modelText&&!v94FilterSearchMatch(row,'modelFilter',modelText))continue;if(categoryText&&!v94FilterSearchMatch(row,'categoryFilter',categoryText))continue;if(subCategoryText&&!v94FilterSearchMatch(row,'subCategoryFilter',subCategoryText))continue;
     if(q&&!smartUniversalRowMatch(x,q))continue;
@@ -2578,8 +2636,7 @@ function render(){
 
 function reset(){
   USER_FILTER_SCOPE_ACTIVE=false;
-  window.RAJ_SEGMENT_MULTI_V102=[];
-  if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
+  if(typeof window.RAJ_V103_CLEAR_MULTI_FILTERS==='function')window.RAJ_V103_CLEAR_MULTI_FILTERS();else window.RAJ_SEGMENT_MULTI_V102=[];
   ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>$('#'+id).value='');
   $('#searchInput').value=''; $('#universalSearchInput').value=''; document.querySelectorAll('.filter-search').forEach(x=>x.value='');
   cascade();
@@ -2642,6 +2699,7 @@ $('#priceListDownloadBtn').onclick=downloadSelectedPriceList;
 $('#priceListShareBtn').onclick=shareSelectedPriceListPdf;
 if($('#indexPriceBookFilter')){$('#indexPriceBookFilter').onchange=v102UpdateIndexDownloadState;refreshIndexPriceBookOptions()}
 if($('#indexPriceBookDownloadBtn'))$('#indexPriceBookDownloadBtn').onclick=downloadIndexPriceBook;
+if($('#indexOnlyDownloadBtn'))$('#indexOnlyDownloadBtn').onclick=downloadOnlyIndex;
 
 let filterInputTimer=0;
 function scheduleFilterApply(action,delay=120){

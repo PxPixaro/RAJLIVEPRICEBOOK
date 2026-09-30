@@ -1,0 +1,9 @@
+RAJ LIVE PRICE BOOK V103
+
+1. Group, Sub Group, Segment, Vehicle, Model, Category sab filters checkbox multi-select ho gaye.
+2. Native dropdown ke neeche chips nahi banenge; dropdown panel ke andar checkbox/tick selection hoga.
+3. Har filter me multiple selection OR logic se chalega aur downstream filters combined scope ke hisaab se cascade honge.
+4. Existing fast V102/V101 facet index aur product/PDF design ko preserve kiya gaya hai.
+5. INDEX-wise section me Download Only Index button add kiya gaya hai.
+6. Download Index Pricelist ka existing complete index + product pricebook PDF behavior unchanged hai.
+7. Download Only Index selected INDEX ke group index pages hi download karta hai.

@@ -80,22 +80,31 @@ function refreshSpecialFacets(preserveGroup=true){
 }
 function specialCascade(){
   let r=rowsForSpecial();
-  const gf=q('#groupFilter'),oldGroup=gf?.value||'';const groups=uniqueSorted(r.map(group));setOptions(gf,groups,'All groups');if(oldGroup&&groups.includes(oldGroup))gf.value=oldGroup;
-  const gv=gf?.value||'';if(gv)r=r.filter(row=>group(row)===gv);
-  const sg=q('#subGroupFilter'),oldSub=sg?.value||'';const subs=uniqueSorted(r.map(subGroupValue));setOptions(sg,subs,'All sub groups');if(oldSub&&subs.includes(oldSub))sg.value=oldSub;
-  const sv=sg?.value||'';if(sv)r=r.filter(row=>subGroupValue(row)===sv);
-  const segmentEl=q('#segmentFilter'),oldSegment=segmentEl?.value||'';const segments=v97FacetValuesForRows(r,'segmentFilter');setOptions(segmentEl,segments,'All segments');if(oldSegment&&segments.includes(oldSegment))segmentEl.value=oldSegment;
-  const multi=Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102.filter(Boolean):[];
-  const segment=segmentEl?.value||'';
-  if(multi.length&&typeof window.RAJ_V102_MULTI_SEGMENT_MATCH==='function')r=r.filter(row=>window.RAJ_V102_MULTI_SEGMENT_MATCH(row,multi));
-  else if(segment)r=r.filter(row=>v97StrictFacetMatch(row,'segmentFilter',segment));
-  const vehicleEl=q('#vehicleFilter'),oldVehicle=vehicleEl?.value||'';const vehicles=(multi.length&&typeof window.RAJ_V102_MULTI_FACET_VALUES==='function'?window.RAJ_V102_MULTI_FACET_VALUES(r,'vehicleFilter',{segments:multi}):v97FacetValuesForRows(r,'vehicleFilter',{segment}));setOptions(vehicleEl,vehicles||[],'All vehicles');if(oldVehicle&&(vehicles||[]).includes(oldVehicle))vehicleEl.value=oldVehicle;
-  const vehicle=vehicleEl?.value||'';if(vehicle)r=r.filter(row=>v97StrictFacetMatch(row,'vehicleFilter',vehicle));
-  const modelEl=q('#modelFilter'),oldModel=modelEl?.value||'';const models=(multi.length&&typeof window.RAJ_V102_MULTI_FACET_VALUES==='function'?window.RAJ_V102_MULTI_FACET_VALUES(r,'modelFilter',{segments:multi,vehicle}):v97FacetValuesForRows(r,'modelFilter',{segment,vehicle}));setOptions(modelEl,models||[],'All models');if(oldModel&&(models||[]).includes(oldModel))modelEl.value=oldModel;
-  const model=modelEl?.value||'';if(model)r=r.filter(row=>v97StrictFacetMatch(row,'modelFilter',model));
-  const categoryEl=q('#categoryFilter'),oldCategory=categoryEl?.value||'';const categories=v97FacetValuesForRows(r,'categoryFilter');setOptions(categoryEl,categories,'All categories');if(oldCategory&&categories.includes(oldCategory))categoryEl.value=oldCategory;
-  const category=categoryEl?.value||'';if(category)r=r.filter(row=>v97StrictFacetMatch(row,'categoryFilter',category));
-  const sub=q('#subCategoryFilter');if(sub)setOptions(sub,v94SubCategoryOptions(category),'All sub categories');
+  const defs=[
+    ['groupFilter','All groups',row=>group(row)],
+    ['subGroupFilter','All sub groups',row=>subGroupValue(row)],
+    ['segmentFilter','All segments',null],
+    ['vehicleFilter','All vehicles',null],
+    ['modelFilter','All models',null],
+    ['categoryFilter','All categories',null]
+  ];
+  for(const [id,label,getter] of defs){
+    const el=q('#'+id),old=el?.value||'';
+    let values;
+    if(getter)values=uniqueSorted(r.map(getter));
+    else if(typeof v97FacetValuesForRows==='function')values=v97FacetValuesForRows(r,id,{})||[];
+    else values=[];
+    setOptions(el,values,label);if(old&&values.includes(old))el.value=old;
+    const multi=typeof window.RAJ_V103_GET_MULTI_SELECTIONS==='function'?window.RAJ_V103_GET_MULTI_SELECTIONS(id):(id==='segmentFilter'&&Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102:[]);
+    if(multi&&multi.length&&typeof window.RAJ_V103_MULTI_MATCH==='function')r=r.filter(row=>window.RAJ_V103_MULTI_MATCH(row,id,multi));
+    else if(el?.value){
+      if(id==='groupFilter')r=r.filter(row=>group(row)===el.value);
+      else if(id==='subGroupFilter')r=r.filter(row=>subGroupValue(row)===el.value);
+      else if(typeof v97StrictFacetMatch==='function')r=r.filter(row=>v97StrictFacetMatch(row,id,el.value));
+    }
+  }
+  const sub=q('#subCategoryFilter');if(sub)setOptions(sub,[],'All sub categories');
+  if(typeof window.RAJ_V103_RENDER_ALL_MULTI==='function')window.RAJ_V103_RENDER_ALL_MULTI();
 }
 
 window.RAJ_V45_SPECIAL_CONTEXT=function(){
@@ -651,7 +660,7 @@ q('#v45ImageFile')?.addEventListener('change',async e=>{
     msg.textContent=err?.message||'Image search failed.';
   }
 });
-q('#v45DrawerContent')?.addEventListener('click',e=>{const h=e.target.closest('[data-image-code]');if(h){const code=h.dataset.imageCode;closeDrawer();V45.special='';window.RAJ_SEGMENT_MULTI_V102=[];if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});document.querySelectorAll('.filter-search').forEach(x=>x.value='');if(q('#universalSearchInput'))q('#universalSearchInput').value='';q('#searchInput').value=code;applyFilters(true,false)}});
+q('#v45DrawerContent')?.addEventListener('click',e=>{const h=e.target.closest('[data-image-code]');if(h){const code=h.dataset.imageCode;closeDrawer();V45.special='';if(typeof window.RAJ_V103_CLEAR_MULTI_FILTERS==='function')window.RAJ_V103_CLEAR_MULTI_FILTERS();else window.RAJ_SEGMENT_MULTI_V102=[];['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});document.querySelectorAll('.filter-search').forEach(x=>x.value='');if(q('#universalSearchInput'))q('#universalSearchInput').value='';q('#searchInput').value=code;applyFilters(true,false)}});
 
 async function liveApiSync(){const url=apiUrl(CFG.LIVE_PRODUCTS_ENDPOINT);if(!url){notify('Live ERP API not configured yet. See API Flow Word document and js/v45-config.js.');return}const b=q('#liveApiSyncBtn');b.disabled=true;try{const r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('API sync failed');const d=await r.json(),rows=Array.isArray(d)?d:(d.products||d.data||[]);if(!rows.length)throw new Error('API returned no products');allData=rows.map(x=>{const o={};Object.keys(x).forEach(k=>o[keyOf(k)]=x[k]);return o});rebuildRowIndexMap();refreshSpecialFacets(false);applyFilters();lastUpdated=new Date();notify(rows.length.toLocaleString('en-IN')+' products loaded from Live API')}catch(e){console.error(e);notify(e.message||'API sync error')}finally{b.disabled=false}}
 
@@ -661,7 +670,8 @@ function setSpecial(type){
   if(!keepGroup&&gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)keepGroup=a.value}
   V45.special=V45.special===type?'':type;
   q('#newLaunchBtn')?.classList.toggle('active',V45.special==='new');
-  window.RAJ_SEGMENT_MULTI_V102=[];if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
+  if(typeof window.RAJ_V103_CLEAR_MULTI_FILTERS==='function')window.RAJ_V103_CLEAR_MULTI_FILTERS();else window.RAJ_SEGMENT_MULTI_V102=[];
+  if(typeof window.RAJ_V103_CLEAR_MULTI_FILTERS==='function')window.RAJ_V103_CLEAR_MULTI_FILTERS(['subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter']);
   ['subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});
   refreshSpecialFacets(true);
   if(gf&&keepGroup&&[...gf.options].some(o=>o.value===keepGroup))gf.value=keepGroup;
@@ -681,7 +691,7 @@ window.RAJ_V45_DATA_RELOADED=function(){
 function enhanceVoice(){const b=q('#voiceSearchBtn');if(!b)return;b.title='Advanced Voice Search — speak part no., company code, competitor/alternate code, model or product';const s=q('#voiceStatus');if(s)s.textContent='Speak or type: part no., company code, competitor/alternate code, model, vehicle or any Excel detail'}
 function bindMain(){
   q('#resetBtn').onclick=()=>{
-    V45.special='';window.RAJ_SEGMENT_MULTI_V102=[];if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
+    V45.special='';if(typeof window.RAJ_V103_CLEAR_MULTI_FILTERS==='function')window.RAJ_V103_CLEAR_MULTI_FILTERS();else window.RAJ_SEGMENT_MULTI_V102=[];
     USER_FILTER_SCOPE_ACTIVE=false;['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});
     q('#searchInput').value='';q('#universalSearchInput').value='';document.querySelectorAll('.filter-search').forEach(x=>x.value='');
     cascade();const gf=q('#groupFilter');if(gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)gf.value=a.value}cascade();refreshSpecialFacets(true);applyFilters();

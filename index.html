@@ -24,13 +24,13 @@
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
 <script defer src="js/filter-master-v98.js?v=102"></script>
 <script defer src="js/facet-index-v102.js?v=102"></script>
-<script defer src="js/app.js?v=102-index-multisegment"></script>
-  <script defer src="js/v45-config.js?v=102"></script>
+<script defer src="js/app.js?v=103-checkbox-multi-index-only"></script>
+  <script defer src="js/v45-config.js?v=103"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=102-index-multisegment"></script>
+  <script defer src="js/v45.js?v=103-checkbox-multi-index-only"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -70,15 +70,26 @@
     .filter-clear:focus-visible{outline:3px solid rgba(0,105,217,.22);outline-offset:2px}
     .filter-panel{position:relative}
 
-    /* V102: Segment multi-select chips + INDEX-wise PDF panel */
-    .v102-multi-hint{font:700 9px/1.1 Arial,sans-serif;color:#6b7b91;text-transform:none;letter-spacing:0;margin-left:4px}
-    .v102-segment-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;min-height:0}
-    .v102-segment-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #9cc9f4;background:#eef7ff;color:#073d82;border-radius:999px;padding:4px 7px 4px 9px;font:800 10px/1 Arial,sans-serif;max-width:100%}
-    .v102-segment-chip button{border:0;background:#0b68c8;color:#fff;border-radius:50%;width:16px;height:16px;padding:0;display:grid;place-items:center;font:900 12px/1 Arial,sans-serif;cursor:pointer}
-    .v102-segment-chip button:hover{background:#073d82}
+    /* V103: checkbox multi-select for all product filters + INDEX-wise PDF actions */
+    .v103-multi-hint{font:700 9px/1.1 Arial,sans-serif;color:#6b7b91;text-transform:none;letter-spacing:0;margin-left:4px}
+    .v103-native-select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
+    .v103-multi-wrap{position:relative;width:100%}
+    .v103-multi-button{width:100%;min-height:42px;border:1px solid #b6cce6;border-radius:9px;background:#fff;padding:0 34px 0 12px;color:#102c55;font:500 13px/1.2 Arial,sans-serif;text-align:left;cursor:pointer;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .v103-multi-button:after{content:'⌄';position:absolute;right:12px;top:50%;transform:translateY(-55%);font-size:16px;color:#0e337e}
+    .v103-multi-button.active{border-color:#0b70d1;box-shadow:0 0 0 2px rgba(11,112,209,.08);font-weight:700;color:#073d82}
+    .v103-multi-panel{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:2500;max-height:330px;overflow:auto;background:#fff;border:1px solid #8fb9e5;border-radius:9px;box-shadow:0 10px 28px rgba(8,48,97,.22);padding:5px}
+    .v103-multi-wrap.open .v103-multi-panel{display:block}
+    .v103-check-row{display:flex;align-items:center;gap:9px;min-height:32px;padding:5px 7px;border-radius:6px;cursor:pointer;color:#102c55;font:500 13px/1.15 Arial,sans-serif;user-select:none}
+    .v103-check-row:hover{background:#eef6ff}
+    .v103-check-row.v103-all{font-weight:800;color:#073d82;border-bottom:1px solid #e3edf8;margin-bottom:3px;border-radius:5px 5px 0 0}
+    .v103-check-row input{appearance:none;-webkit-appearance:none;width:17px;height:17px;min-width:17px;border:1.5px solid #6f9fce;border-radius:3px;background:#fff;display:grid;place-content:center;margin:0}
+    .v103-check-row input:checked{background:#0874d1;border-color:#0874d1}
+    .v103-check-row input:checked:after{content:'✓';color:#fff;font:900 13px/1 Arial,sans-serif;transform:translateY(-.5px)}
+    .v103-empty-options{padding:10px;color:#6b7b91;font:600 11px Arial,sans-serif}
+    .v103-selected-count{font-size:10px;color:#60718a;margin-left:4px}
     .v102-special-bar{grid-template-columns:repeat(2,minmax(0,1fr))!important}
     .v102-index-divider{margin-top:12px!important}
-    .v102-index-download{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(210px,.8fr) auto;gap:12px;align-items:center;border:1px solid #9bc9f7;border-left:5px solid #0867c7;border-radius:13px;padding:12px 14px;background:linear-gradient(180deg,#ffffff,#f5faff);box-shadow:0 3px 10px rgba(14,51,126,.05)}
+    .v102-index-download{display:grid;grid-template-columns:minmax(220px,1.25fr) minmax(210px,.75fr) auto auto;gap:10px;align-items:center;border:1px solid #9bc9f7;border-left:5px solid #0867c7;border-radius:13px;padding:12px 14px;background:linear-gradient(180deg,#ffffff,#f5faff);box-shadow:0 3px 10px rgba(14,51,126,.05)}
     .v102-index-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
     .v102-index-copy>span{font:900 9px/1.2 Arial,sans-serif;letter-spacing:.5px;color:#0b64bf}
     .v102-index-copy>strong{font:900 14px/1.2 Arial,sans-serif;color:#07377c}
@@ -87,7 +98,10 @@
     .v102-index-select>span{font:900 9px/1 Arial,sans-serif;text-transform:uppercase;color:#0e337e}
     .v102-index-select select{width:100%;min-height:38px;border:1px solid #b6cce6;border-radius:9px;background:#fff;padding:0 10px;color:#102c55;font-weight:700}
     .v102-index-download-btn{min-height:40px;white-space:nowrap}
-    @media(max-width:900px){.v102-index-download{grid-template-columns:1fr}.v102-index-download-btn{width:100%}.v102-special-bar{grid-template-columns:1fr!important}}
+    .v103-index-only-btn{min-height:40px;white-space:nowrap;background:#fff!important;color:#0867c7!important;border:1px solid #86b8ea!important}
+    .v103-index-only-btn:hover{background:#edf7ff!important}
+    @media(max-width:1100px){.v102-index-download{grid-template-columns:1fr 1fr}.v102-index-copy{grid-column:1/-1}.v102-index-download-btn,.v103-index-only-btn{width:100%}}
+    @media(max-width:700px){.v102-index-download{grid-template-columns:1fr}.v102-index-copy{grid-column:auto}.v102-special-bar{grid-template-columns:1fr!important}}
 
     /* Product image square thumbnail */
     #priceTable .image-col{
@@ -517,12 +531,12 @@
         <p><b>2.</b> Live Price Book में वही Rate और MRP दिखाई जाएगी जो वर्तमान प्रोडक्ट डेटा में उपलब्ध है। हमारे स्टॉक में पुराने एवं नए MRP वाला माल हो सकता है, इसलिए ऑर्डर करते समय कृपया Rate/MRP की पुष्टि कर लें। धन्यवाद।</p>
       </div>
       <div class="filters-grid v46-primary-filters">
-        <label><span>Group / Brand</span><input class="filter-search" data-target="groupFilter" placeholder="Search group…"><select id="groupFilter"></select></label>
-        <label><span>Sub Group</span><input class="filter-search" data-target="subGroupFilter" placeholder="Search sub group…"><select id="subGroupFilter"></select></label>
-        <label class="v102-segment-filter"><span>Segment <small class="v102-multi-hint">Multi-select</small></span><input class="filter-search" data-target="segmentFilter" placeholder="Search segment…"><select id="segmentFilter"></select><div id="segmentMultiChips" class="v102-segment-chips" aria-live="polite"></div></label>
-        <label><span>Vehicle</span><input class="filter-search" data-target="vehicleFilter" placeholder="Search vehicle…"><select id="vehicleFilter"></select></label>
-        <label><span>Model</span><input class="filter-search" data-target="modelFilter" placeholder="Search model…"><select id="modelFilter"></select></label>
-        <label><span>Category</span><input class="filter-search" data-target="categoryFilter" placeholder="Search category…"><select id="categoryFilter"></select></label>
+        <label><span>Group / Brand <small class="v103-multi-hint">Multi-select</small></span><input class="filter-search" data-target="groupFilter" placeholder="Search group…"><select id="groupFilter"></select></label>
+        <label><span>Sub Group <small class="v103-multi-hint">Multi-select</small></span><input class="filter-search" data-target="subGroupFilter" placeholder="Search sub group…"><select id="subGroupFilter"></select></label>
+        <label><span>Segment <small class="v103-multi-hint">Multi-select</small></span><input class="filter-search" data-target="segmentFilter" placeholder="Search segment…"><select id="segmentFilter"></select></label>
+        <label><span>Vehicle <small class="v103-multi-hint">Multi-select</small></span><input class="filter-search" data-target="vehicleFilter" placeholder="Search vehicle…"><select id="vehicleFilter"></select></label>
+        <label><span>Model <small class="v103-multi-hint">Multi-select</small></span><input class="filter-search" data-target="modelFilter" placeholder="Search model…"><select id="modelFilter"></select></label>
+        <label><span>Category <small class="v103-multi-hint">Multi-select</small></span><input class="filter-search" data-target="categoryFilter" placeholder="Search category…"><select id="categoryFilter"></select></label>
         <select id="subCategoryFilter" hidden aria-hidden="true"></select>
       </div>
 
@@ -551,6 +565,7 @@
         <div class="v102-index-copy"><span>INDEX WISE DOWNLOAD</span><strong>Complete Pricelist PDF</strong><small id="indexPriceBookStatus">Select an INDEX to download its complete price book</small></div>
         <label class="v102-index-select"><span>Price Book Index</span><select id="indexPriceBookFilter"><option value="">Select INDEX...</option></select></label>
         <button id="indexPriceBookDownloadBtn" class="btn btn-primary v102-index-download-btn" type="button" disabled>Download Index Pricelist</button>
+        <button id="indexOnlyDownloadBtn" class="btn v103-index-only-btn" type="button" disabled>Download Only Index</button>
       </div>
     </section>
 
@@ -795,8 +810,7 @@
     };
 
     function clearEverything(){
-      window.RAJ_SEGMENT_MULTI_V102=[];
-      if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
+      if(typeof window.RAJ_V103_CLEAR_MULTI_FILTERS==='function')window.RAJ_V103_CLEAR_MULTI_FILTERS();else window.RAJ_SEGMENT_MULTI_V102=[];
       FILTER_DEFS.forEach(function(def){
         document.getElementById(def.id).value='';
         const typed=document.querySelector('.filter-search[data-target="'+def.id+'"]');
@@ -841,10 +855,9 @@
             control.value='';
             const typed=document.querySelector('.filter-search[data-target="'+target+'"]');
             if(typed)typed.value='';
-            if(target==='segmentFilter'){
-              window.RAJ_SEGMENT_MULTI_V102=[];
-              if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
-            }
+            if(typeof window.RAJ_V103_SET_MULTI_SELECTIONS==='function')window.RAJ_V103_SET_MULTI_SELECTIONS(target,[],{silent:true});
+            else if(target==='segmentFilter')window.RAJ_SEGMENT_MULTI_V102=[];
+            if(typeof window.RAJ_V103_RENDER_MULTI==='function')window.RAJ_V103_RENDER_MULTI(target);
           }
           applyFilters();
           control.focus();
@@ -855,7 +868,8 @@
       document.querySelectorAll('.filter-clear').forEach(function(button){
         const target=button.dataset.clearTarget;
         const control=document.getElementById(target);
-        let active=!!(control&&clean(control.value));
+        const multi=typeof window.RAJ_V103_GET_MULTI_SELECTIONS==='function'?window.RAJ_V103_GET_MULTI_SELECTIONS(target):[];
+        let active=!!((control&&clean(control.value))||(multi&&multi.length));
         if(FILTER_DEFS.some(function(def){return def.id===target})){
           const typed=document.querySelector('.filter-search[data-target="'+target+'"]');
           active=active||!!(typed&&clean(typed.value));
@@ -1268,7 +1282,8 @@
         universalWords:universal?universal.split(' ').filter(Boolean):[],
         special:sp.special||'',
         fsn:'',
-        segmentMulti:Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102.slice():[],
+        multiFilters:typeof window.RAJ_V103_GET_ALL_MULTI_SELECTIONS==='function'?window.RAJ_V103_GET_ALL_MULTI_SELECTIONS():{},
+        segmentMulti:typeof window.RAJ_V103_GET_MULTI_SELECTIONS==='function'?window.RAJ_V103_GET_MULTI_SELECTIONS('segmentFilter'):(Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102.slice():[]),
         specialApi:sp
       };
     }
@@ -1283,8 +1298,13 @@
       const typed=ctx.typed[index];
       const fieldName=def.fields[0]||'';
       const masterActive=typeof filterMasterHasValues==='function'&&filterMasterHasValues(def.id);
-      if(def.id==='segmentFilter'&&ctx.segmentMulti&&ctx.segmentMulti.length){
-        if(typeof window.RAJ_V102_MULTI_SEGMENT_MATCH==='function'&&!window.RAJ_V102_MULTI_SEGMENT_MATCH(meta.row,ctx.segmentMulti))return false;
+      const multi=(ctx.multiFilters&&Array.isArray(ctx.multiFilters[def.id]))?ctx.multiFilters[def.id]:[];
+      if(multi.length){
+        if(typeof window.RAJ_V103_MULTI_MATCH==='function'){
+          if(!window.RAJ_V103_MULTI_MATCH(meta.row,def.id,multi))return false;
+        }else if(def.id==='segmentFilter'&&typeof window.RAJ_V102_MULTI_SEGMENT_MATCH==='function'){
+          if(!window.RAJ_V102_MULTI_SEGMENT_MATCH(meta.row,multi))return false;
+        }else if(!multi.some(function(value){return v98SameValue(meta.values[index],value)}))return false;
       }else if(selected){
         if(typeof v94FilterMatch==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id)){
           if(!v94FilterMatch(meta.row,def.id,selected))return false;
@@ -1390,65 +1410,50 @@
       }
       return v98UniqueSorted(rows.map(function(row){return fieldValue(row,def)}));
     }
-    function v102SegmentList(){
-      const list=Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102:[];
-      const out=[],seen=new Set();
-      list.forEach(function(value){value=clean(value);const key=normalizedSearch(value);if(value&&key&&!seen.has(key)){seen.add(key);out.push(value)}});
-      return out;
+    function v103MultiList(id){
+      if(typeof window.RAJ_V103_GET_MULTI_SELECTIONS==='function')return window.RAJ_V103_GET_MULTI_SELECTIONS(id);
+      if(id==='segmentFilter')return Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102.slice():[];
+      return [];
     }
-    function v102SetSegmentList(values){
-      window.RAJ_SEGMENT_MULTI_V102=v98UniqueSorted(values||[]);
-      v102RenderSegmentChips();
-      return window.RAJ_SEGMENT_MULTI_V102;
+    function v103SetMultiList(id,values){
+      values=v98UniqueSorted(values||[]);
+      if(typeof window.RAJ_V103_SET_MULTI_SELECTIONS==='function')window.RAJ_V103_SET_MULTI_SELECTIONS(id,values,{silent:true});
+      else if(id==='segmentFilter')window.RAJ_SEGMENT_MULTI_V102=values.slice();
+      return values;
     }
-    function v102RenderSegmentChips(){
-      const box=document.getElementById('segmentMultiChips');if(!box)return;
-      const selected=v102SegmentList();
-      box.innerHTML=selected.map(function(value){return '<span class="v102-segment-chip">'+escapeHtml(value)+'<button type="button" data-segment-remove="'+escapeHtml(value)+'" aria-label="Remove '+escapeHtml(value)+'">×</button></span>'}).join('');
+    function v103RowMatchesMulti(row,def,values){
+      if(!values||!values.length)return true;
+      if(typeof window.RAJ_V103_MULTI_MATCH==='function')return window.RAJ_V103_MULTI_MATCH(row,def.id,values);
+      return values.some(function(value){return v98StrictRowMatch(row,def,value)});
     }
-    window.RAJ_V102_RENDER_SEGMENT_CHIPS=v102RenderSegmentChips;
 
     function v98ApplyDeepCascade(){
-      // Do not let an early boot call replace the verified master with empty lists.
+      // V103: every public filter is an OR multi-select. Cascading remains strict:
+      // each downstream checkbox list is derived only from rows left by all
+      // selected upstream filters. The verified master remains the display vocabulary.
       if(typeof v97FacetValuesForRows!=='function'||typeof masterValuesForFilter!=='function')return currentContext();
       let rows=allData;
-      const selected=FAST_FILTERS.map(function(def){
-        const el=document.getElementById(def.id);return el?clean(el.value):'';
-      });
+      const selected=FAST_FILTERS.map(function(def){const el=document.getElementById(def.id);return el?clean(el.value):''});
+      const keepInvalid=[true,false,false,false,false,false];
 
-      // GROUP always keeps the complete group list. Every later dropdown is downstream-only.
-      selected[0]=v98SetCascadeOptions(FAST_FILTERS[0],v98CascadeValues(FAST_FILTERS[0],rows,'',''),selected[0],true);
-      if(selected[0])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[0],selected[0])});
+      const cascadeCount=Math.max(0,FAST_FILTERS.findIndex(function(def){return def.id==='subCategoryFilter'}));
+      for(let i=0;i<(cascadeCount||FAST_FILTERS.length);i++){
+        const def=FAST_FILTERS[i];
+        const available=v98CascadeValues(def,rows,'','')||[];
+        let multi=v103MultiList(def.id).filter(function(value){return available.some(function(candidate){return v98SameValue(candidate,value)})});
+        // Backward compatibility: adopt an existing native single selection once.
+        if(selected[i]&&!multi.some(function(value){return v98SameValue(value,selected[i])})){
+          const hit=available.find(function(candidate){return v98SameValue(candidate,selected[i])});
+          if(hit)multi.push(hit);else if(keepInvalid[i])multi.push(selected[i]);
+        }
+        multi=v103SetMultiList(def.id,multi);
+        v98SetCascadeOptions(def,available,'',keepInvalid[i]);
+        selected[i]='';
+        if(multi.length)rows=rows.filter(function(row){return v103RowMatchesMulti(row,def,multi)});
+      }
 
-      selected[1]=v98SetCascadeOptions(FAST_FILTERS[1],v98CascadeValues(FAST_FILTERS[1],rows,'',''),selected[1],false);
-      if(selected[1])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[1],selected[1])});
-
-      // V102: Segment is an OR multi-select. The dropdown remains a clean single-value
-      // master; every selection is added as a chip and the product scope is the union.
-      const availableSegments=v98CascadeValues(FAST_FILTERS[2],rows,'','');
-      let multi=v102SegmentList().filter(function(value){return availableSegments.some(function(candidate){return v98SameValue(candidate,value)})});
-      if(selected[2]&&!multi.some(function(value){return v98SameValue(value,selected[2])}))multi.push(selected[2]);
-      multi=v102SetSegmentList(multi);
-      v98SetCascadeOptions(FAST_FILTERS[2],availableSegments,'',false);
-      selected[2]='';
-      if(multi.length&&typeof window.RAJ_V102_MULTI_SEGMENT_MATCH==='function')rows=rows.filter(function(row){return window.RAJ_V102_MULTI_SEGMENT_MATCH(row,multi)});
-
-      const vehicleValues=(multi.length&&typeof window.RAJ_V102_MULTI_FACET_VALUES==='function')
-        ? window.RAJ_V102_MULTI_FACET_VALUES(rows,'vehicleFilter',{segments:multi})
-        : v98CascadeValues(FAST_FILTERS[3],rows,'','');
-      selected[3]=v98SetCascadeOptions(FAST_FILTERS[3],vehicleValues||[],selected[3],false);
-      if(selected[3])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[3],selected[3])});
-
-      const modelValues=(multi.length&&typeof window.RAJ_V102_MULTI_FACET_VALUES==='function')
-        ? window.RAJ_V102_MULTI_FACET_VALUES(rows,'modelFilter',{segments:multi,vehicle:selected[3]})
-        : v98CascadeValues(FAST_FILTERS[4],rows,'',selected[3]);
-      selected[4]=v98SetCascadeOptions(FAST_FILTERS[4],modelValues||[],selected[4],false);
-      if(selected[4])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[4],selected[4])});
-
-      selected[5]=v98SetCascadeOptions(FAST_FILTERS[5],v98CascadeValues(FAST_FILTERS[5],rows,'',selected[3]),selected[5],false);
-
-      // Sub-category is intentionally not part of the V96+ public filter flow.
       const sub=document.getElementById('subCategoryFilter');if(sub)sub.value='';
+      if(typeof window.RAJ_V103_RENDER_ALL_MULTI==='function')window.RAJ_V103_RENDER_ALL_MULTI();
       return currentContext();
     }
 
@@ -1460,7 +1465,8 @@
         return;
       }
       const ctx=v98ApplyDeepCascade();
-      const selectedStartupGroup=clean(ctx.selected[0]);
+      const groupMulti=(ctx.multiFilters&&Array.isArray(ctx.multiFilters.groupFilter))?ctx.multiFilters.groupFilter:[];
+      const selectedStartupGroup=groupMulti.length===1?clean(groupMulti[0]):clean(ctx.selected[0]);
       const selectedStartupKey=normalizedSearch(selectedStartupGroup);
       // V101: explicit All Groups must never fall back to AAYUB quick rows while
       // the background cache is still warming. Finish only the lightweight meta
@@ -1532,7 +1538,8 @@
         const target=button.dataset.clearTarget;
         const control=document.getElementById(target);
         const typed=document.querySelector('.filter-search[data-target="'+target+'"]');
-        button.classList.toggle('active',!!((control&&clean(control.value))||(typed&&clean(typed.value))));
+        const multi=typeof window.RAJ_V103_GET_MULTI_SELECTIONS==='function'?window.RAJ_V103_GET_MULTI_SELECTIONS(target):[];
+        button.classList.toggle('active',!!((control&&clean(control.value))||(typed&&clean(typed.value))||(multi&&multi.length)));
       });
     }
 
@@ -1576,7 +1583,7 @@
     };
 
     function clearToDefaultGroup(){
-      v102SetSegmentList([]);
+      if(typeof window.RAJ_V103_CLEAR_MULTI_FILTERS==='function')window.RAJ_V103_CLEAR_MULTI_FILTERS();else window.RAJ_SEGMENT_MULTI_V102=[];
       FAST_FILTERS.forEach(function(def){
         document.getElementById(def.id).value='';
         const typed=document.querySelector('.filter-search[data-target="'+def.id+'"]');
@@ -1593,30 +1600,84 @@
     reset=clearToDefaultGroup;
     document.getElementById('resetBtn').onclick=clearToDefaultGroup;
 
-    // V102 Segment multi-select interaction. Choosing a Segment adds it to the
-    // OR-set; x removes only that Segment. Vehicle / Model continue cascading
-    // from the union without changing their existing search behaviour.
-    const v102SegmentSelect=document.getElementById('segmentFilter');
-    if(v102SegmentSelect){
-      v102SegmentSelect.onchange=function(){
-        const value=clean(v102SegmentSelect.value);
-        if(value){const list=v102SegmentList();if(!list.some(function(x){return v98SameValue(x,value)}))list.push(value);v102SetSegmentList(list);v102SegmentSelect.value='';const typed=document.querySelector('.filter-search[data-target="segmentFilter"]');if(typed)typed.value=''}
-        USER_FILTER_SCOPE_ACTIVE=true;
-        if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();
-        applyFilters(true);
-      };
-      const segmentSearch=document.querySelector('.filter-search[data-target="segmentFilter"]');
-      if(segmentSearch)segmentSearch.addEventListener('input',function(){
-        if(clean(segmentSearch.value)&&v102SegmentList().length){v102SetSegmentList([]);v102SegmentSelect.value=''}
-      });
+    // V103 checkbox multi-select UI for Group / Sub Group / Segment / Vehicle / Model / Category.
+    // Native <select> elements remain as invisible data sources so all existing
+    // cascade/master code can update their option lists without a design rewrite.
+    const V103_MULTI_IDS=FAST_FILTERS.filter(function(def){return def.id!=='subCategoryFilter'}).map(function(def){return def.id});
+    window.RAJ_MULTI_FILTERS_V103=window.RAJ_MULTI_FILTERS_V103||Object.fromEntries(V103_MULTI_IDS.map(function(id){return [id,[]]}));
+    function v103State(id){
+      const raw=Array.isArray(window.RAJ_MULTI_FILTERS_V103[id])?window.RAJ_MULTI_FILTERS_V103[id]:[];
+      return v98UniqueSorted(raw);
     }
-    document.getElementById('segmentMultiChips')?.addEventListener('click',function(event){
-      const button=event.target.closest('[data-segment-remove]');if(!button)return;
-      const remove=clean(button.dataset.segmentRemove);
-      v102SetSegmentList(v102SegmentList().filter(function(value){return !v98SameValue(value,remove)}));
-      USER_FILTER_SCOPE_ACTIVE=true;applyFilters(true);
-    });
-    v102RenderSegmentChips();
+    window.RAJ_V103_GET_MULTI_SELECTIONS=function(id){return v103State(id)};
+    window.RAJ_V103_GET_ALL_MULTI_SELECTIONS=function(){const out={};V103_MULTI_IDS.forEach(function(id){out[id]=v103State(id)});return out};
+    window.RAJ_V103_SET_MULTI_SELECTIONS=function(id,values,opts){
+      if(!V103_MULTI_IDS.includes(id))return [];
+      const next=v98UniqueSorted(values||[]);window.RAJ_MULTI_FILTERS_V103[id]=next;
+      if(id==='segmentFilter')window.RAJ_SEGMENT_MULTI_V102=next.slice();
+      if(!(opts&&opts.silent)&&typeof window.RAJ_V103_RENDER_MULTI==='function')window.RAJ_V103_RENDER_MULTI(id);
+      return next;
+    };
+    window.RAJ_V103_CLEAR_MULTI_FILTERS=function(ids){
+      (Array.isArray(ids)?ids:V103_MULTI_IDS).forEach(function(id){if(V103_MULTI_IDS.includes(id))window.RAJ_MULTI_FILTERS_V103[id]=[]});
+      window.RAJ_SEGMENT_MULTI_V102=[];
+      if(typeof window.RAJ_V103_RENDER_ALL_MULTI==='function')window.RAJ_V103_RENDER_ALL_MULTI();
+    };
+    window.RAJ_V102_RENDER_SEGMENT_CHIPS=function(){if(typeof window.RAJ_V103_RENDER_MULTI==='function')window.RAJ_V103_RENDER_MULTI('segmentFilter')};
+
+    function v103Control(id){return document.querySelector('.v103-multi-wrap[data-filter-id="'+id+'"]')}
+    function v103Available(id){
+      const select=document.getElementById(id);if(!select)return [];
+      const out=[];for(const option of select.options){const value=clean(option.value);if(value)out.push(value)}return v98UniqueSorted(out);
+    }
+    function v103ButtonText(id,selected){
+      const def=FAST_FILTERS.find(function(x){return x.id===id});const allLabel=def?def.label:'All';
+      if(!selected.length)return allLabel;
+      if(selected.length===1)return selected[0];
+      if(selected.length===2)return selected.join(' + ');
+      return selected[0]+' + '+(selected.length-1)+' more';
+    }
+    function v103RenderMulti(id){
+      const wrap=v103Control(id),select=document.getElementById(id);if(!wrap||!select)return;
+      const selected=v103State(id),available=v103Available(id),button=wrap.querySelector('.v103-multi-button'),panel=wrap.querySelector('.v103-multi-panel');
+      const query=normalizedSearch(document.querySelector('.filter-search[data-target="'+id+'"]')?.value||'');
+      const shown=query?available.filter(function(v){return normalizedSearch(v).includes(query)}):available;
+      button.textContent=v103ButtonText(id,selected);button.classList.toggle('active',selected.length>0);button.title=selected.length?selected.join(', '):button.textContent;
+      const allLabel=(FAST_FILTERS.find(function(x){return x.id===id})||{}).label||'All';
+      let html='<label class="v103-check-row v103-all"><input type="checkbox" data-v103-all="1" '+(!selected.length?'checked':'')+'><span>'+escapeHtml(allLabel)+'</span></label>';
+      if(shown.length){html+=shown.map(function(value){const checked=selected.some(function(x){return v98SameValue(x,value)});return '<label class="v103-check-row"><input type="checkbox" data-v103-value="'+escapeHtml(value)+'" '+(checked?'checked':'')+'><span>'+escapeHtml(value)+'</span></label>'}).join('')}
+      else html+='<div class="v103-empty-options">No matching option</div>';
+      panel.innerHTML=html;
+    }
+    window.RAJ_V103_RENDER_MULTI=v103RenderMulti;
+    window.RAJ_V103_RENDER_ALL_MULTI=function(){V103_MULTI_IDS.forEach(v103RenderMulti)};
+
+    function v103InstallMultiControls(){
+      FAST_FILTERS.filter(function(def){return V103_MULTI_IDS.includes(def.id)}).forEach(function(def){
+        const select=document.getElementById(def.id);if(!select||v103Control(def.id))return;
+        select.classList.add('v103-native-select');
+        const wrap=document.createElement('div');wrap.className='v103-multi-wrap';wrap.dataset.filterId=def.id;
+        wrap.innerHTML='<button class="v103-multi-button" type="button" aria-haspopup="listbox"></button><div class="v103-multi-panel" role="listbox" aria-multiselectable="true"></div>';
+        select.insertAdjacentElement('afterend',wrap);
+        const button=wrap.querySelector('.v103-multi-button'),panel=wrap.querySelector('.v103-multi-panel');
+        button.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){if(x!==wrap)x.classList.remove('open')});wrap.classList.toggle('open');v103RenderMulti(def.id)});
+        panel.addEventListener('change',function(event){
+          const input=event.target;if(!(input instanceof HTMLInputElement))return;
+          let values=v103State(def.id);
+          if(input.dataset.v103All){values=[]}
+          else{const value=clean(input.dataset.v103Value);if(input.checked){if(value&&!values.some(function(x){return v98SameValue(x,value)}))values.push(value)}else values=values.filter(function(x){return !v98SameValue(x,value)})}
+          window.RAJ_V103_SET_MULTI_SELECTIONS(def.id,values,{silent:true});select.value='';
+          const typed=document.querySelector('.filter-search[data-target="'+def.id+'"]');if(typed)typed.value='';
+          USER_FILTER_SCOPE_ACTIVE=true;if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();applyFilters(true);
+        });
+        const search=document.querySelector('.filter-search[data-target="'+def.id+'"]');
+        if(search)search.addEventListener('input',function(){if(wrap.classList.contains('open'))v103RenderMulti(def.id)});
+        new MutationObserver(function(){v103RenderMulti(def.id)}).observe(select,{childList:true,subtree:true});
+        v103RenderMulti(def.id);
+      });
+      document.addEventListener('click',function(event){if(!event.target.closest('.v103-multi-wrap'))document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){x.classList.remove('open')})});
+    }
+    v103InstallMultiControls();
 
     // V95: build mapped filter metadata only after FILTER MASTER / MODEL MAP / CATEGORY MAP are ready.
     // This prevents raw comma-separated MODEL/CATEGORY values from appearing in dropdowns on first load.
