@@ -147,7 +147,7 @@ const HIDDEN_COLUMNS = new Set([
   'GROUP','SEGMENT','VEHICLE','MODEL','CATAGORIES','CATEGORIES','CATEGORY',
   'VIEW BY','VIEWBY','LIST DATE','LISTDATE','SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME',
   'CATALOG','CATALOG LINK','CATALOG URL','CATALOG NAME','CATALOG FILE',
-  'NEW PRODUCT LAUNCH','DEAD STOCK','FSN CLASS',
+  'NEW PRODUCT LAUNCH','DEAD STOCK','FSN CLASS','INDEX',
   'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE'
 ]);
 const ALWAYS = ['CODE','PRODUCT NAME','UNIT','GST','RATE','MRP'];
@@ -169,6 +169,71 @@ function rowSourceIndex(row){
 
 let FAST_ROWS=[];
 function normalizeSearchText(v){return clean(v).toUpperCase().replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim()}
+
+// V102 DOWNLOAD PRICE BOOK INDEX -------------------------------------------
+// Excel INDEX is download metadata only. Cells may contain several comma-separated
+// tags (MAIN, CAR, HCV-LCV, UNIT-3, ...). The dropdown is generated from the live
+// workbook automatically, so future INDEX values appear without code changes.
+const V102_INDEX_PREFERRED_ORDER=['MAIN','CAR','HCV-LCV','TRACTOR','HARDWARE','UNIT-3','NASIK','GAUTAM-HO','TWO-WHEELER','THREE-WHEELER'];
+const V102_INDEX_CANONICAL=new Map([
+  ['MAIN','MAIN'],['CAR','CAR'],['HCVLCV','HCV-LCV'],['TRACTOR','TRACTOR'],['HARDWARE','HARDWARE'],
+  ['UNIT3','UNIT-3'],['NASIK','NASIK'],['NASHIK','NASIK'],['GAUTAMHO','GAUTAM-HO'],
+  ['TWOWHEELER','TWO-WHEELER'],['2WHEELER','TWO-WHEELER'],['2WHEELERS','TWO-WHEELER'],
+  ['THREEWHEELER','THREE-WHEELER'],['3WHEELER','THREE-WHEELER'],['3WHEELERS','THREE-WHEELER']
+]);
+let V102_INDEX_MAP_SOURCE=null,V102_INDEX_MAP=new Map();
+let V102_PDF_CONTEXT=null;
+function v102IndexTagKey(value){return normalizeSearchText(value).replace(/\s+/g,'')}
+function v102CanonicalIndexTag(value){
+  const raw=clean(value);if(!raw)return '';
+  const key=v102IndexTagKey(raw);if(!key)return '';
+  return V102_INDEX_CANONICAL.get(key)||normalizeSearchText(raw).replace(/\s+/g,'-');
+}
+function v102IndexTagsForRow(row){
+  const raw=clean(getField(row,'INDEX','PRICE BOOK INDEX','PRICEBOOK INDEX'));
+  if(!raw)return [];
+  const seen=new Set(),out=[];
+  String(raw).split(/[,;|]+/).forEach(part=>{
+    const tag=v102CanonicalIndexTag(part),key=v102IndexTagKey(tag);
+    if(tag&&key&&!seen.has(key)){seen.add(key);out.push(tag)}
+  });
+  return out;
+}
+function v102IndexTagSort(a,b){
+  const ai=V102_INDEX_PREFERRED_ORDER.indexOf(a),bi=V102_INDEX_PREFERRED_ORDER.indexOf(b);
+  if(ai>=0||bi>=0){if(ai<0)return 1;if(bi<0)return -1;if(ai!==bi)return ai-bi}
+  return natural(a,b);
+}
+function v102EnsureIndexMap(){
+  if(V102_INDEX_MAP_SOURCE===allData)return V102_INDEX_MAP;
+  V102_INDEX_MAP_SOURCE=allData;V102_INDEX_MAP=new Map();
+  for(const row of allData){
+    for(const tag of v102IndexTagsForRow(row)){
+      const key=v102IndexTagKey(tag);let item=V102_INDEX_MAP.get(key);
+      if(!item){item={tag,rows:[]};V102_INDEX_MAP.set(key,item)}
+      item.rows.push(row);
+    }
+  }
+  return V102_INDEX_MAP;
+}
+function v102IndexPriceBookTags(){return [...v102EnsureIndexMap().values()].map(x=>x.tag).sort(v102IndexTagSort)}
+function v102IndexRows(tag){return (v102EnsureIndexMap().get(v102IndexTagKey(tag))?.rows||[]).slice()}
+function v102InvalidateIndexMap(){V102_INDEX_MAP_SOURCE=null;V102_INDEX_MAP=new Map()}
+function v102UpdateIndexDownloadState(){
+  const select=$('#indexPriceBookFilter'),button=$('#indexPriceBookDownloadBtn'),status=$('#indexPriceBookStatus');
+  if(!select)return;
+  const tag=clean(select.value),count=tag?v102IndexRows(tag).length:0;
+  if(button)button.disabled=!tag||!count;
+  if(status)status.textContent=tag?(count.toLocaleString('en-IN')+' products ready for '+tag+' price book'):'Select an INDEX to download its complete price book';
+}
+function refreshIndexPriceBookOptions(){
+  const select=$('#indexPriceBookFilter');if(!select)return;
+  const current=clean(select.value),tags=v102IndexPriceBookTags();
+  select.innerHTML='<option value="">Select INDEX...</option>'+tags.map(tag=>'<option value="'+escapeHtml(tag)+'">'+escapeHtml(tag)+'</option>').join('');
+  if(tags.includes(current))select.value=current;
+  v102UpdateIndexDownloadState();
+}
+window.RAJ_V102_REFRESH_INDEX=function(){v102InvalidateIndexMap();refreshIndexPriceBookOptions()};
 // V42: Universal search intentionally excludes GROUP / BRAND itself. Everything
 // else in the Excel row remains searchable, including future columns added later.
 // This keeps the search product/data-centric while upper GROUP filters still work.
@@ -176,12 +241,12 @@ function universalRowValues(row){
   if(Array.isArray(row) && COMPACT_COLUMNS.length){
     return COMPACT_COLUMNS.filter(name=>{
       const k=compactFieldKey(name);
-      return k!=='GROUP' && k!=='GROUPBRAND' && k!=='BRANDGROUP';
+      return k!=='GROUP' && k!=='GROUPBRAND' && k!=='BRANDGROUP' && k!=='INDEX';
     }).map(name=>clean(getField(row,name))).filter(Boolean);
   }
   return Object.entries(row||{}).filter(([key])=>{
     const k=compactFieldKey(key);
-    return k!=='GROUP' && k!=='GROUPBRAND' && k!=='BRANDGROUP';
+    return k!=='GROUP' && k!=='GROUPBRAND' && k!=='BRANDGROUP' && k!=='INDEX';
   }).map(([,value])=>clean(value)).filter(Boolean);
 }
 function buildFastRows(){
@@ -598,6 +663,56 @@ function v101StrictFacetMatch(row,id,selected){
   const wanted=v101FacetLookup(map,selected);if(wanted===undefined)return false;
   const ids=v101RowFacetIds(row,id);return !!ids&&ids.includes(wanted);
 }
+
+// V102 segment multi-select helpers. They reuse the same V101 static row index,
+// so HCV + LCV + CAR remains a cheap index lookup instead of regex-scanning 44k rows.
+function v102SelectedSegments(){
+  const list=Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102:[];
+  const out=[],seen=new Set();
+  for(const value of list){const v=clean(value),k=v94Norm(v);if(v&&k&&!seen.has(k)){seen.add(k);out.push(v)}}
+  return out;
+}
+function v102MultiSegmentMatch(row,selections){
+  const wanted=(Array.isArray(selections)?selections:v102SelectedSegments()).filter(Boolean);if(!wanted.length)return true;
+  const idx=v101FacetIndex();
+  if(idx){
+    const ids=v101RowFacetIds(row,'segmentFilter')||[];
+    const universal=v101FacetLookup(idx.segmentMap,'UNIVERSAL');
+    if(universal!==undefined&&ids.includes(universal))return true;
+    for(const value of wanted){const si=v101FacetLookup(idx.segmentMap,value);if(si!==undefined&&ids.includes(si))return true}
+    return false;
+  }
+  return wanted.some(value=>v94Contains(getField(row,'SEGMENT'),value)||v94Contains(getField(row,'SEGMENT'),'UNIVERSAL'));
+}
+function v102FacetValuesForRowsMulti(rows,id,{segments=[],vehicle=''}={}){
+  const selectedSegments=(segments||[]).map(clean).filter(Boolean);
+  if(!selectedSegments.length)return v101FacetValuesForRows(rows,id,{segment:'',vehicle});
+  const idx=v101FacetIndex();if(!idx||!Array.isArray(rows))return null;
+  if(id==='categoryFilter')return v101FacetValuesForRows(rows,id,{segment:'',vehicle});
+  if(!['vehicleFilter','modelFilter'].includes(id))return v101FacetValuesForRows(rows,id,{segment:'',vehicle});
+  const values=id==='vehicleFilter'?idx.vehicles:idx.models,found=new Set();
+  const segmentIds=selectedSegments.map(value=>v101FacetLookup(idx.segmentMap,value)).filter(value=>value!==undefined);
+  const vehicleIndex=vehicle?v101FacetLookup(idx.vehicleMap,vehicle):undefined;
+  for(const item of rows){
+    const row=item&&item.row!==undefined?item.row:item,ids=v101RowFacetIds(row,id);if(!ids)continue;
+    for(const valueIndex of ids){
+      if(id==='vehicleFilter'&&segmentIds.length){
+        const mask=idx.vehicleSegmentMask[valueIndex]||0;
+        if(!segmentIds.some(segmentIndex=>mask&(1<<segmentIndex)))continue;
+      }
+      if(id==='modelFilter'&&segmentIds.length){
+        const mask=idx.modelSegmentMask[valueIndex]||0;
+        if(!segmentIds.some(segmentIndex=>mask&(1<<segmentIndex)))continue;
+      }
+      if(id==='modelFilter'&&vehicleIndex!==undefined&&!v101VehicleMaskHas(idx.modelVehicleMask[valueIndex],vehicleIndex))continue;
+      found.add(valueIndex);
+    }
+  }
+  const out=[];for(const valueIndex of found){const value=values[valueIndex];if(value)out.push(value)}
+  return out.sort(natural);
+}
+window.RAJ_V102_MULTI_SEGMENT_MATCH=v102MultiSegmentMatch;
+window.RAJ_V102_MULTI_FACET_VALUES=v102FacetValuesForRowsMulti;
 
 // V98 SMART CASCADING FACETS ------------------------------------------------
 // Downstream dropdowns are limited to values that occur in the Price Book rows
@@ -1581,8 +1696,10 @@ function pdfIndexFitFont(text,width,maxSize=8,minSize=4.0){
   return Math.max(minSize,Math.min(maxSize,fit));
 }
 function buildGroupIndexPages(productPages){
-  // V90: de-duplicated, logo-assisted group index with adaptive Details wrapping.
-  if(clean($('#groupFilter').value)||!productPages.length)return [];
+  // V102: normal group PDFs keep the old behavior. INDEX-wise downloads force an
+  // index page regardless of the currently selected screen Group.
+  const forceIndex=!!V102_PDF_CONTEXT?.forceAllGroupsIndex;
+  if((clean($('#groupFilter').value)&&!forceIndex)||!productPages.length)return [];
   const portrait=!!productPages[0].adminPortrait,W=productPages[0].W||842,H=productPages[0].H||595;
   const margin=portrait?18:22,baseRowH=portrait?18.5:16.5,wrapRowH=portrait?29:26,heroH=64,headerH=21,top=24,bottom=20;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
@@ -1631,8 +1748,9 @@ function buildGroupIndexPages(productPages){
     cmd.push(`${rgb(245,176,14)} RG ${logoBoxX} ${H-y-heroH+7} ${logoBoxW} ${heroH-14} re S`);
     const titleAreaX=logoBoxX+logoBoxW+8,titleAreaW=printBoxX-titleAreaX-8;
     cmd.push(`${rgb(14,51,126)} rg ${titleAreaX} ${H-y-heroH+7} ${titleAreaW} ${heroH-14} re f`);
-    const title='PRICE BOOK INDEX MAIN',titleSize=17.5,approx=title.length*titleSize*0.27;
-    cmd.push(`BT /F2 ${titleSize} Tf 1 1 1 rg ${Math.max(titleAreaX+8,titleAreaX+titleAreaW/2-approx)} ${H-y-37} Td (${pdfAscii(title)}) Tj ET`);
+    const title='PRICE BOOK INDEX '+(V102_PDF_CONTEXT?.indexLabel||'MAIN');
+    const titleSize=pdfIndexFitFont(title,titleAreaW-16,17.5,10.5),approx=title.length*titleSize*0.27;
+    cmd.push(`BT /F2 ${titleSize.toFixed(2)} Tf 1 1 1 rg ${Math.max(titleAreaX+8,titleAreaX+titleAreaW/2-approx)} ${H-y-37} Td (${pdfAscii(title)}) Tj ET`);
     cmd.push(`BT /F1 6.3 Tf 1 0.76 0.08 rg ${titleAreaX+titleAreaW/2-61} ${H-y-50} Td (RAJ AGENCIES - LIVE PRICE BOOK) Tj ET`);
     cmd.push(`${rgb(14,51,126)} rg ${printBoxX} ${H-y-heroH+7} ${printBoxW} ${heroH-14} re f`);
     cmd.push(`BT /F2 7.2 Tf 1 1 1 rg ${printBoxX+17} ${H-y-28} Td (PRINT DATE) Tj ET`);
@@ -1694,10 +1812,11 @@ function fastPdfPages(){
   // BF visibility remains Pixaro-admin-only.
   const pixaroAdmin=isPixaroAdminPdfMode();
   const adminPortrait=true;
-  const sourcePdfRows=pixaroAdmin?filtered.filter(isAdminPdfRowVisible):filtered;
+  const basePdfRows=Array.isArray(V102_PDF_CONTEXT?.rows)?V102_PDF_CONTEXT.rows:filtered;
+  const sourcePdfRows=pixaroAdmin?basePdfRows.filter(isAdminPdfRowVisible):basePdfRows;
   const rows=sortedRows(sourcePdfRows),grouped=new Map();
   rows.forEach(r=>{const g=clean(getField(r,'GROUP'))||'OTHER';if(!grouped.has(g))grouped.set(g,[]);grouped.get(g).push(r)});
-  const selected=clean($('#groupFilter').value);
+  const selected=V102_PDF_CONTEXT?.forceAllGroupsIndex?'':clean($('#groupFilter').value);
   const groups=selected?[[selected,grouped.get(selected)||rows]]:[...grouped.entries()].sort((x,y)=>natural(x[0],y[0]));
   const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=98,rowH=adminPortrait?14.6:10.5,bandH=adminPortrait?15.6:12.4;
   const esc=pdfAscii;
@@ -1851,7 +1970,7 @@ async function buildFastPdfBlob(){
     const W=p.W||842,H=p.H||595,portrait=!!p.adminPortrait;
     const pageMargin=portrait?18:22;
     const generated=new Date().toLocaleString('en-GB',{hour12:true});
-    const docTitle=p.isIndex?'Group-wise Price Book Index':(clean($('#groupFilter').value)?clean($('#groupFilter').value)+' Filtered Pricelist':'All Groups Filtered Pricelist');
+    const docTitle=p.isIndex?(V102_PDF_CONTEXT?.docTitle||'Group-wise Price Book Index'):(V102_PDF_CONTEXT?.docTitle||(clean($('#groupFilter').value)?clean($('#groupFilter').value)+' Filtered Pricelist':'All Groups Filtered Pricelist'));
 
     // Outer print-header/footer details retained from June look.
     const topY=H-9,titleX=portrait?Math.round(W*.43):365,pageX=portrait?W-58:795;
@@ -1930,14 +2049,15 @@ async function buildFastPdfBlob(){
 }
 
 function priceListPdfFileName(){
+  if(V102_PDF_CONTEXT?.fileName)return safePdfName(V102_PDF_CONTEXT.fileName);
   return safePdfName(clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST')+'.pdf';
 }
 async function createCompletePriceListPdfBlob(){
-  // V82.12 FAST PDF: the hosted Excel is already loaded by the app startup refresh.
-  // Do NOT download/parse/re-index the workbook again on every PDF click.
-  // Grid and PDF therefore use the exact same already-loaded `filtered` rows / VIEW BY state.
-  if(!Array.isArray(filtered)||!filtered.length)throw new Error('Current filters me koi product nahi hai');
-  if(isPixaroAdminPdfMode()&&!filtered.some(isAdminPdfRowVisible))throw new Error('Pixaro PDF ke liye koi Visible product nahi hai');
+  // V102: normal filter downloads use `filtered`; INDEX-wise downloads provide a
+  // temporary independent row set without changing the visible product grid.
+  const pdfRows=Array.isArray(V102_PDF_CONTEXT?.rows)?V102_PDF_CONTEXT.rows:filtered;
+  if(!Array.isArray(pdfRows)||!pdfRows.length)throw new Error('Current filters me koi product nahi hai');
+  if(isPixaroAdminPdfMode()&&!pdfRows.some(isAdminPdfRowVisible))throw new Error('Pixaro PDF ke liye koi Visible product nahi hai');
   const blob=await buildFastPdfBlob();
   if(!blob||!blob.size)throw new Error('PDF output is empty');
   return blob;
@@ -1983,6 +2103,26 @@ async function shareSelectedPriceListPdf(){
     if(btn){btn.disabled=false;btn.textContent='Share PDF'}
   }
 }
+async function downloadIndexPriceBook(){
+  const select=$('#indexPriceBookFilter'),button=$('#indexPriceBookDownloadBtn');
+  const tag=clean(select?.value);if(!tag){toast('Download Price Book INDEX select karein.');return}
+  const rows=v102IndexRows(tag);if(!rows.length){toast(tag+' INDEX me koi product nahi mila.');return}
+  const previous=V102_PDF_CONTEXT;
+  V102_PDF_CONTEXT={rows,forceAllGroupsIndex:true,indexLabel:tag,docTitle:tag+' Price Book',fileName:tag+' PRICE BOOK.pdf'};
+  if(button){button.disabled=true;button.textContent='Creating '+tag+' PDF…'}
+  try{
+    const blob=await createCompletePriceListPdfBlob();
+    downloadPdfBlob(blob,priceListPdfFileName());
+    toast(`${tag} Price Book ready: ${rows.length.toLocaleString('en-IN')} products · ${(blob.size/1024/1024).toFixed(1)} MB`);
+  }catch(err){
+    console.error('V102 index-wise PDF error:',err);toast('INDEX-wise PDF create nahi hua. Please try again.');
+  }finally{
+    V102_PDF_CONTEXT=previous;
+    if(button){button.disabled=false;button.textContent='Download Index Pricelist'}
+    v102UpdateIndexDownloadState();
+  }
+}
+
 async function downloadSelectedPriceListFast(){
   if(!filtered.length){toast('Current filters me koi product nahi hai');return}
   const btn=$('#priceListDownloadBtn'),name=priceListPdfFileName();
@@ -2327,11 +2467,12 @@ function applyFilters(resetPage=true,doCascade=false){
   const subGroupText=normalizeSearchText(filterSearchTerm('subGroupFilter'));
   const segmentText=filterSearchTerm('segmentFilter'),vehicleText=filterSearchTerm('vehicleFilter'),modelText=filterSearchTerm('modelFilter'),categoryText=filterSearchTerm('categoryFilter'),subCategoryText=filterSearchTerm('subCategoryFilter');
   const gv=$('#groupFilter').value,sv=$('#subGroupFilter').value,segv=$('#segmentFilter').value,vv=$('#vehicleFilter').value,mv=$('#modelFilter').value,cv=$('#categoryFilter').value,scv=$('#subCategoryFilter')?.value||'';
+  const segmentMulti=v102SelectedSegments();
   const out=[];
   for(let i=0;i<FAST_ROWS.length;i++){
     const x=FAST_ROWS[i],row=x.row;
     if(gv&&x.group!==gv)continue;if(sv&&x.sub!==sv)continue;
-    if(segv&&!v94SegmentMatch(row,segv))continue;if(vv&&!v94VehicleMatch(row,vv))continue;if(mv&&!v94ModelMatch(row,mv))continue;if(cv&&!v94CategoryMatch(row,cv))continue;if(scv&&!v94SubCategoryMatch(row,scv))continue;
+    if(segmentMulti.length){if(!v102MultiSegmentMatch(row,segmentMulti))continue}else if(segv&&!v94SegmentMatch(row,segv))continue;if(vv&&!v94VehicleMatch(row,vv))continue;if(mv&&!v94ModelMatch(row,mv))continue;if(cv&&!v94CategoryMatch(row,cv))continue;if(scv&&!v94SubCategoryMatch(row,scv))continue;
     if(groupText&&!x.groupN.includes(groupText))continue;if(subGroupText&&!x.subN.includes(subGroupText))continue;
     if(segmentText&&!v94FilterSearchMatch(row,'segmentFilter',segmentText))continue;if(vehicleText&&!v94FilterSearchMatch(row,'vehicleFilter',vehicleText))continue;if(modelText&&!v94FilterSearchMatch(row,'modelFilter',modelText))continue;if(categoryText&&!v94FilterSearchMatch(row,'categoryFilter',categoryText))continue;if(subCategoryText&&!v94FilterSearchMatch(row,'subCategoryFilter',subCategoryText))continue;
     if(q&&!smartUniversalRowMatch(x,q))continue;
@@ -2437,6 +2578,8 @@ function render(){
 
 function reset(){
   USER_FILTER_SCOPE_ACTIVE=false;
+  window.RAJ_SEGMENT_MULTI_V102=[];
+  if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
   ['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>$('#'+id).value='');
   $('#searchInput').value=''; $('#universalSearchInput').value=''; document.querySelectorAll('.filter-search').forEach(x=>x.value='');
   cascade();
@@ -2497,6 +2640,8 @@ async function loadDB(){
 $('#catalogDownloadBtn').onclick=openSelectedCatalog;
 $('#priceListDownloadBtn').onclick=downloadSelectedPriceList;
 $('#priceListShareBtn').onclick=shareSelectedPriceListPdf;
+if($('#indexPriceBookFilter')){$('#indexPriceBookFilter').onchange=v102UpdateIndexDownloadState;refreshIndexPriceBookOptions()}
+if($('#indexPriceBookDownloadBtn'))$('#indexPriceBookDownloadBtn').onclick=downloadIndexPriceBook;
 
 let filterInputTimer=0;
 function scheduleFilterApply(action,delay=120){
@@ -2590,7 +2735,7 @@ $('#excelFile').onchange=async e=>{
     if(typeof window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK==='function')window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK(wb);
     const records=normalizeRows(rows);
     if(!records.length||!('GROUP' in records[0]))throw new Error('GROUP column missing');
-    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     let saved=false;
     try{
@@ -2663,7 +2808,7 @@ async function refreshHostedPriceWorkbook(){
     if(!response.ok)throw new Error('Hosted price-book.xlsx not found');
     const records=await readPriceWorkbookBuffer(await response.arrayBuffer());
     const previousGroup=clean($('#groupFilter').value);
-    allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     buildCatalogMenu();
     const masterGroups=masterValuesForFilter('groupFilter');
@@ -2717,7 +2862,7 @@ async function refreshHostedPriceWorkbook(){
   window.addEventListener('raj-auth-ready',v65StartAfterAuth,{once:true});
   if(window.RAJ_AUTH_READY)v65StartAfterAuth();
 
-  const V71_BUNDLED_PRICEBOOK_SHA256='1b69b95c4024fcfbc2e2b3e9e502f46472a968634afdf7c7df30473719a8ac23';
+  const V71_BUNDLED_PRICEBOOK_SHA256='3718d3f9eafdfcd091d2cb8061309bbfc2d8272b949a15483e7a51bd334286b8';
   async function v71Sha256Hex(buf){
     try{const dig=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(dig)].map(b=>b.toString(16).padStart(2,'0')).join('')}catch(e){return ''}
   }
@@ -2725,7 +2870,7 @@ async function refreshHostedPriceWorkbook(){
     try{
       const records=await readPriceWorkbookBuffer(buf);if(!records?.length)return false;
       const previousGroup=clean($('#groupFilter')?.value);
-      allData=records;window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+      allData=records;v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
       if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
       buildCatalogMenu();const groups=masterValuesForFilter('groupFilter').length?masterValuesForFilter('groupFilter'):unique(allData,'GROUP');options($('#groupFilter'),groups,'All groups');$('#groupFilter').value=groups.includes(previousGroup)?previousGroup:'';if(!$('#groupFilter').value)setDefaultGroupBrand(true);cascade();applyFilters();return true;
     }catch(e){console.warn('Hosted Excel apply skipped',e);return false}

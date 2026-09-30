@@ -22,15 +22,15 @@
   } catch (error) {}
   </script>
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
-<script defer src="js/filter-master-v98.js?v=101"></script>
-<script defer src="js/facet-index-v101.js?v=101"></script>
-<script defer src="js/app.js?v=101-static-segment-index"></script>
-  <script defer src="js/v45-config.js?v=101"></script>
+<script defer src="js/filter-master-v98.js?v=102"></script>
+<script defer src="js/facet-index-v102.js?v=102"></script>
+<script defer src="js/app.js?v=102-index-multisegment"></script>
+  <script defer src="js/v45-config.js?v=102"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=101-preserve-all-groups"></script>
+  <script defer src="js/v45.js?v=102-index-multisegment"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -69,6 +69,25 @@
     }
     .filter-clear:focus-visible{outline:3px solid rgba(0,105,217,.22);outline-offset:2px}
     .filter-panel{position:relative}
+
+    /* V102: Segment multi-select chips + INDEX-wise PDF panel */
+    .v102-multi-hint{font:700 9px/1.1 Arial,sans-serif;color:#6b7b91;text-transform:none;letter-spacing:0;margin-left:4px}
+    .v102-segment-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;min-height:0}
+    .v102-segment-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #9cc9f4;background:#eef7ff;color:#073d82;border-radius:999px;padding:4px 7px 4px 9px;font:800 10px/1 Arial,sans-serif;max-width:100%}
+    .v102-segment-chip button{border:0;background:#0b68c8;color:#fff;border-radius:50%;width:16px;height:16px;padding:0;display:grid;place-items:center;font:900 12px/1 Arial,sans-serif;cursor:pointer}
+    .v102-segment-chip button:hover{background:#073d82}
+    .v102-special-bar{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+    .v102-index-divider{margin-top:12px!important}
+    .v102-index-download{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(210px,.8fr) auto;gap:12px;align-items:center;border:1px solid #9bc9f7;border-left:5px solid #0867c7;border-radius:13px;padding:12px 14px;background:linear-gradient(180deg,#ffffff,#f5faff);box-shadow:0 3px 10px rgba(14,51,126,.05)}
+    .v102-index-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .v102-index-copy>span{font:900 9px/1.2 Arial,sans-serif;letter-spacing:.5px;color:#0b64bf}
+    .v102-index-copy>strong{font:900 14px/1.2 Arial,sans-serif;color:#07377c}
+    .v102-index-copy>small{font:600 10px/1.25 Arial,sans-serif;color:#60718a;white-space:normal}
+    .v102-index-select{display:flex;flex-direction:column;gap:5px;margin:0!important}
+    .v102-index-select>span{font:900 9px/1 Arial,sans-serif;text-transform:uppercase;color:#0e337e}
+    .v102-index-select select{width:100%;min-height:38px;border:1px solid #b6cce6;border-radius:9px;background:#fff;padding:0 10px;color:#102c55;font-weight:700}
+    .v102-index-download-btn{min-height:40px;white-space:nowrap}
+    @media(max-width:900px){.v102-index-download{grid-template-columns:1fr}.v102-index-download-btn{width:100%}.v102-special-bar{grid-template-columns:1fr!important}}
 
     /* Product image square thumbnail */
     #priceTable .image-col{
@@ -500,7 +519,7 @@
       <div class="filters-grid v46-primary-filters">
         <label><span>Group / Brand</span><input class="filter-search" data-target="groupFilter" placeholder="Search group…"><select id="groupFilter"></select></label>
         <label><span>Sub Group</span><input class="filter-search" data-target="subGroupFilter" placeholder="Search sub group…"><select id="subGroupFilter"></select></label>
-        <label><span>Segment</span><input class="filter-search" data-target="segmentFilter" placeholder="Search segment…"><select id="segmentFilter"></select></label>
+        <label class="v102-segment-filter"><span>Segment <small class="v102-multi-hint">Multi-select</small></span><input class="filter-search" data-target="segmentFilter" placeholder="Search segment…"><select id="segmentFilter"></select><div id="segmentMultiChips" class="v102-segment-chips" aria-live="polite"></div></label>
         <label><span>Vehicle</span><input class="filter-search" data-target="vehicleFilter" placeholder="Search vehicle…"><select id="vehicleFilter"></select></label>
         <label><span>Model</span><input class="filter-search" data-target="modelFilter" placeholder="Search model…"><select id="modelFilter"></select></label>
         <label><span>Category</span><input class="filter-search" data-target="categoryFilter" placeholder="Search category…"><select id="categoryFilter"></select></label>
@@ -522,11 +541,16 @@
       </div>
 
       <div class="v46-section-divider"><strong>Product Status & Schemes</strong><span>Quick business filters</span></div>
-      <div class="v45-command-bar v46-special-bar" aria-label="Product status tools">
+      <div class="v45-command-bar v46-special-bar v102-special-bar" aria-label="Product status tools">
         <button id="newLaunchBtn" class="v45-command" type="button"><span>NEW</span><b>New Product Launch</b></button>
-        <button id="deadStockBtn" class="v45-command" type="button"><span>DS</span><b>Dead Stock</b></button>
-        <label class="v45-fsn"><span>FSN Class</span><select id="fsnFilter"><option value="">All FSN Classes</option></select></label>
         <button id="offerSchemeBtn" class="v45-command" type="button"><span>★</span><b>Offer / Scheme</b></button>
+      </div>
+
+      <div class="v46-section-divider v102-index-divider"><strong>Download Price Book Index Wise</strong><span>INDEX column ke hisaab se complete Price Book PDF</span></div>
+      <div class="v102-index-download" aria-label="Download Price Book Index Wise">
+        <div class="v102-index-copy"><span>INDEX WISE DOWNLOAD</span><strong>Complete Pricelist PDF</strong><small id="indexPriceBookStatus">Select an INDEX to download its complete price book</small></div>
+        <label class="v102-index-select"><span>Price Book Index</span><select id="indexPriceBookFilter"><option value="">Select INDEX...</option></select></label>
+        <button id="indexPriceBookDownloadBtn" class="btn btn-primary v102-index-download-btn" type="button" disabled>Download Index Pricelist</button>
       </div>
     </section>
 
@@ -771,6 +795,8 @@
     };
 
     function clearEverything(){
+      window.RAJ_SEGMENT_MULTI_V102=[];
+      if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
       FILTER_DEFS.forEach(function(def){
         document.getElementById(def.id).value='';
         const typed=document.querySelector('.filter-search[data-target="'+def.id+'"]');
@@ -815,6 +841,10 @@
             control.value='';
             const typed=document.querySelector('.filter-search[data-target="'+target+'"]');
             if(typed)typed.value='';
+            if(target==='segmentFilter'){
+              window.RAJ_SEGMENT_MULTI_V102=[];
+              if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
+            }
           }
           applyFilters();
           control.focus();
@@ -1237,18 +1267,14 @@
         universal:universal,
         universalWords:universal?universal.split(' ').filter(Boolean):[],
         special:sp.special||'',
-        fsn:sp.fsn||'',
+        fsn:'',
+        segmentMulti:Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102.slice():[],
         specialApi:sp
       };
     }
     function passesSpecial(meta,ctx){
       const api=ctx.specialApi||{};
       if(ctx.special==='new'&&typeof api.isNew==='function'&&!api.isNew(meta.row))return false;
-      if(ctx.special==='dead'&&typeof api.isDead==='function'&&!api.isDead(meta.row))return false;
-      if(ctx.fsn&&typeof api.fsnValue==='function'){
-        const normalize=typeof api.normalizeFsnClass==='function'?api.normalizeFsnClass:function(v){return normalizedSearch(v).toUpperCase()};
-        if(normalize(api.fsnValue(meta.row))!==normalize(ctx.fsn))return false;
-      }
       return true;
     }
     function passesFilter(meta,index,ctx){
@@ -1257,7 +1283,9 @@
       const typed=ctx.typed[index];
       const fieldName=def.fields[0]||'';
       const masterActive=typeof filterMasterHasValues==='function'&&filterMasterHasValues(def.id);
-      if(selected){
+      if(def.id==='segmentFilter'&&ctx.segmentMulti&&ctx.segmentMulti.length){
+        if(typeof window.RAJ_V102_MULTI_SEGMENT_MATCH==='function'&&!window.RAJ_V102_MULTI_SEGMENT_MATCH(meta.row,ctx.segmentMulti))return false;
+      }else if(selected){
         if(typeof v94FilterMatch==='function'&&['segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].includes(def.id)){
           if(!v94FilterMatch(meta.row,def.id,selected))return false;
         }else if(meta.values[index]!==selected)return false;
@@ -1362,6 +1390,24 @@
       }
       return v98UniqueSorted(rows.map(function(row){return fieldValue(row,def)}));
     }
+    function v102SegmentList(){
+      const list=Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102:[];
+      const out=[],seen=new Set();
+      list.forEach(function(value){value=clean(value);const key=normalizedSearch(value);if(value&&key&&!seen.has(key)){seen.add(key);out.push(value)}});
+      return out;
+    }
+    function v102SetSegmentList(values){
+      window.RAJ_SEGMENT_MULTI_V102=v98UniqueSorted(values||[]);
+      v102RenderSegmentChips();
+      return window.RAJ_SEGMENT_MULTI_V102;
+    }
+    function v102RenderSegmentChips(){
+      const box=document.getElementById('segmentMultiChips');if(!box)return;
+      const selected=v102SegmentList();
+      box.innerHTML=selected.map(function(value){return '<span class="v102-segment-chip">'+escapeHtml(value)+'<button type="button" data-segment-remove="'+escapeHtml(value)+'" aria-label="Remove '+escapeHtml(value)+'">×</button></span>'}).join('');
+    }
+    window.RAJ_V102_RENDER_SEGMENT_CHIPS=v102RenderSegmentChips;
+
     function v98ApplyDeepCascade(){
       // Do not let an early boot call replace the verified master with empty lists.
       if(typeof v97FacetValuesForRows!=='function'||typeof masterValuesForFilter!=='function')return currentContext();
@@ -1377,16 +1423,29 @@
       selected[1]=v98SetCascadeOptions(FAST_FILTERS[1],v98CascadeValues(FAST_FILTERS[1],rows,'',''),selected[1],false);
       if(selected[1])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[1],selected[1])});
 
-      selected[2]=v98SetCascadeOptions(FAST_FILTERS[2],v98CascadeValues(FAST_FILTERS[2],rows,'',''),selected[2],false);
-      if(selected[2])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[2],selected[2])});
+      // V102: Segment is an OR multi-select. The dropdown remains a clean single-value
+      // master; every selection is added as a chip and the product scope is the union.
+      const availableSegments=v98CascadeValues(FAST_FILTERS[2],rows,'','');
+      let multi=v102SegmentList().filter(function(value){return availableSegments.some(function(candidate){return v98SameValue(candidate,value)})});
+      if(selected[2]&&!multi.some(function(value){return v98SameValue(value,selected[2])}))multi.push(selected[2]);
+      multi=v102SetSegmentList(multi);
+      v98SetCascadeOptions(FAST_FILTERS[2],availableSegments,'',false);
+      selected[2]='';
+      if(multi.length&&typeof window.RAJ_V102_MULTI_SEGMENT_MATCH==='function')rows=rows.filter(function(row){return window.RAJ_V102_MULTI_SEGMENT_MATCH(row,multi)});
 
-      selected[3]=v98SetCascadeOptions(FAST_FILTERS[3],v98CascadeValues(FAST_FILTERS[3],rows,selected[2],''),selected[3],false);
+      const vehicleValues=(multi.length&&typeof window.RAJ_V102_MULTI_FACET_VALUES==='function')
+        ? window.RAJ_V102_MULTI_FACET_VALUES(rows,'vehicleFilter',{segments:multi})
+        : v98CascadeValues(FAST_FILTERS[3],rows,'','');
+      selected[3]=v98SetCascadeOptions(FAST_FILTERS[3],vehicleValues||[],selected[3],false);
       if(selected[3])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[3],selected[3])});
 
-      selected[4]=v98SetCascadeOptions(FAST_FILTERS[4],v98CascadeValues(FAST_FILTERS[4],rows,selected[2],selected[3]),selected[4],false);
+      const modelValues=(multi.length&&typeof window.RAJ_V102_MULTI_FACET_VALUES==='function')
+        ? window.RAJ_V102_MULTI_FACET_VALUES(rows,'modelFilter',{segments:multi,vehicle:selected[3]})
+        : v98CascadeValues(FAST_FILTERS[4],rows,'',selected[3]);
+      selected[4]=v98SetCascadeOptions(FAST_FILTERS[4],modelValues||[],selected[4],false);
       if(selected[4])rows=rows.filter(function(row){return v98StrictRowMatch(row,FAST_FILTERS[4],selected[4])});
 
-      selected[5]=v98SetCascadeOptions(FAST_FILTERS[5],v98CascadeValues(FAST_FILTERS[5],rows,selected[2],selected[3]),selected[5],false);
+      selected[5]=v98SetCascadeOptions(FAST_FILTERS[5],v98CascadeValues(FAST_FILTERS[5],rows,'',selected[3]),selected[5],false);
 
       // Sub-category is intentionally not part of the V96+ public filter flow.
       const sub=document.getElementById('subCategoryFilter');if(sub)sub.value='';
@@ -1466,10 +1525,8 @@
       render();
       if(typeof window.RAJ_V45_SPECIAL_CONTEXT==='function'){
         const sp=window.RAJ_V45_SPECIAL_CONTEXT();
-        const nb=document.getElementById('newLaunchBtn'),db=document.getElementById('deadStockBtn'),fs=document.getElementById('fsnFilter');
+        const nb=document.getElementById('newLaunchBtn');
         if(nb)nb.classList.toggle('active',sp.special==='new');
-        if(db)db.classList.toggle('active',sp.special==='dead');
-        if(fs&&fs.parentElement)fs.parentElement.classList.toggle('active',!!sp.fsn);
       }
       document.querySelectorAll('.filter-clear').forEach(function(button){
         const target=button.dataset.clearTarget;
@@ -1519,6 +1576,7 @@
     };
 
     function clearToDefaultGroup(){
+      v102SetSegmentList([]);
       FAST_FILTERS.forEach(function(def){
         document.getElementById(def.id).value='';
         const typed=document.querySelector('.filter-search[data-target="'+def.id+'"]');
@@ -1534,6 +1592,31 @@
     }
     reset=clearToDefaultGroup;
     document.getElementById('resetBtn').onclick=clearToDefaultGroup;
+
+    // V102 Segment multi-select interaction. Choosing a Segment adds it to the
+    // OR-set; x removes only that Segment. Vehicle / Model continue cascading
+    // from the union without changing their existing search behaviour.
+    const v102SegmentSelect=document.getElementById('segmentFilter');
+    if(v102SegmentSelect){
+      v102SegmentSelect.onchange=function(){
+        const value=clean(v102SegmentSelect.value);
+        if(value){const list=v102SegmentList();if(!list.some(function(x){return v98SameValue(x,value)}))list.push(value);v102SetSegmentList(list);v102SegmentSelect.value='';const typed=document.querySelector('.filter-search[data-target="segmentFilter"]');if(typed)typed.value=''}
+        USER_FILTER_SCOPE_ACTIVE=true;
+        if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();
+        applyFilters(true);
+      };
+      const segmentSearch=document.querySelector('.filter-search[data-target="segmentFilter"]');
+      if(segmentSearch)segmentSearch.addEventListener('input',function(){
+        if(clean(segmentSearch.value)&&v102SegmentList().length){v102SetSegmentList([]);v102SegmentSelect.value=''}
+      });
+    }
+    document.getElementById('segmentMultiChips')?.addEventListener('click',function(event){
+      const button=event.target.closest('[data-segment-remove]');if(!button)return;
+      const remove=clean(button.dataset.segmentRemove);
+      v102SetSegmentList(v102SegmentList().filter(function(value){return !v98SameValue(value,remove)}));
+      USER_FILTER_SCOPE_ACTIVE=true;applyFilters(true);
+    });
+    v102RenderSegmentChips();
 
     // V95: build mapped filter metadata only after FILTER MASTER / MODEL MAP / CATEGORY MAP are ready.
     // This prevents raw comma-separated MODEL/CATEGORY values from appearing in dropdowns on first load.
@@ -1628,6 +1711,6 @@
   </script>
 
   <script src="js/v49.js?v=74-preparing-splash"></script>
-  <script src="js/v50.js?v=101-mobile-shell-only"></script>
+  <script src="js/v50.js?v=102-mobile-shell-only"></script>
 </body>
 </html>

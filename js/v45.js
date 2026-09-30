@@ -1,5 +1,5 @@
-/* RAJ LIVE PRICEBOOK V45
-   New/Dead/FSN filters, cross-reference-ready search, cart/order, customer login hook,
+/* RAJ LIVE PRICEBOOK V102
+   New-product filter, cross-reference-ready search, cart/order, customer login hook,
    offer posters, vehicle API hook, image-search API hook and live ERP API hook. */
 (function(){
 'use strict';
@@ -10,8 +10,6 @@ function apiUrl(endpoint){return clean(CFG.LIVE_API_BASE)?CFG.LIVE_API_BASE.repl
 const field=(row,...names)=>getField(row,...names);
 const aliases={
   new:['NEW PRODUCT LAUNCH','NEW PRODUCT','NEW ARRIVAL','NEW LAUNCH','NEW PRODUCT STATUS'],
-  dead:['DEAD STOCK','DEADSTOCK','DEAD STOCK STATUS','DEAD PRODUCT'],
-  fsn:['FSN CLASS','FSN','F S N CLASS'],
   companyPart:['COMPANY PART NUMBER','COMPANY PART NO','COMPANY CODE','COMPANY PART CODE'],
   competitor:['COMPETITOR PART NUMBER','COMPETITOR PART NO','COMPITATOR PART NUMBER','COMPITATOR','CROSS REFERENCE NO.','CROSS REFERNCE NO.','CROSS REFERENCE','ALTERNATE PART NUMBER','ALTERNATE PART NO','ALT PART NO']
 };
@@ -23,16 +21,12 @@ function rebuildSpecialIndex(){
   SPECIAL_INDEX.newRows=new WeakSet();
   SPECIAL_INDEX.deadRows=new WeakSet();
   SPECIAL_INDEX.fsnByRow=new WeakMap();
-  SPECIAL_INDEX.newCount=0;SPECIAL_INDEX.deadCount=0;SPECIAL_INDEX.fsnCount=0;
-  const classes=new Set();
+  SPECIAL_INDEX.newCount=0;SPECIAL_INDEX.deadCount=0;SPECIAL_INDEX.fsnCount=0;SPECIAL_INDEX.fsnClasses=[];
   for(const row of allData){
     if(!row||typeof row!=='object')continue;
-    const nv=valByAliases(row,aliases.new),dv=valByAliases(row,aliases.dead),fv=clean(valByAliases(row,aliases.fsn));
+    const nv=valByAliases(row,aliases.new);
     if(flag(nv,'new')){SPECIAL_INDEX.newRows.add(row);SPECIAL_INDEX.newCount++}
-    if(flag(dv,'dead')){SPECIAL_INDEX.deadRows.add(row);SPECIAL_INDEX.deadCount++}
-    if(fv){SPECIAL_INDEX.fsnByRow.set(row,fv);SPECIAL_INDEX.fsnCount++;classes.add(normalizeFsnClass(fv)||fv)}
   }
-  SPECIAL_INDEX.fsnClasses=[...classes].sort(natural);
   rowMeta=new WeakMap();
   updateSpecialCounts();
 }
@@ -55,16 +49,11 @@ function normalizeFsnClass(v){
   return x;
 }
 function updateSpecialCounts(){
-  const nb=q('#newLaunchBtn'),db=q('#deadStockBtn');
+  const nb=q('#newLaunchBtn');
   if(nb){
     nb.dataset.count=String(SPECIAL_INDEX.newCount);
     nb.title='Excel NEW PRODUCT LAUNCH: '+SPECIAL_INDEX.newCount+' products';
     const b=nb.querySelector('b');if(b)b.textContent='New Product Launch'+(SPECIAL_INDEX.newCount?' ('+SPECIAL_INDEX.newCount+')':'');
-  }
-  if(db){
-    db.dataset.count=String(SPECIAL_INDEX.deadCount);
-    db.title='Excel DEAD STOCK: '+SPECIAL_INDEX.deadCount+' products';
-    const b=db.querySelector('b');if(b)b.textContent='Dead Stock'+(SPECIAL_INDEX.deadCount?' ('+SPECIAL_INDEX.deadCount+')':'');
   }
 }
 function partCode(row){return clean(field(row,'CODE','PART NUMBER','PART NO'))}
@@ -75,37 +64,34 @@ function group(row){return clean(field(row,'GROUP'))}
 function notify(msg){if(typeof toast==='function')toast(msg);else alert(msg)}
 function uniqueSorted(values){return [...new Set(values.map(clean).filter(Boolean))].sort(natural)}
 function setOptions(el,values,label){if(!el)return;const cur=el.value;el.innerHTML='<option value="">'+escapeHtml(label)+'</option>'+values.map(v=>'<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>').join('');if(values.includes(cur))el.value=cur}
-function rowsForSpecial(){let rows=allData;if(V45.special==='new')rows=rows.filter(isNew);else if(V45.special==='dead')rows=rows.filter(isDead);return rows}
+function rowsForSpecial(){let rows=allData;if(V45.special==='new')rows=rows.filter(isNew);return rows}
 function refreshSpecialFacets(preserveGroup=true){
   const gf=q('#groupFilter');
-  // V101: once the user has touched the filter scope, preserve the exact Group
-  // selection — including blank = All groups. Background NEW/DEAD/FSN warm-up
-  // must never silently push All groups back to AAYUB.
+  // Preserve the exact Group selection once the user touched filter scope,
+  // including blank = All groups.
   const userScoped=typeof USER_FILTER_SCOPE_ACTIVE!=='undefined'&&USER_FILTER_SCOPE_ACTIVE;
   let old=gf?gf.value:'';
   if(!preserveGroup&&!userScoped)old='';
   const base=rowsForSpecial();
   if(!old&&gf&&!userScoped){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)old=a.value}
-  const fsn=q('#fsnFilter'), fs=fsn?fsn.value:''; const fsRows=fs?base.filter(r=>normalizeFsnClass(fsnValue(r))===normalizeFsnClass(fs)):base;
-  setOptions(gf,uniqueSorted(fsRows.map(group)),'All groups');
+  setOptions(gf,uniqueSorted(base.map(group)),'All groups');
   if(old&&[...gf.options].some(o=>o.value===old))gf.value=old;
   else if(gf&&!userScoped){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)gf.value=a.value}
-  const liveFsn=(base===allData&&SPECIAL_INDEX.fsnClasses.length)?SPECIAL_INDEX.fsnClasses:uniqueSorted(base.map(fsnValue));
-  const fsnValues=uniqueSorted(['F','S','N','P',...liveFsn]);
-  setOptions(fsn,fsnValues,'All FSN Classes'); if(fs&&[...fsn.options].some(o=>o.value===fs))fsn.value=fs;
 }
 function specialCascade(){
   let r=rowsForSpecial();
-  const fs=q('#fsnFilter')?.value||'';if(fs)r=r.filter(row=>normalizeFsnClass(fsnValue(row))===normalizeFsnClass(fs));
   const gf=q('#groupFilter'),oldGroup=gf?.value||'';const groups=uniqueSorted(r.map(group));setOptions(gf,groups,'All groups');if(oldGroup&&groups.includes(oldGroup))gf.value=oldGroup;
   const gv=gf?.value||'';if(gv)r=r.filter(row=>group(row)===gv);
   const sg=q('#subGroupFilter'),oldSub=sg?.value||'';const subs=uniqueSorted(r.map(subGroupValue));setOptions(sg,subs,'All sub groups');if(oldSub&&subs.includes(oldSub))sg.value=oldSub;
   const sv=sg?.value||'';if(sv)r=r.filter(row=>subGroupValue(row)===sv);
   const segmentEl=q('#segmentFilter'),oldSegment=segmentEl?.value||'';const segments=v97FacetValuesForRows(r,'segmentFilter');setOptions(segmentEl,segments,'All segments');if(oldSegment&&segments.includes(oldSegment))segmentEl.value=oldSegment;
-  const segment=segmentEl?.value||'';if(segment)r=r.filter(row=>v97StrictFacetMatch(row,'segmentFilter',segment));
-  const vehicleEl=q('#vehicleFilter'),oldVehicle=vehicleEl?.value||'';const vehicles=v97FacetValuesForRows(r,'vehicleFilter',{segment});setOptions(vehicleEl,vehicles,'All vehicles');if(oldVehicle&&vehicles.includes(oldVehicle))vehicleEl.value=oldVehicle;
+  const multi=Array.isArray(window.RAJ_SEGMENT_MULTI_V102)?window.RAJ_SEGMENT_MULTI_V102.filter(Boolean):[];
+  const segment=segmentEl?.value||'';
+  if(multi.length&&typeof window.RAJ_V102_MULTI_SEGMENT_MATCH==='function')r=r.filter(row=>window.RAJ_V102_MULTI_SEGMENT_MATCH(row,multi));
+  else if(segment)r=r.filter(row=>v97StrictFacetMatch(row,'segmentFilter',segment));
+  const vehicleEl=q('#vehicleFilter'),oldVehicle=vehicleEl?.value||'';const vehicles=(multi.length&&typeof window.RAJ_V102_MULTI_FACET_VALUES==='function'?window.RAJ_V102_MULTI_FACET_VALUES(r,'vehicleFilter',{segments:multi}):v97FacetValuesForRows(r,'vehicleFilter',{segment}));setOptions(vehicleEl,vehicles||[],'All vehicles');if(oldVehicle&&(vehicles||[]).includes(oldVehicle))vehicleEl.value=oldVehicle;
   const vehicle=vehicleEl?.value||'';if(vehicle)r=r.filter(row=>v97StrictFacetMatch(row,'vehicleFilter',vehicle));
-  const modelEl=q('#modelFilter'),oldModel=modelEl?.value||'';const models=v97FacetValuesForRows(r,'modelFilter',{segment,vehicle});setOptions(modelEl,models,'All models');if(oldModel&&models.includes(oldModel))modelEl.value=oldModel;
+  const modelEl=q('#modelFilter'),oldModel=modelEl?.value||'';const models=(multi.length&&typeof window.RAJ_V102_MULTI_FACET_VALUES==='function'?window.RAJ_V102_MULTI_FACET_VALUES(r,'modelFilter',{segments:multi,vehicle}):v97FacetValuesForRows(r,'modelFilter',{segment,vehicle}));setOptions(modelEl,models||[],'All models');if(oldModel&&(models||[]).includes(oldModel))modelEl.value=oldModel;
   const model=modelEl?.value||'';if(model)r=r.filter(row=>v97StrictFacetMatch(row,'modelFilter',model));
   const categoryEl=q('#categoryFilter'),oldCategory=categoryEl?.value||'';const categories=v97FacetValuesForRows(r,'categoryFilter');setOptions(categoryEl,categories,'All categories');if(oldCategory&&categories.includes(oldCategory))categoryEl.value=oldCategory;
   const category=categoryEl?.value||'';if(category)r=r.filter(row=>v97StrictFacetMatch(row,'categoryFilter',category));
@@ -113,41 +99,12 @@ function specialCascade(){
 }
 
 window.RAJ_V45_SPECIAL_CONTEXT=function(){
-  return {
-    special:V45.special||'',
-    fsn:q('#fsnFilter')?.value||'',
-    isNew:isNew,
-    isDead:isDead,
-    fsnValue:fsnValue,
-    normalizeFsnClass:normalizeFsnClass
-  };
+  return {special:V45.special||'',fsn:'',isNew:isNew,isDead:()=>false,fsnValue:()=>'',normalizeFsnClass:normalizeFsnClass};
 };
-function updateSpecialNote(){const n=q('#specialFilterNote');if(!n)return;let text='';if(V45.special==='new')text='NEW PRODUCT LAUNCH active — only rows marked New in your Excel are shown. Brand list is limited to brands having New products.';if(V45.special==='dead')text='DEAD STOCK active — only rows marked Dead in your Excel are shown. Brand list is limited to brands having Dead Stock.';const fs=q('#fsnFilter')?.value;if(fs)text+=(text?' ':'')+'FSN Class: '+fs+'.';n.hidden=!text;n.textContent=text;q('#newLaunchBtn')?.classList.toggle('active',V45.special==='new');q('#deadStockBtn')?.classList.toggle('active',V45.special==='dead')}
-
-// V45 filtering: one indexed pass across FAST_ROWS; future Excel columns remain searchable.
-applyFilters=function(resetPage=true,doCascade=false){
-  if(FAST_ROWS.length!==allData.length || (FAST_ROWS.length && FAST_ROWS[0]?.row!==allData[0]))buildFastRows();
-  if(doCascade){if(V45.special)specialCascade();else cascade();}
-  const searchEl=q('#searchInput'); const raw=searchEl?searchEl.value:''; const sq=normalizeSearchText(raw);
-  const groupText=normalizeSearchText(filterSearchTerm('groupFilter')),subGroupText=normalizeSearchText(filterSearchTerm('subGroupFilter'));
-  const segmentText=filterSearchTerm('segmentFilter'),vehicleText=filterSearchTerm('vehicleFilter'),modelText=filterSearchTerm('modelFilter'),categoryText=filterSearchTerm('categoryFilter'),subCategoryText=filterSearchTerm('subCategoryFilter');
-  const gv=q('#groupFilter')?.value||'',sv=q('#subGroupFilter')?.value||'',segv=q('#segmentFilter')?.value||'',vv=q('#vehicleFilter')?.value||'',mv=q('#modelFilter')?.value||'',cv=q('#categoryFilter')?.value||'',scv=q('#subCategoryFilter')?.value||'',fsn=q('#fsnFilter')?.value||'';
-  const out=[];
-  for(let i=0;i<FAST_ROWS.length;i++){
-    const x=FAST_ROWS[i],r=x.row;
-    if(V45.special==='new'&&!isNew(r))continue;if(V45.special==='dead'&&!isDead(r))continue;
-    if(fsn&&normalizeFsnClass(fsnValue(r))!==normalizeFsnClass(fsn))continue;
-    if(gv&&x.group!==gv)continue;if(sv&&x.sub!==sv)continue;
-    if(segv&&!v94SegmentMatch(r,segv))continue;
-    if(vv&&!v94VehicleMatch(r,vv))continue;if(mv&&!v94ModelMatch(r,mv))continue;if(cv&&!v94CategoryMatch(r,cv))continue;if(scv&&!v94SubCategoryMatch(r,scv))continue;
-    if(groupText&&!x.groupN.includes(groupText))continue;if(subGroupText&&!x.subN.includes(subGroupText))continue;
-    if(segmentText&&!v94FilterSearchMatch(r,'segmentFilter',segmentText))continue;if(vehicleText&&!v94FilterSearchMatch(r,'vehicleFilter',vehicleText))continue;if(modelText&&!v94FilterSearchMatch(r,'modelFilter',modelText))continue;if(categoryText&&!v94FilterSearchMatch(r,'categoryFilter',categoryText))continue;if(subCategoryText&&!v94FilterSearchMatch(r,'subCategoryFilter',subCategoryText))continue;
-    if(sq&&!smartUniversalRowMatch(x,raw))continue;
-    out.push(r);
-  }
-  filtered=out;sortedFilteredSource=null;
-  const columnRows=(filtered.length>2500&&!gv)?filtered.slice(0,1200):filtered;
-  visibleColumns=visibleColumnsForRows(columnRows);document.body.classList.toggle('table-compact',visibleColumns.length>12);if(resetPage)page=1;render();updateSpecialNote();
+function updateSpecialNote(){
+  const n=q('#specialFilterNote');if(!n)return;
+  let text='';if(V45.special==='new')text='NEW PRODUCT LAUNCH active — only rows marked New in your Excel are shown. Brand list is limited to brands having New products.';
+  n.hidden=!text;n.textContent=text;q('#newLaunchBtn')?.classList.toggle('active',V45.special==='new');
 };
 
 // V83: show the actual mini product photo in the Image / Order column.
@@ -694,7 +651,7 @@ q('#v45ImageFile')?.addEventListener('change',async e=>{
     msg.textContent=err?.message||'Image search failed.';
   }
 });
-q('#v45DrawerContent')?.addEventListener('click',e=>{const h=e.target.closest('[data-image-code]');if(h){const code=h.dataset.imageCode;closeDrawer();V45.special='';['fsnFilter','groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});document.querySelectorAll('.filter-search').forEach(x=>x.value='');if(q('#universalSearchInput'))q('#universalSearchInput').value='';q('#searchInput').value=code;applyFilters(true,false)}});
+q('#v45DrawerContent')?.addEventListener('click',e=>{const h=e.target.closest('[data-image-code]');if(h){const code=h.dataset.imageCode;closeDrawer();V45.special='';window.RAJ_SEGMENT_MULTI_V102=[];if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});document.querySelectorAll('.filter-search').forEach(x=>x.value='');if(q('#universalSearchInput'))q('#universalSearchInput').value='';q('#searchInput').value=code;applyFilters(true,false)}});
 
 async function liveApiSync(){const url=apiUrl(CFG.LIVE_PRODUCTS_ENDPOINT);if(!url){notify('Live ERP API not configured yet. See API Flow Word document and js/v45-config.js.');return}const b=q('#liveApiSyncBtn');b.disabled=true;try{const r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('API sync failed');const d=await r.json(),rows=Array.isArray(d)?d:(d.products||d.data||[]);if(!rows.length)throw new Error('API returned no products');allData=rows.map(x=>{const o={};Object.keys(x).forEach(k=>o[keyOf(k)]=x[k]);return o});rebuildRowIndexMap();refreshSpecialFacets(false);applyFilters();lastUpdated=new Date();notify(rows.length.toLocaleString('en-IN')+' products loaded from Live API')}catch(e){console.error(e);notify(e.message||'API sync error')}finally{b.disabled=false}}
 
@@ -704,7 +661,7 @@ function setSpecial(type){
   if(!keepGroup&&gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)keepGroup=a.value}
   V45.special=V45.special===type?'':type;
   q('#newLaunchBtn')?.classList.toggle('active',V45.special==='new');
-  q('#deadStockBtn')?.classList.toggle('active',V45.special==='dead');
+  window.RAJ_SEGMENT_MULTI_V102=[];if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
   ['subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});
   refreshSpecialFacets(true);
   if(gf&&keepGroup&&[...gf.options].some(o=>o.value===keepGroup))gf.value=keepGroup;
@@ -715,6 +672,7 @@ function setSpecial(type){
 }
 window.RAJ_V45_DATA_RELOADED=function(){
   rebuildSpecialIndex();
+  if(typeof window.RAJ_V102_REFRESH_INDEX==='function')window.RAJ_V102_REFRESH_INDEX();
   if(typeof buildFastRows==='function')buildFastRows();
   refreshSpecialFacets(true);
   if(V45.special)specialCascade();
@@ -722,18 +680,20 @@ window.RAJ_V45_DATA_RELOADED=function(){
 };
 function enhanceVoice(){const b=q('#voiceSearchBtn');if(!b)return;b.title='Advanced Voice Search — speak part no., company code, competitor/alternate code, model or product';const s=q('#voiceStatus');if(s)s.textContent='Speak or type: part no., company code, competitor/alternate code, model, vehicle or any Excel detail'}
 function bindMain(){
-  q('#resetBtn').onclick=()=>{V45.special='';if(q('#fsnFilter'))q('#fsnFilter').value='';USER_FILTER_SCOPE_ACTIVE=false;['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});q('#searchInput').value='';q('#universalSearchInput').value='';document.querySelectorAll('.filter-search').forEach(x=>x.value='');cascade();const gf=q('#groupFilter');if(gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)gf.value=a.value}cascade();refreshSpecialFacets(true);applyFilters();};q('#newLaunchBtn').onclick=()=>setSpecial('new');q('#deadStockBtn').onclick=()=>setSpecial('dead');q('#fsnFilter').onchange=()=>{
-    const gf=q('#groupFilter');let keep=gf?.value||'';
-    if(!keep&&gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)keep=a.value}
-    q('#fsnFilter')?.closest('.v45-command,.v45-fsn-card,.filter-item')?.classList.toggle('active',!!q('#fsnFilter')?.value);
-    refreshSpecialFacets(true);
-    if(gf&&keep&&[...gf.options].some(o=>o.value===keep))gf.value=keep;
-    if(V45.special)specialCascade();else cascade();
-    if(gf&&keep&&[...gf.options].some(o=>o.value===keep))gf.value=keep;
-    applyFilters(true,false);
-    updateSpecialNote();
-  };q('#offerSchemeBtn').onclick=openOffers;q('#imageSearchBtn').onclick=openImageSearch;q('#cartBtn').onclick=openCart;q('#liveApiSyncBtn')?.addEventListener('click',liveApiSync);q('#v45DrawerClose').onclick=closeDrawer;q('#v45Drawer').onclick=e=>{if(e.target===q('#v45Drawer'))closeDrawer()};
-  q('#priceTable tbody').addEventListener('click',e=>{const qb=e.target.closest('.v45-qbtn[data-row-index]');if(qb){const inp=q('#v45qty-'+qb.dataset.rowIndex);if(inp)inp.value=Math.max(1,(Number(inp.value)||1)+(qb.dataset.act==='plus'?1:-1));return}const add=e.target.closest('.v45-add');if(add){const row=allData[Number(add.dataset.rowIndex)],inp=q('#v45qty-'+add.dataset.rowIndex);if(row)addToCart(row,inp?.value||1)}});
+  q('#resetBtn').onclick=()=>{
+    V45.special='';window.RAJ_SEGMENT_MULTI_V102=[];if(typeof window.RAJ_V102_RENDER_SEGMENT_CHIPS==='function')window.RAJ_V102_RENDER_SEGMENT_CHIPS();
+    USER_FILTER_SCOPE_ACTIVE=false;['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'].forEach(id=>{if(q('#'+id))q('#'+id).value=''});
+    q('#searchInput').value='';q('#universalSearchInput').value='';document.querySelectorAll('.filter-search').forEach(x=>x.value='');
+    cascade();const gf=q('#groupFilter');if(gf){const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');if(a)gf.value=a.value}cascade();refreshSpecialFacets(true);applyFilters();
+  };
+  q('#newLaunchBtn')?.addEventListener('click',()=>setSpecial('new'));
+  q('#offerSchemeBtn')?.addEventListener('click',openOffers);
+  q('#imageSearchBtn')?.addEventListener('click',openImageSearch);
+  q('#cartBtn')?.addEventListener('click',openCart);
+  q('#liveApiSyncBtn')?.addEventListener('click',liveApiSync);
+  q('#v45DrawerClose')?.addEventListener('click',closeDrawer);
+  q('#v45Drawer')?.addEventListener('click',e=>{if(e.target===q('#v45Drawer'))closeDrawer()});
+  q('#priceTable tbody')?.addEventListener('click',e=>{const qb=e.target.closest('.v45-qbtn[data-row-index]');if(qb){const inp=q('#v45qty-'+qb.dataset.rowIndex);if(inp)inp.value=Math.max(1,(Number(inp.value)||1)+(qb.dataset.act==='plus'?1:-1));return}const add=e.target.closest('.v45-add');if(add){const row=allData[Number(add.dataset.rowIndex)],inp=q('#v45qty-'+add.dataset.rowIndex);if(row)addToCart(row,inp?.value||1)}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 }
 
@@ -744,7 +704,7 @@ function v68WarmSpecialIndex(){
   window.RAJ_BOOT_MARK?.('special',false);
   v68SpecialWarming=true;
   SPECIAL_INDEX.newRows=new WeakSet();SPECIAL_INDEX.deadRows=new WeakSet();SPECIAL_INDEX.fsnByRow=new WeakMap();
-  SPECIAL_INDEX.newCount=0;SPECIAL_INDEX.deadCount=0;SPECIAL_INDEX.fsnCount=0;const classes=new Set();
+  SPECIAL_INDEX.newCount=0;SPECIAL_INDEX.deadCount=0;SPECIAL_INDEX.fsnCount=0;SPECIAL_INDEX.fsnClasses=[];
   const run=(deadline)=>{
     const started=performance.now();let n=0;
     while(v68SpecialWarmIndex<allData.length&&n<350){
@@ -752,15 +712,13 @@ function v68WarmSpecialIndex(){
       if(n>30&&!deadline&&performance.now()-started>4)break;
       const row=allData[v68SpecialWarmIndex++];n++;
       if(!row||typeof row!=='object')continue;
-      const nv=valByAliases(row,aliases.new),dv=valByAliases(row,aliases.dead),fv=clean(valByAliases(row,aliases.fsn));
+      const nv=valByAliases(row,aliases.new);
       if(flag(nv,'new')){SPECIAL_INDEX.newRows.add(row);SPECIAL_INDEX.newCount++}
-      if(flag(dv,'dead')){SPECIAL_INDEX.deadRows.add(row);SPECIAL_INDEX.deadCount++}
-      if(fv){SPECIAL_INDEX.fsnByRow.set(row,fv);SPECIAL_INDEX.fsnCount++;classes.add(normalizeFsnClass(fv)||fv)}
     }
     if(v68SpecialWarmIndex<allData.length){
       if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:120});else setTimeout(()=>run(null),8);
     }else{
-      SPECIAL_INDEX.fsnClasses=[...classes].sort(natural);rowMeta=new WeakMap();v68SpecialReady=true;v68SpecialWarming=false;updateSpecialCounts();refreshSpecialFacets(false);window.RAJ_BOOT_MARK?.('special',true);
+      rowMeta=new WeakMap();v68SpecialReady=true;v68SpecialWarming=false;updateSpecialCounts();refreshSpecialFacets(false);window.RAJ_BOOT_MARK?.('special',true);
       if(window.RAJ_AUTH_READY)applyFilters(false,false);
     }
   };
