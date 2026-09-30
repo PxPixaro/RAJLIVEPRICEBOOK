@@ -24,13 +24,13 @@
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
 <script defer src="js/filter-master-v98.js?v=102"></script>
 <script defer src="js/facet-index-v102.js?v=102"></script>
-<script defer src="js/app.js?v=105-sticky-multi-calibri"></script>
-  <script defer src="js/v45-config.js?v=105"></script>
+<script defer src="js/app.js?v=106-sticky-search-multi"></script>
+  <script defer src="js/v45-config.js?v=106"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=105-sticky-multi-calibri"></script>
+  <script defer src="js/v45.js?v=106-sticky-search-multi"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -70,7 +70,7 @@
     .filter-clear:focus-visible{outline:3px solid rgba(0,105,217,.22);outline-offset:2px}
     .filter-panel{position:relative}
 
-    /* V105: sticky searchable checkbox multi-select + Calibri dropdown typography */
+    /* V106: sticky searchable checkbox multi-select + Calibri dropdown typography */
     .v103-multi-hint{font:700 9px/1.1 Arial,sans-serif;color:#6b7b91;text-transform:none;letter-spacing:0;margin-left:4px}
     .v103-native-select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
     .v103-multi-wrap{position:relative;width:100%}
@@ -1452,27 +1452,29 @@
         const def=FAST_FILTERS[i];
         const available=v98CascadeValues(def,rows,'','')||[];
         const rememberedMulti=v103MultiList(def.id);
-        // V105: a checkbox just clicked inside a searched dropdown is authoritative
-        // for this cascade pass. Do not prune earlier checked values simply because
-        // the native option source is being rebuilt at the same time. Upstream
-        // changes still prune incompatible downstream filters on their own pass.
-        const preserveThisFilter=window.RAJ_V105_PRESERVE_MULTI_ID===def.id;
-        let multi=preserveThisFilter?rememberedMulti.slice():rememberedMulti.filter(function(value){return available.some(function(candidate){return v98SameValue(candidate,value)})});
-        // Backward compatibility: adopt an existing native single selection once.
-        if(selected[i]&&!multi.some(function(value){return v98SameValue(value,selected[i])})){
+        // V106 STICKY MULTI-SELECT: checkbox state is authoritative and is never
+        // silently pruned by a cascade rebuild. This is critical when an option is
+        // found through the in-dropdown search: AAYUB -> search MEKO -> tick MEKO
+        // must remain AAYUB + MEKO, and the same rule applies to every filter.
+        let multi=rememberedMulti.slice();
+        // Backward compatibility: adopt a legacy/native single selection only when
+        // the checkbox state is still empty (for example the initial AAYUB default).
+        if(!multi.length&&selected[i]){
           const hit=available.find(function(candidate){return v98SameValue(candidate,selected[i])});
           if(hit)multi.push(hit);else if(keepInvalid[i])multi.push(selected[i]);
         }
         multi=v103SetMultiList(def.id,multi);
-        v98SetCascadeOptions(def,available,'',keepInvalid[i]);
+        // Keep already-selected values in the native source even if an upstream
+        // selection temporarily makes them unavailable. The user must explicitly
+        // untick/reset a checkbox; the application never removes it on their behalf.
+        const displayAvailable=v98UniqueSorted((available||[]).concat(multi));
+        v98SetCascadeOptions(def,displayAvailable,'',keepInvalid[i]);
         selected[i]='';
         if(multi.length)rows=rows.filter(function(row){return v103RowMatchesMulti(row,def,multi)});
       }
 
       const sub=document.getElementById('subCategoryFilter');if(sub)sub.value='';
       if(typeof window.RAJ_V103_RENDER_ALL_MULTI==='function')window.RAJ_V103_RENDER_ALL_MULTI();
-      // Consume only after the scheduled cascade has seen it.
-      window.RAJ_V105_PRESERVE_MULTI_ID='';
       return currentContext();
     }
 
@@ -1690,15 +1692,13 @@
           if(input.dataset.v103All){values=[]}
           else{const value=clean(input.dataset.v103Value);if(input.checked){if(value&&!values.some(function(x){return v98SameValue(x,value)}))values.push(value)}else values=values.filter(function(x){return !v98SameValue(x,value)})}
           window.RAJ_V103_SET_MULTI_SELECTIONS(def.id,values,{silent:true});select.value='';
-          // V105 sticky multi-select: keep every previous checkbox selection when
-          // another option is found via the in-dropdown search.
-          window.RAJ_V105_PRESERVE_MULTI_ID=def.id;
-          const typed=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');if(typed)typed.value='';
-          // Render immediately from the authoritative state so the ticks never
-          // visually disappear while the product cascade refresh is running.
+          const typed=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');
+          // V106: keep the search text visible after ticking so the just-selected
+          // result stays on-screen and visibly checked. Focus/select the search text
+          // afterwards; typing the next name replaces it immediately.
           v103RenderMulti(def.id);
           USER_FILTER_SCOPE_ACTIVE=true;if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();applyFilters(true);
-          if(typed)requestAnimationFrame(function(){if(wrap.classList.contains('open'))typed.focus()});
+          if(typed)requestAnimationFrame(function(){if(wrap.classList.contains('open')){typed.focus();typed.select()}});
         });
         if(search)search.addEventListener('input',function(){if(wrap.classList.contains('open'))v103RenderMulti(def.id)});
         new MutationObserver(function(){v103RenderMulti(def.id)}).observe(select,{childList:true,subtree:true});

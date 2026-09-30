@@ -1,0 +1,7 @@
+RAJ LIVE PRICE BOOK V106
+
+1. Search ke through checkbox select karne par purani multi-selections ab kabhi auto-remove nahi hongi.
+2. Ye fix Group, Sub Group, Segment, Vehicle, Model aur Category sab par apply hai.
+3. Dropdown search text selection ke baad visible rehta hai aur auto-select hota hai, isliye next naam seedha type karke replace kiya ja sakta hai.
+4. Calibri + regular dropdown typography V105 jaisi hi rakhi gayi hai.
+5. V105 ka baaki filtering, PDF, INDEX, design aur performance logic unchanged hai.
