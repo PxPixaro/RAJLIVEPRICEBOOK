@@ -24,13 +24,13 @@
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
 <script defer src="js/filter-master-v98.js?v=102"></script>
 <script defer src="js/facet-index-v102.js?v=102"></script>
-<script defer src="js/app.js?v=104-multi-search-index-no-page"></script>
-  <script defer src="js/v45-config.js?v=104"></script>
+<script defer src="js/app.js?v=105-sticky-multi-calibri"></script>
+  <script defer src="js/v45-config.js?v=105"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=104-multi-search-index-no-page"></script>
+  <script defer src="js/v45.js?v=105-sticky-multi-calibri"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -70,30 +70,33 @@
     .filter-clear:focus-visible{outline:3px solid rgba(0,105,217,.22);outline-offset:2px}
     .filter-panel{position:relative}
 
-    /* V104: searchable checkbox multi-select inside dropdowns + INDEX-wise PDF actions */
+    /* V105: sticky searchable checkbox multi-select + Calibri dropdown typography */
     .v103-multi-hint{font:700 9px/1.1 Arial,sans-serif;color:#6b7b91;text-transform:none;letter-spacing:0;margin-left:4px}
     .v103-native-select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
     .v103-multi-wrap{position:relative;width:100%}
-    .v103-multi-button{width:100%;min-height:42px;border:1px solid #b6cce6;border-radius:9px;background:#fff;padding:0 34px 0 12px;color:#102c55;font:500 13px/1.2 Arial,sans-serif;text-align:left;cursor:pointer;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .v103-multi-button{width:100%;min-height:42px;border:1px solid #b6cce6;border-radius:9px;background:#fff;padding:0 34px 0 12px;color:#102c55;font:400 14px/1.2 Calibri,"Segoe UI",Arial,sans-serif;text-align:left;cursor:pointer;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .v103-multi-button:after{content:'⌄';position:absolute;right:12px;top:50%;transform:translateY(-55%);font-size:16px;color:#0e337e}
-    .v103-multi-button.active{border-color:#0b70d1;box-shadow:0 0 0 2px rgba(11,112,209,.08);font-weight:700;color:#073d82}
+    .v103-multi-button.active{border-color:#0b70d1;box-shadow:0 0 0 2px rgba(11,112,209,.08);font-weight:400;color:#073d82}
     .v103-multi-panel{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:2500;background:#fff;border:1px solid #8fb9e5;border-radius:9px;box-shadow:0 10px 28px rgba(8,48,97,.22);padding:0;overflow:hidden}
     .v103-multi-wrap.open .v103-multi-panel{display:block}
     /* V104: the search field lives INSIDE the opened multi-select dropdown. */
     .filters-grid label>.filter-search{display:none!important}
     .v104-multi-search-host{position:relative;padding:8px 8px 7px;background:#fff;border-bottom:1px solid #dce9f6;z-index:3}
-    .v104-panel-search{display:block!important;width:100%!important;min-width:0!important;height:36px!important;box-sizing:border-box!important;margin:0!important;padding:0 34px 0 11px!important;border:1px solid #9fc2e7!important;border-radius:7px!important;background:#fff!important;color:#102c55!important;font:500 12px/1 Arial,sans-serif!important;outline:none!important}
+    .v104-panel-search{display:block!important;width:100%!important;min-width:0!important;height:36px!important;box-sizing:border-box!important;margin:0!important;padding:0 34px 0 11px!important;border:1px solid #9fc2e7!important;border-radius:7px!important;background:#fff!important;color:#102c55!important;font:400 14px/1 Calibri,"Segoe UI",Arial,sans-serif!important;outline:none!important}
     .v104-panel-search:focus{border-color:#0874d1!important;box-shadow:0 0 0 2px rgba(8,116,209,.10)!important}
     .v104-multi-search-host:after{content:'⌕';position:absolute;right:18px;top:50%;transform:translateY(-50%);color:#53779c;font:700 15px/1 Arial,sans-serif;pointer-events:none}
     .v104-multi-options{max-height:285px;overflow:auto;padding:5px;overscroll-behavior:contain}
-    .v103-check-row{display:flex;align-items:center;gap:9px;min-height:32px;padding:5px 7px;border-radius:6px;cursor:pointer;color:#102c55;font:500 13px/1.15 Arial,sans-serif;user-select:none}
+    .v103-check-row{display:flex;align-items:center;gap:9px;min-height:32px;padding:5px 7px;border-radius:6px;cursor:pointer;color:#102c55;font:400 14px/1.15 Calibri,"Segoe UI",Arial,sans-serif;user-select:none}
     .v103-check-row:hover{background:#eef6ff}
-    .v103-check-row.v103-all{font-weight:800;color:#073d82;border-bottom:1px solid #e3edf8;margin-bottom:3px;border-radius:5px 5px 0 0}
+    .v103-check-row.v103-all{font-weight:400;color:#073d82;border-bottom:1px solid #e3edf8;margin-bottom:3px;border-radius:5px 5px 0 0}
     .v103-check-row input{appearance:none;-webkit-appearance:none;width:17px;height:17px;min-width:17px;border:1.5px solid #6f9fce;border-radius:3px;background:#fff;display:grid;place-content:center;margin:0}
     .v103-check-row input:checked{background:#0874d1;border-color:#0874d1}
     .v103-check-row input:checked:after{content:'✓';color:#fff;font:900 13px/1 Arial,sans-serif;transform:translateY(-.5px)}
-    .v103-empty-options{padding:10px;color:#6b7b91;font:600 11px Arial,sans-serif}
+    .v103-empty-options{padding:10px;color:#6b7b91;font:400 13px Calibri,"Segoe UI",Arial,sans-serif}
     .v103-selected-count{font-size:10px;color:#60718a;margin-left:4px}
+    /* V105: all dropdown option text uses Calibri and regular weight. */
+    .v103-multi-wrap,.v103-multi-panel,.v103-multi-panel label,.v103-multi-panel span,.v103-multi-button,.v104-panel-search{font-family:Calibri,"Segoe UI",Arial,sans-serif!important}
+    .v103-multi-button,.v103-multi-button.active,.v103-check-row,.v103-check-row.v103-all,.v103-check-row span{font-weight:400!important}
     .v102-special-bar{grid-template-columns:repeat(2,minmax(0,1fr))!important}
     .v102-index-divider{margin-top:12px!important}
     .v102-index-download{display:grid;grid-template-columns:minmax(220px,1.25fr) minmax(210px,.75fr) auto auto;gap:10px;align-items:center;border:1px solid #9bc9f7;border-left:5px solid #0867c7;border-radius:13px;padding:12px 14px;background:linear-gradient(180deg,#ffffff,#f5faff);box-shadow:0 3px 10px rgba(14,51,126,.05)}
@@ -103,7 +106,7 @@
     .v102-index-copy>small{font:600 10px/1.25 Arial,sans-serif;color:#60718a;white-space:normal}
     .v102-index-select{display:flex;flex-direction:column;gap:5px;margin:0!important}
     .v102-index-select>span{font:900 9px/1 Arial,sans-serif;text-transform:uppercase;color:#0e337e}
-    .v102-index-select select{width:100%;min-height:38px;border:1px solid #b6cce6;border-radius:9px;background:#fff;padding:0 10px;color:#102c55;font-weight:700}
+    .v102-index-select select{width:100%;min-height:38px;border:1px solid #b6cce6;border-radius:9px;background:#fff;padding:0 10px;color:#102c55;font:400 14px/1.2 Calibri,"Segoe UI",Arial,sans-serif}
     .v102-index-download-btn{min-height:40px;white-space:nowrap}
     .v103-index-only-btn{min-height:40px;white-space:nowrap;background:#fff!important;color:#0867c7!important;border:1px solid #86b8ea!important}
     .v103-index-only-btn:hover{background:#edf7ff!important}
@@ -1448,7 +1451,13 @@
       for(let i=0;i<(cascadeCount||FAST_FILTERS.length);i++){
         const def=FAST_FILTERS[i];
         const available=v98CascadeValues(def,rows,'','')||[];
-        let multi=v103MultiList(def.id).filter(function(value){return available.some(function(candidate){return v98SameValue(candidate,value)})});
+        const rememberedMulti=v103MultiList(def.id);
+        // V105: a checkbox just clicked inside a searched dropdown is authoritative
+        // for this cascade pass. Do not prune earlier checked values simply because
+        // the native option source is being rebuilt at the same time. Upstream
+        // changes still prune incompatible downstream filters on their own pass.
+        const preserveThisFilter=window.RAJ_V105_PRESERVE_MULTI_ID===def.id;
+        let multi=preserveThisFilter?rememberedMulti.slice():rememberedMulti.filter(function(value){return available.some(function(candidate){return v98SameValue(candidate,value)})});
         // Backward compatibility: adopt an existing native single selection once.
         if(selected[i]&&!multi.some(function(value){return v98SameValue(value,selected[i])})){
           const hit=available.find(function(candidate){return v98SameValue(candidate,selected[i])});
@@ -1462,6 +1471,8 @@
 
       const sub=document.getElementById('subCategoryFilter');if(sub)sub.value='';
       if(typeof window.RAJ_V103_RENDER_ALL_MULTI==='function')window.RAJ_V103_RENDER_ALL_MULTI();
+      // Consume only after the scheduled cascade has seen it.
+      window.RAJ_V105_PRESERVE_MULTI_ID='';
       return currentContext();
     }
 
@@ -1679,7 +1690,13 @@
           if(input.dataset.v103All){values=[]}
           else{const value=clean(input.dataset.v103Value);if(input.checked){if(value&&!values.some(function(x){return v98SameValue(x,value)}))values.push(value)}else values=values.filter(function(x){return !v98SameValue(x,value)})}
           window.RAJ_V103_SET_MULTI_SELECTIONS(def.id,values,{silent:true});select.value='';
+          // V105 sticky multi-select: keep every previous checkbox selection when
+          // another option is found via the in-dropdown search.
+          window.RAJ_V105_PRESERVE_MULTI_ID=def.id;
           const typed=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');if(typed)typed.value='';
+          // Render immediately from the authoritative state so the ticks never
+          // visually disappear while the product cascade refresh is running.
+          v103RenderMulti(def.id);
           USER_FILTER_SCOPE_ACTIVE=true;if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();applyFilters(true);
           if(typed)requestAnimationFrame(function(){if(wrap.classList.contains('open'))typed.focus()});
         });

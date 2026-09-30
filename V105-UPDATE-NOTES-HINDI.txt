@@ -1,0 +1,6 @@
+RAJ LIVE PRICE BOOK V105
+
+1. Search karke checkbox select karne par pehle se selected Group/Sub Group/Segment/Vehicle/Model/Category ab remove nahi honge.
+2. Search selection ke baad dropdown khula rehta hai aur previous ticks state me preserve rehte hain.
+3. Sab multi-select dropdown option names, search box aur selected summary Calibri font me regular (non-bold) rakhe gaye hain.
+4. V104 ka baaki filter, INDEX PDF, Only Index, price list, design aur performance behavior unchanged hai.
