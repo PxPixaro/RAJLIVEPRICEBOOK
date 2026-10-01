@@ -375,7 +375,11 @@ function setDefaultGroupBrand(force=false){
   if(!el)return false;
   const match=[...el.options].find(o=>normalizeSearchText(o.value)===normalizeSearchText(DEFAULT_GROUP_BRAND));
   if(!match)return false;
-  if(force || !clean(el.value))el.value=match.value;
+  if(force || !clean(el.value)){
+    el.value=match.value;
+    // V113: default Aayub must never be overridden by stale multi-select state.
+    if(window.RAJ_MULTI_FILTERS_V103&&Array.isArray(window.RAJ_MULTI_FILTERS_V103.groupFilter))window.RAJ_MULTI_FILTERS_V103.groupFilter=[];
+  }
   return normalizeSearchText(el.value)===normalizeSearchText(match.value);
 }
 
@@ -2593,7 +2597,7 @@ function makeBody(rows, startIndex=0, contextRows=filtered){
     const brandRows=rows.filter(r=>clean(getField(r,'GROUP'))===brand);
     const fullBrandRows=contextRows.filter(r=>clean(getField(r,'GROUP'))===brand);
     const brandDate=listDateForRows(fullBrandRows);
-    html += `<tr class="brand-section-heading"><td colspan="${visibleColumns.length+2}">${escapeHtml(brand)}<span class="brand-total">${fullBrandRows.length.toLocaleString('en-IN')} Products</span><span class="brand-date">Company List Date: ${escapeHtml(brandDate)}</span></td></tr>`;
+    html += `<tr class="brand-section-heading"><td colspan="${visibleColumns.length+2}"><img class="v113-mobile-brand-logo" src="${escapeHtml(logoForBrand(brand))}" alt="" onerror="this.style.display='none'">${escapeHtml(brand)}<span class="brand-total">${fullBrandRows.length.toLocaleString('en-IN')} Products</span><span class="brand-date">Company List Date: ${escapeHtml(brandDate)}</span></td></tr>`;
     const block=miniGroupedBody(brandRows,serial,fullBrandRows);
     html+=block.html; serial=block.serial;
   });
