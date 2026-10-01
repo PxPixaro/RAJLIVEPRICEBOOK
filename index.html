@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Raj Agencies — Live Price Book</title>
   <link rel="stylesheet" href="css/style.css?v=91-logo-watermark">
-  <script defer src="js/data.js?v=82.11-viewby-canonical"></script>
+  <script defer src="js/data.js?v=114-current-pricebook"></script>
   <script defer src="js/brand-logos.js?v=35-filter-master-large-watermark"></script>
 
   <script id="v27-catalog-links-before-app">
@@ -24,13 +24,13 @@
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
 <script defer src="js/filter-master-v98.js?v=102"></script>
 <script defer src="js/facet-index-v102.js?v=102"></script>
-<script defer src="js/app.js?v=110-mobile-card-layout"></script>
+<script defer src="js/app.js?v=114-stable-boot"></script>
   <script defer src="js/v45-config.js?v=107"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=110-mobile-card-layout"></script>
+  <script defer src="js/v45.js?v=114-v107-grid"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -495,76 +495,22 @@
     #syncBtn,#syncFilterMasterBtn,#syncCatalogBtn,#liveApiSyncBtn{display:none!important}
   </style>
 
-
-<style id="v110-mobile-product-cards">
-/* V110 mobile product cards. Desktop remains unchanged.
-   Only true All Groups + no active product filter keeps the old mobile grid. */
-@media (max-width:700px){
-  #priceTable tbody tr.v109-mobile-grid .v109-mobile-group{display:none!important}
-
-  #priceTable:has(tbody tr.v109-mobile-detail){display:block!important;width:100%!important;min-width:0!important;border:0!important;background:transparent!important}
-  #priceTable:has(tbody tr.v109-mobile-detail) thead{display:none!important}
-  #priceTable:has(tbody tr.v109-mobile-detail) tbody{display:block!important;width:100%!important}
-  #priceTable tbody tr.v109-mobile-detail{display:flex!important;flex-direction:column!important;width:calc(100% - 12px)!important;min-width:0!important;margin:9px 6px!important;padding:10px 12px 12px!important;box-sizing:border-box!important;background:#fff!important;border:1px solid #c7d8ea!important;border-radius:13px!important;box-shadow:0 2px 7px rgba(13,62,111,.08)!important}
-  #priceTable tbody tr.v109-mobile-detail>td{display:block!important;width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;padding:3px 0!important;border:0!important;background:transparent!important;text-align:left!important;white-space:normal!important;overflow-wrap:anywhere!important;font:400 11.5px/1.25 Calibri,"Segoe UI",Arial,sans-serif!important;order:20!important}
-  #priceTable tbody tr.v109-mobile-detail>td.index-col{display:none!important}
-  #priceTable tbody tr.v109-mobile-detail>td:not(.image-col)::before{content:attr(data-mobile-label);display:inline-block!important;min-width:88px!important;margin-right:6px!important;color:#718198!important;font:400 10.5px/1.2 Calibri,"Segoe UI",Arial,sans-serif!important;text-transform:uppercase!important}
-
-  /* Make image, data, cart controls and remark siblings in the card flex flow.
-     This fixes V109 where cart controls stayed directly under the image. */
-  #priceTable tbody tr.v109-mobile-detail>td.image-col{display:contents!important}
-  #priceTable tbody tr.v109-mobile-detail .v46-image-order-line{display:contents!important}
-  #priceTable tbody tr.v109-mobile-detail .product-thumb-btn{order:1!important;align-self:center!important;width:min(70vw,250px)!important;min-width:185px!important;max-width:250px!important;height:min(54vw,205px)!important;min-height:155px!important;margin:2px auto 10px!important;border-radius:12px!important;background:#fff!important}
-  #priceTable tbody tr.v109-mobile-detail .product-thumb{width:100%!important;height:100%!important;object-fit:contain!important}
-
-  #priceTable tbody tr.v109-mobile-detail>td.v109-mobile-group{order:2!important;font-weight:600!important;color:#173f78!important}
-  #priceTable tbody tr.v109-mobile-detail>td[data-col="CODE"]{order:3!important;font-size:12.5px!important;font-weight:700!important;color:#102f63!important}
-  #priceTable tbody tr.v109-mobile-detail>td[data-col="PRODUCT NAME"]{order:4!important;font-size:12px!important;font-weight:600!important;color:#15263d!important}
-  #priceTable tbody tr.v109-mobile-detail>td[data-col="UNIT"]{order:5!important}
-  #priceTable tbody tr.v109-mobile-detail>td[data-col="GST"]{order:6!important}
-  #priceTable tbody tr.v109-mobile-detail>td[data-col="RATE"]{order:7!important;font-weight:700!important;color:#0867c5!important}
-  #priceTable tbody tr.v109-mobile-detail>td[data-col="MRP"]{order:8!important;font-weight:700!important;color:#0867c5!important}
-
-  /* Other group-specific visible columns remain between price data and cart. */
-  #priceTable tbody tr.v109-mobile-detail .v45-product-actions{order:90!important;align-self:center!important;display:grid!important;grid-template-columns:36px 56px 36px!important;gap:6px!important;justify-content:center!important;width:150px!important;margin:10px auto 5px!important}
-  #priceTable tbody tr.v109-mobile-detail .v45-qbtn{width:36px!important;min-width:36px!important;height:32px!important;font-size:16px!important}
-  #priceTable tbody tr.v109-mobile-detail .v45-qty{width:56px!important;min-width:56px!important;max-width:56px!important;height:32px!important;font-size:13px!important;text-align:center!important}
-  #priceTable tbody tr.v109-mobile-detail .v45-add{grid-column:1/-1!important;width:150px!important;min-width:150px!important;height:34px!important;margin:auto!important;font-size:11px!important}
-  #priceTable tbody tr.v109-mobile-detail .v108-mobile-remark{order:91!important;align-self:center!important;width:min(100%,300px)!important;height:36px!important;box-sizing:border-box!important;border:1px solid #b8cee5!important;border-radius:7px!important;padding:6px 8px!important;margin:2px auto 0!important;font:400 11px Calibri,"Segoe UI",Arial,sans-serif!important;text-align:center!important}
-  #priceTable tbody tr.brand-section-heading,#priceTable tbody tr.group-heading{width:auto!important}
-}
-</style>
-
-
-<style id="v112-ui-fixes">
-@media (min-width:701px){#priceTable .v108-mobile-remark{display:none!important}}
-@media (max-width:700px){
-.results-card,.table-shell{width:100%!important;max-width:100%!important;box-sizing:border-box!important}
-#priceTable:has(tbody tr.v109-mobile-detail),#priceTable:has(tbody tr.v109-mobile-detail) tbody{width:100%!important;max-width:100%!important}
-#priceTable:has(tbody tr.v109-mobile-detail) tbody>tr.brand-section-heading,#priceTable:has(tbody tr.v109-mobile-detail) tbody>tr.group-heading{display:table!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;margin-left:0!important;margin-right:0!important}
-#priceTable:has(tbody tr.v109-mobile-detail) tbody>tr.brand-section-heading>td,#priceTable:has(tbody tr.v109-mobile-detail) tbody>tr.group-heading>td{display:table-cell!important;width:100%!important;max-width:none!important;box-sizing:border-box!important}
-}
-</style>
-
-<style id="v113-targeted-fixes">
-/* Desktop: restore compact Image / Order layout; remark remains mobile-detail only. */
-.v113-mobile-brand-logo{display:none}
-@media (min-width:701px){
-  #priceTable .v108-mobile-remark{display:none!important}
-  #priceTable th.image-col,#priceTable td.image-col{width:190px!important;min-width:190px!important;max-width:190px!important;padding:3px 4px!important}
-  #priceTable .v46-image-order-line{display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;flex-wrap:nowrap!important}
-  #priceTable .view-image-btn{flex:0 0 44px!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:42px!important}
-  #priceTable .v45-product-actions{display:flex!important;align-items:center!important;gap:3px!important;flex-wrap:nowrap!important}
-  #priceTable .v45-qbtn{width:24px!important;min-width:24px!important;height:27px!important}
-  #priceTable .v45-qty{width:34px!important;min-width:34px!important;max-width:34px!important;height:27px!important}
-  #priceTable .v45-add{width:42px!important;min-width:42px!important;height:27px!important}
-}
-@media (max-width:700px){
-  #priceTable tbody tr.brand-section-heading .v113-mobile-brand-logo{display:inline-block!important;width:28px!important;height:28px!important;object-fit:contain!important;vertical-align:middle!important;margin:0 8px 0 0!important;background:#fff!important;border-radius:5px!important;padding:2px!important;box-sizing:border-box!important}
-}
+<style id="v114-first-paint-splash">
+/* V114: critical boot splash is inline so the dashboard can never paint first. */
+#v74BootSplash.v74-boot-splash{position:fixed;inset:0;z-index:10040;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#123b68,#0c5a91 58%,#176fa3)}
+#v74BootSplash.v74-boot-splash:not(.open){display:none}
+#v74BootSplash .v74-boot-card{width:min(380px,92vw);padding:30px 28px 26px;border-radius:22px;background:#fff;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.28)}
+#v74BootSplash .v74-boot-card img{width:100px;height:auto;margin-bottom:7px}
+#v74BootSplash .v46-login-kicker{color:#0b66c3;font-size:10px;font-weight:900;letter-spacing:.12em}
+#v74BootSplash .v74-boot-card h2{margin:7px 0;color:#123f70;font-size:23px;line-height:1.15}
+#v74BootSplash .v74-boot-card p{margin:0 0 18px;color:#687e94;font-size:11px;font-weight:700}
+#v74BootSplash .v74-boot-card small{display:block;margin-top:11px;color:#8293a3;font-size:9px;font-weight:800}
+#v74BootSplash .v74-progress-track{position:relative;height:8px;overflow:hidden;border-radius:999px;background:#e7eff7}
+#v74BootSplash .v74-progress-track span{position:absolute;inset:0 auto 0 0;width:42%;border-radius:inherit;background:linear-gradient(90deg,#0b66c3,#1a8ad5);animation:v114BootMove 1.05s ease-in-out infinite}
+@keyframes v114BootMove{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
 </style>
 </head>
-<body><div class="print-watermark-layer" aria-hidden="true">
+<body><div id="v74BootSplash" class="v74-boot-splash open" aria-live="polite" aria-busy="true"><div class="v74-boot-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Preparing RAJ Live Price Book</h2><p>Loading the latest product data for a stable experience…</p><div class="v74-progress-track"><span></span></div><small>Please wait a few seconds</small></div></div><div class="print-watermark-layer" aria-hidden="true">
   <img class="print-watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">
 </div>
   <div class="top-stripe"></div>
@@ -1285,6 +1231,29 @@
       };
       if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(function(){run(null)},8);
     }
+    // V114: when hosted/manual data replaces allData, invalidate every fast-filter cache
+    // before the new dataset is allowed to render. Existing old-source builders exit on
+    // their source guard and hand over to the new build without exposing stale rows.
+    window.RAJ_V114_INVALIDATE_FAST_ENGINE=function(){
+      window.RAJ_BOOT_MARK?.('quick',false);window.RAJ_BOOT_MARK?.('v27',false);
+      v69QuickReady=false;
+      v68CacheReady=false;cacheData=null;cacheLength=-1;
+      v821GroupNamesSource=null;v821GroupNames=[];v821OnDemandGroups.clear();
+      if(!v69QuickBuilding)v69StartAayubQuickWarmup();
+      if(!v68CacheBuilding)v68StartFastCacheWarmup();
+    };
+    window.RAJ_V114_WAIT_FAST_ENGINE_READY=function(timeoutMs){
+      timeoutMs=Math.max(500,Number(timeoutMs)||7000);
+      if(v69QuickReady&&v69QuickSource===allData)return Promise.resolve(true);
+      return new Promise(function(resolve){
+        let done=false,timer=0;
+        const finish=function(value){if(done)return;done=true;if(timer)clearTimeout(timer);window.removeEventListener('raj-v69-aayub-ready',onReady);resolve(value)};
+        const onReady=function(){if(v69QuickReady&&v69QuickSource===allData)finish(true)};
+        window.addEventListener('raj-v69-aayub-ready',onReady);
+        timer=setTimeout(function(){finish(false)},timeoutMs);
+        if(!v69QuickBuilding)v69StartAayubQuickWarmup();
+      });
+    };
     function rebuildFastCache(){v68CacheReady=false;v68CacheBuilding=false;v68StartFastCacheWarmup()}
     function ensureFastCache(){
       if(cacheData!==allData||cacheLength!==allData.length||!v68CacheReady){v68StartFastCacheWarmup();return false}

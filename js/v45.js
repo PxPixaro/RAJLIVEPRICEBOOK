@@ -128,29 +128,10 @@ function v83ThumbMarkup(row,idx){
     '<span class="thumb-coming-soon" '+(first?'hidden':'')+'>Coming<br>Soon…</span>'+
     '<span class="thumb-magnifier" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></button>';
 }
-function v110MobileDetailActive(){
-  // V110: mobile cards must also be active for the default specific brand/group
-  // (for example AAYUB). Only a true All Groups + no other product filter state
-  // keeps the old grid/table view on mobile.
-  const ids=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter'];
-  for(const id of ids){
-    try{
-      const multi=typeof window.RAJ_V103_GET_MULTI_SELECTIONS==='function'?window.RAJ_V103_GET_MULTI_SELECTIONS(id):[];
-      if(Array.isArray(multi)&&multi.length)return true;
-    }catch(_e){}
-    const el=q('#'+id);
-    if(el&&String(el.value||'').trim())return true;
-  }
-  return !!USER_FILTER_SCOPE_ACTIVE;
-}
-window.RAJ_V110_MOBILE_DETAIL_ACTIVE=v110MobileDetailActive;
-
 gridProductRow=function(row,serial){
   const idx=rowSourceIndex(row); const qtyId='v45qty-'+idx;
-  const mobileDetail=v110MobileDetailActive();
-  const groupCell='<td class="v109-mobile-group" data-col="GROUP" data-mobile-label="GROUP">'+escapeHtml(group(row))+'</td>';
-  return '<tr class="v108-product-card'+(mobileDetail?' v109-mobile-detail':' v109-mobile-grid')+'"><td class="index-col">'+serial+'</td>'+groupCell+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'" data-mobile-label="'+escAttr(column)+'">'+escapeHtml(value)+'</td>'}).join('')+
-  '<td class="image-col"><div class="v46-image-order-line">'+v83ThumbMarkup(row,idx)+'<div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD TO CART</button></div>'+(mobileDetail?'<input class="v108-mobile-remark" data-row-index="'+idx+'" placeholder="Product remark">':'')+'</div></td></tr>';
+  return '<tr><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'">'+escapeHtml(value)+'</td>'}).join('')+
+  '<td class="image-col"><div class="v46-image-order-line"><div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD</button></div>'+v83ThumbMarkup(row,idx)+'</div></td></tr>';
 };
 
 // Cycle image candidates without re-rendering the row.
@@ -550,18 +531,22 @@ function initAuthGate(){
 
   const splash=q('#v74BootSplash');
   const started=performance.now();
-  let quickReady=!!window.RAJ_BOOT_STATE?.quick;
-  let fullReady=!!window.RAJ_FULL_PRELOAD_READY;
   let opened=false;
 
   const openPublicDashboard=()=>{
     if(opened)return;
     const elapsed=performance.now()-started;
-    // V83: use the visible 5-second Preparing window to finish the heavy cache.
+    const boot=window.RAJ_BOOT_STATE||{};
+    const quickReady=!!boot.quick;
+    const hostedReady=!!boot.hosted;
+    const fullReady=!!window.RAJ_FULL_PRELOAD_READY;
+    // Keep the Preparing screen visible long enough to finish the first stable render.
     if(elapsed<5000){setTimeout(openPublicDashboard,5000-elapsed);return}
-    // Prefer a fully warmed AAYUB dashboard; use 8 sec only as a safety cap on slow devices.
-    if((!quickReady||!fullReady)&&elapsed<8000){setTimeout(openPublicDashboard,120);return}
+    // V114: never expose the dashboard between bundled data and a hosted-data swap.
+    // 12 seconds is only a safety cap; hosted fetch itself is bounded to 10 seconds.
+    if((!quickReady||!fullReady||!hostedReady)&&elapsed<12000){setTimeout(openPublicDashboard,120);return}
     opened=true;
+    splash?.setAttribute('aria-busy','false');
     splash?.classList.remove('open');
     setTimeout(()=>splash?.remove(),350);
     if(!V45.customer?.role){
@@ -575,9 +560,8 @@ function initAuthGate(){
     }
   };
 
-  window.addEventListener('raj-boot-ready',()=>{quickReady=true;openPublicDashboard()},{once:true});
-  window.addEventListener('raj-data-preloaded',()=>{fullReady=true;openPublicDashboard()},{once:true});
-  if(quickReady&&fullReady)openPublicDashboard();
+  ['raj-boot-ready','raj-data-preloaded','raj-hosted-price-ready','raj-v69-aayub-ready'].forEach(eventName=>window.addEventListener(eventName,openPublicDashboard));
+  openPublicDashboard();
   setTimeout(openPublicDashboard,5000);
 }
 async function doGateLogin(){
@@ -700,6 +684,7 @@ function setSpecial(type){
   updateSpecialNote();
 }
 window.RAJ_V45_DATA_RELOADED=function(){
+  window.RAJ_V114_INVALIDATE_FAST_ENGINE?.();
   rebuildSpecialIndex();
   if(typeof window.RAJ_V102_REFRESH_INDEX==='function')window.RAJ_V102_REFRESH_INDEX();
   if(typeof buildFastRows==='function')buildFastRows();

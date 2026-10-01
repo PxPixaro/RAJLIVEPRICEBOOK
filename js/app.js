@@ -4,9 +4,9 @@ window.RAJ_BOOT_STATE=window.RAJ_BOOT_STATE||{quick:false,hosted:false,app:false
 window.RAJ_BOOT_MARK=window.RAJ_BOOT_MARK||function(key,value=true){
   const s=window.RAJ_BOOT_STATE||(window.RAJ_BOOT_STATE={quick:false,hosted:false,app:false,v27:false,ready:false,openedAt:Date.now()});
   s[key]=!!value;
-  // V74: customer never waits for the full 44k cache or hosted refresh.
-  // Aayub quick cache is the only technical readiness requirement.
-  if(s.quick&&window.RAJ_FILTER_MASTER_READY!==false&&!s.ready){
+  // V114: dashboard opens only after quick Aayub metadata and the hosted workbook
+  // check are both complete. This prevents a stale/blank second render after opening.
+  if(s.quick&&s.hosted&&window.RAJ_FILTER_MASTER_READY!==false&&!s.ready){
     s.ready=true;
     window.dispatchEvent(new CustomEvent('raj-boot-ready',{detail:{...s}}));
   }
@@ -280,6 +280,7 @@ function v68FastMeta(row,index){
 }
 function v68StartBackgroundPreload(){
   if(V68_PRELOAD.running||V68_PRELOAD.ready)return;
+  window.RAJ_FULL_PRELOAD_READY=false;
   V68_PRELOAD={index:0,fast:0,running:true,ready:false,data:allData};
   rowIndexMap=new WeakMap();FAST_ROWS=new Array(allData.length);
   const run=(deadline)=>{
@@ -1005,7 +1006,7 @@ function v95MarkFilterMasterReady(ok){
   window.dispatchEvent(new CustomEvent('raj-filter-master-ready',{detail:{ok:!!ok,count:filterMasterItemCount()}}));
   // If the Aayub quick cache completed first, release the normal boot-ready event now.
   const state=window.RAJ_BOOT_STATE;
-  if(state&&state.quick&&!state.ready){state.ready=true;window.dispatchEvent(new CustomEvent('raj-boot-ready',{detail:{...state}}));}
+  if(state&&state.quick&&state.hosted&&!state.ready){state.ready=true;window.dispatchEvent(new CustomEvent('raj-boot-ready',{detail:{...state}}));}
 }
 function v95ApplyBundledFilterMaster(){
   const src=window.RAJ_FILTER_MASTER_V95;if(!src||!Array.isArray(src.filterMaster))return false;
@@ -2597,7 +2598,7 @@ function makeBody(rows, startIndex=0, contextRows=filtered){
     const brandRows=rows.filter(r=>clean(getField(r,'GROUP'))===brand);
     const fullBrandRows=contextRows.filter(r=>clean(getField(r,'GROUP'))===brand);
     const brandDate=listDateForRows(fullBrandRows);
-    html += `<tr class="brand-section-heading"><td colspan="${visibleColumns.length+2}"><img class="v113-mobile-brand-logo" src="${escapeHtml(logoForBrand(brand))}" alt="" onerror="this.style.display='none'">${escapeHtml(brand)}<span class="brand-total">${fullBrandRows.length.toLocaleString('en-IN')} Products</span><span class="brand-date">Company List Date: ${escapeHtml(brandDate)}</span></td></tr>`;
+    html += `<tr class="brand-section-heading"><td colspan="${visibleColumns.length+2}">${escapeHtml(brand)}<span class="brand-total">${fullBrandRows.length.toLocaleString('en-IN')} Products</span><span class="brand-date">Company List Date: ${escapeHtml(brandDate)}</span></td></tr>`;
     const block=miniGroupedBody(brandRows,serial,fullBrandRows);
     html+=block.html; serial=block.serial;
   });
@@ -2806,7 +2807,7 @@ $('#excelFile').onchange=async e=>{
     if(typeof window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK==='function')window.RAJ_V46_IMPORT_CUSTOMERS_FROM_WORKBOOK(wb);
     const records=normalizeRows(rows);
     if(!records.length||!('GROUP' in records[0]))throw new Error('GROUP column missing');
-    allData=records;v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;window.RAJ_V114_INVALIDATE_FAST_ENGINE?.();v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     let saved=false;
     try{
@@ -2879,7 +2880,7 @@ async function refreshHostedPriceWorkbook(){
     if(!response.ok)throw new Error('Hosted price-book.xlsx not found');
     const records=await readPriceWorkbookBuffer(await response.arrayBuffer());
     const previousGroup=clean($('#groupFilter').value);
-    allData=records;v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+    allData=records;window.RAJ_V114_INVALIDATE_FAST_ENGINE?.();v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
     if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
     buildCatalogMenu();
     const masterGroups=masterValuesForFilter('groupFilter');
@@ -2933,7 +2934,7 @@ async function refreshHostedPriceWorkbook(){
   window.addEventListener('raj-auth-ready',v65StartAfterAuth,{once:true});
   if(window.RAJ_AUTH_READY)v65StartAfterAuth();
 
-  const V71_BUNDLED_PRICEBOOK_SHA256='3718d3f9eafdfcd091d2cb8061309bbfc2d8272b949a15483e7a51bd334286b8';
+  const V71_BUNDLED_PRICEBOOK_SHA256='a006cc26b103625a2845b1cbc3f9823def7b59a8e828a0bb30e1697eb633d665';
   async function v71Sha256Hex(buf){
     try{const dig=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(dig)].map(b=>b.toString(16).padStart(2,'0')).join('')}catch(e){return ''}
   }
@@ -2941,21 +2942,29 @@ async function refreshHostedPriceWorkbook(){
     try{
       const records=await readPriceWorkbookBuffer(buf);if(!records?.length)return false;
       const previousGroup=clean($('#groupFilter')?.value);
-      allData=records;v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
+      allData=records;window.RAJ_V114_INVALIDATE_FAST_ENGINE?.();v102InvalidateIndexMap();refreshIndexPriceBookOptions();window.RAJ_BOOT_MARK?.('v27',false);V68_PRELOAD.ready=false;V68_PRELOAD.running=false;v68StartBackgroundPreload();catalogUrlCache.clear();brandLogoCandidateCache.clear();lastUpdated=new Date();
       if(typeof window.RAJ_V45_DATA_RELOADED==='function')window.RAJ_V45_DATA_RELOADED();
       buildCatalogMenu();const groups=masterValuesForFilter('groupFilter').length?masterValuesForFilter('groupFilter'):unique(allData,'GROUP');options($('#groupFilter'),groups,'All groups');$('#groupFilter').value=groups.includes(previousGroup)?previousGroup:'';if(!$('#groupFilter').value)setDefaultGroupBrand(true);cascade();applyFilters();return true;
     }catch(e){console.warn('Hosted Excel apply skipped',e);return false}
   }
+  const v71MarkHostedReady=()=>{
+    window.RAJ_BOOT_MARK?.('hosted',true);
+    window.dispatchEvent(new CustomEvent('raj-hosted-price-ready'));
+  };
   const v71CheckHostedPrice=async()=>{
-    if(!/^https?:$/.test(location.protocol))return;
+    window.RAJ_BOOT_MARK?.('hosted',false);
+    if(!/^https?:$/.test(location.protocol)){v71MarkHostedReady();return}
+    const controller=typeof AbortController==='function'?new AbortController():null;
+    const timer=setTimeout(()=>controller?.abort(),10000);
     try{
-      const r=await fetch('data/price-book.xlsx?ts='+Date.now(),{cache:'no-store'});if(!r.ok)return;
+      const r=await fetch('data/price-book.xlsx?ts='+Date.now(),{cache:'no-store',signal:controller?.signal});if(!r.ok)return;
       const buf=await r.arrayBuffer(),hash=await v71Sha256Hex(buf);
       if(hash&&hash===V71_BUNDLED_PRICEBOOK_SHA256)return;
-      // V83: hosted Excel refresh also runs behind the Preparing screen instead of
-      // changing/re-indexing the visible dashboard a few seconds after it opens.
+      // V114: any newer hosted workbook is fully applied behind the Preparing screen.
       await v71ApplyHostedBuffer(buf);
-    }catch(e){console.warn('Hosted Excel check skipped',e)}
+      if(typeof window.RAJ_V114_WAIT_FAST_ENGINE_READY==='function')await window.RAJ_V114_WAIT_FAST_ENGINE_READY(7000);
+    }catch(e){if(e?.name!=='AbortError')console.warn('Hosted Excel check skipped',e)}
+    finally{clearTimeout(timer);v71MarkHostedReady()}
   };
   v71CheckHostedPrice();
 })();
