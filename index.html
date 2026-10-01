@@ -375,13 +375,6 @@
       background:rgba(255,255,255,.92);
     }
 
-    /* V111: Product image viewer must stay above the sticky header and mobile dock. */
-    #imageModal.image-modal{z-index:30000!important}
-    @media(max-width:700px){
-      #imageModal.image-modal{padding:0!important;align-items:stretch!important;justify-content:stretch!important}
-      #imageModal .image-modal-card{width:100%!important;height:100dvh!important;max-width:none!important;max-height:none!important;border-radius:0!important}
-    }
-
     /* Red, clearly visible close box on the enlarged image. */
     .image-modal-card{position:relative!important}
     #imageCloseBtn.image-close{
@@ -535,16 +528,6 @@
 }
 </style>
 
-
-<style id="v112-ui-fixes">
-@media (min-width:701px){#priceTable .v108-mobile-remark{display:none!important}}
-@media (max-width:700px){
-.results-card,.table-shell{width:100%!important;max-width:100%!important;box-sizing:border-box!important}
-#priceTable:has(tbody tr.v109-mobile-detail),#priceTable:has(tbody tr.v109-mobile-detail) tbody{width:100%!important;max-width:100%!important}
-#priceTable:has(tbody tr.v109-mobile-detail) tbody>tr.brand-section-heading,#priceTable:has(tbody tr.v109-mobile-detail) tbody>tr.group-heading{display:table!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;margin-left:0!important;margin-right:0!important}
-#priceTable:has(tbody tr.v109-mobile-detail) tbody>tr.brand-section-heading>td,#priceTable:has(tbody tr.v109-mobile-detail) tbody>tr.group-heading>td{display:table-cell!important;width:100%!important;max-width:none!important;box-sizing:border-box!important}
-}
-</style>
 </head>
 <body><div class="print-watermark-layer" aria-hidden="true">
   <img class="print-watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">

@@ -148,7 +148,7 @@ const HIDDEN_COLUMNS = new Set([
   'VIEW BY','VIEWBY','LIST DATE','LISTDATE','SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME',
   'CATALOG','CATALOG LINK','CATALOG URL','CATALOG NAME','CATALOG FILE',
   'NEW PRODUCT LAUNCH','DEAD STOCK','FSN CLASS','INDEX',
-  'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE','YES/NO','YES / NO','YES NO'
+  'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE'
 ]);
 const ALWAYS = ['CODE','PRODUCT NAME','UNIT','GST','RATE','MRP'];
 const NUMERIC_COLUMNS = new Set(['RATE','MRP','STD PKG','CRT PKG','BOX QTY','PACK']);
@@ -1627,12 +1627,11 @@ function isPixaroAdminPdfMode(){
   }catch(e){return false}
 }
 function adminPdfVisibilityValue(row){
-  return clean(getField(row,'YES/NO','YES / NO','YES NO','VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE'));
+  return clean(getField(row,'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE'));
 }
 function isAdminPdfRowVisible(row){
-  // V112: Admin physical Price Book prints only products explicitly marked YES/Y/1.
-  const value=normalizeSearchText(adminPdfVisibilityValue(row));
-  return value==='YES'||value==='Y'||value==='1';
+  // V84: only explicit N hides a product from Pixaro Admin PDF. Y and blank stay visible.
+  return normalizeSearchText(adminPdfVisibilityValue(row))!=='N';
 }
 function pdfFitFont(text,width,maxSize,minSize=1.55){
   const s=pdfAscii(text);
@@ -2601,13 +2600,10 @@ function makeBody(rows, startIndex=0, contextRows=filtered){
 }
 
 function render(){
-  const nativeSelected=clean($('#groupFilter')?.value);
-  const filteredGroups=[...new Set((filtered||[]).map(r=>clean(getField(r,'GROUP'))).filter(Boolean))];
-  const selectedGroup=nativeSelected&&nativeSelected!=='ALL PRODUCTS'?nativeSelected:(filteredGroups.length===1?filteredGroups[0]:'');
-  const selected=selectedGroup||'ALL PRODUCTS';
-  renderCatalogCard(selectedGroup);
-  [$('#brandLogo'), $('#printBrandLogo')].forEach(img=>setBrandLogoImage(img,selectedGroup));
-  $('#selectedBrand').textContent=selectedGroup||'All Products';
+  const selected=$('#groupFilter').value||'ALL PRODUCTS';
+  renderCatalogCard(selected==='ALL PRODUCTS'?'':selected);
+  [$('#brandLogo'), $('#printBrandLogo')].forEach(img=>setBrandLogoImage(img,selected));
+  $('#selectedBrand').textContent=selected==='ALL PRODUCTS'?'All Products':selected;
   $('#printTitle').textContent=selected;
   const listDate=selectedListDate();
   $('#screenListDate').textContent=`Company List Date: ${listDate}`;
