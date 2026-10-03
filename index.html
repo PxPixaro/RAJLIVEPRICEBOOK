@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Raj Agencies — Live Price Book</title>
+  <script>window.RAJ_V115_NAV_STARTED=performance.now();</script>
   <link rel="stylesheet" href="css/style.css?v=91-logo-watermark">
   <script defer src="js/data.js?v=114-current-pricebook"></script>
   <script defer src="js/brand-logos.js?v=35-filter-master-large-watermark"></script>
@@ -24,13 +25,13 @@
   <script src="js/pdf-brand-logos.js?v=91-logo-fix"></script>
 <script defer src="js/filter-master-v98.js?v=102"></script>
 <script defer src="js/facet-index-v102.js?v=102"></script>
-<script defer src="js/app.js?v=114-stable-boot"></script>
+<script defer src="js/app.js?v=115-fast-mobile-table"></script>
   <script defer src="js/v45-config.js?v=107"></script>
   <script defer src="js/customer-master.js?v=46"></script>
   <script defer src="js/offers.js?v=46"></script>
   <script defer src="js/image-search-index.js?v=82-offline-visual"></script>
   <script defer src="js/image-search-v82.js?v=82-offline-visual"></script>
-  <script defer src="js/v45.js?v=114-v107-grid"></script>
+  <script defer src="js/v45.js?v=115-mobile-table"></script>
   <link rel="stylesheet" href="css/v45.css?v=82-image-search">
 
   <style id="v25-smart-filter-styles">
@@ -509,6 +510,57 @@
 #v74BootSplash .v74-progress-track span{position:absolute;inset:0 auto 0 0;width:42%;border-radius:inherit;background:linear-gradient(90deg,#0b66c3,#1a8ad5);animation:v114BootMove 1.05s ease-in-out infinite}
 @keyframes v114BootMove{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
 </style>
+
+<style id="v115-mobile-product-table">
+/* V115: desktop/grid is intentionally unchanged. The following product-detail
+   layout exists only on phones and removes horizontal scrolling. */
+#priceTable .v115-mobile-details,#priceTable .v108-mobile-remark,#priceTable .v115-mobile-add{display:none!important}
+@media (max-width:700px){
+  .table-shell{overflow-x:hidden!important}
+  #priceTable{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;border:0!important;background:transparent!important}
+  #priceTable thead{display:none!important}
+  #priceTable tbody{display:block!important;width:100%!important;max-width:100%!important}
+  #priceTable tbody tr.brand-section-heading,#priceTable tbody tr.group-heading{display:block!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important}
+  #priceTable tbody tr.brand-section-heading>td,#priceTable tbody tr.group-heading>td{display:block!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important}
+
+  #priceTable tbody tr.v115-product-row{display:block!important;width:calc(100% - 10px)!important;max-width:100%!important;margin:9px 5px!important;padding:0!important;border:1px solid #b9cee4!important;border-radius:11px!important;background:#fff!important;box-shadow:0 2px 7px rgba(18,65,109,.07)!important;overflow:hidden!important}
+  #priceTable tbody tr.v115-product-row>td:not(.image-col){display:none!important}
+  #priceTable tbody tr.v115-product-row>td.image-col{display:block!important;width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;padding:0!important;border:0!important;background:#fff!important;box-sizing:border-box!important;overflow:hidden!important}
+  #priceTable tbody tr.v115-product-row .v46-image-order-line{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;min-width:0!important;max-width:100%!important;gap:0!important;align-items:stretch!important;justify-items:stretch!important;white-space:normal!important;overflow:hidden!important}
+
+  /* Complete product image at the top. */
+  #priceTable tbody tr.v115-product-row .product-thumb-btn{order:1!important;justify-self:center!important;width:min(88vw,310px)!important;min-width:0!important;max-width:310px!important;height:min(62vw,225px)!important;min-height:168px!important;margin:10px auto!important;border:1px solid #d6e2ef!important;border-radius:9px!important;background:#fff!important;box-shadow:none!important;overflow:hidden!important}
+  #priceTable tbody tr.v115-product-row .product-thumb{width:100%!important;height:100%!important;object-fit:contain!important;padding:4px!important;box-sizing:border-box!important}
+  #priceTable tbody tr.v115-product-row .thumb-coming-soon{font-size:12px!important}
+
+  /* Table-style identity + complete details, with a center divider for paired fields. */
+  #priceTable tbody tr.v115-product-row .v115-mobile-details{display:block!important;order:2!important;border-top:1px solid #d7e3ef!important;background:#fff!important;color:#17324d!important;font-family:Calibri,"Segoe UI",Arial,sans-serif!important}
+  .v115-mobile-identity{display:grid!important;grid-template-columns:1fr 1fr!important;background:#f4f9ff!important;border-bottom:1px solid #d7e3ef!important}
+  .v115-mobile-identity>div{min-width:0!important;padding:8px 10px!important}
+  .v115-mobile-identity>div+div{border-left:1px solid #d7e3ef!important}
+  .v115-mobile-identity span,.v115-mobile-product-name span,.v115-mobile-detail-item span{display:block!important;margin:0 0 2px!important;color:#718398!important;font:700 9px/1.15 Arial,sans-serif!important;letter-spacing:.22px!important;text-transform:uppercase!important}
+  .v115-mobile-identity b{display:block!important;color:#0b4e94!important;font:700 13px/1.25 Calibri,"Segoe UI",Arial,sans-serif!important;overflow-wrap:anywhere!important}
+  .v115-mobile-product-name{padding:9px 10px 10px!important;border-bottom:1px solid #d7e3ef!important;background:#fff!important}
+  .v115-mobile-product-name b{display:block!important;color:#17283c!important;font:600 12.5px/1.35 Calibri,"Segoe UI",Arial,sans-serif!important;overflow-wrap:anywhere!important}
+  .v115-mobile-detail-grid{display:block!important}
+  .v115-mobile-detail-row{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;border-bottom:1px solid #e0e8f1!important}
+  .v115-mobile-detail-row:last-child{border-bottom:0!important}
+  .v115-mobile-detail-row.v115-mobile-detail-wide{grid-template-columns:minmax(0,1fr)!important}
+  .v115-mobile-detail-item{min-width:0!important;padding:7px 10px 8px!important;background:#fff!important}
+  .v115-mobile-detail-row:not(.v115-mobile-detail-wide) .v115-mobile-detail-item+.v115-mobile-detail-item{border-left:1px solid #d7e3ef!important}
+  .v115-mobile-detail-item b{display:block!important;color:#17283c!important;font:600 11.5px/1.3 Calibri,"Segoe UI",Arial,sans-serif!important;overflow-wrap:anywhere!important}
+
+  /* Quantity / ADD and product remark are mobile-only and sit below details. */
+  #priceTable tbody tr.v115-product-row .v45-product-actions{display:grid!important;order:3!important;grid-template-columns:42px 64px 42px!important;gap:7px!important;justify-content:center!important;align-items:center!important;width:176px!important;margin:11px auto 6px!important}
+  #priceTable tbody tr.v115-product-row .v45-qbtn{width:42px!important;min-width:42px!important;height:34px!important;font-size:16px!important}
+  #priceTable tbody tr.v115-product-row .v45-qty{width:64px!important;min-width:64px!important;max-width:64px!important;height:34px!important;text-align:center!important;font-size:13px!important}
+  #priceTable tbody tr.v115-product-row .v45-add{grid-column:1/-1!important;width:176px!important;min-width:176px!important;height:36px!important;margin:0!important;padding:4px 8px!important;font-size:11px!important}
+  #priceTable tbody tr.v115-product-row .v115-desktop-add{display:none!important}
+  #priceTable tbody tr.v115-product-row .v115-mobile-add{display:inline!important}
+  #priceTable tbody tr.v115-product-row .v108-mobile-remark{display:block!important;order:4!important;width:calc(100% - 20px)!important;height:38px!important;box-sizing:border-box!important;margin:2px 10px 11px!important;padding:7px 10px!important;border:1px solid #b8cee5!important;border-radius:7px!important;background:#fbfdff!important;color:#17324d!important;font:400 12px/1 Calibri,"Segoe UI",Arial,sans-serif!important;text-align:left!important}
+}
+</style>
+
 </head>
 <body><div id="v74BootSplash" class="v74-boot-splash open" aria-live="polite" aria-busy="true"><div class="v74-boot-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Preparing RAJ Live Price Book</h2><p>Loading the latest product data for a stable experience…</p><div class="v74-progress-track"><span></span></div><small>Please wait a few seconds</small></div></div><div class="print-watermark-layer" aria-hidden="true">
   <img class="print-watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">

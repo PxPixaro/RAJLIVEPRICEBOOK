@@ -128,10 +128,54 @@ function v83ThumbMarkup(row,idx){
     '<span class="thumb-coming-soon" '+(first?'hidden':'')+'>Coming<br>Soon…</span>'+
     '<span class="thumb-magnifier" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></button>';
 }
+function v115MobileDetailLabel(column){
+  const key=keyOf(column);
+  if(key==='CATAGORIES'||key==='CATEGORIES')return 'CATEGORY';
+  if(key==='GST')return 'GST';
+  if(key==='MRP')return 'MRP';
+  return String(column||key).trim();
+}
+function v115MobileDetailsMarkup(row){
+  const columns=[],seen=new Set();
+  const addColumn=column=>{
+    const key=keyOf(column);if(!key||seen.has(key)||key==='CODE'||key==='PRODUCT NAME'||key==='GROUP')return;
+    const value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column);
+    if(isEmpty(value))return;
+    seen.add(key);columns.push({column,key,value});
+  };
+  // Keep every normal product column, then add useful filter dimensions that are hidden
+  // from the desktop grid. System/admin metadata remains excluded.
+  visibleColumns.forEach(addColumn);
+  ['SUB GROUP','SEGMENT','VEHICLE','MODEL','CATAGORIES'].forEach(column=>{
+    const actual=(typeof dataColumns==='function'?dataColumns():[]).find(name=>keyOf(name)===keyOf(column))||column;
+    addColumn(actual);
+  });
+  const items=columns.map(item=>({
+    ...item,
+    label:v115MobileDetailLabel(item.column),
+    wide:['SUB GROUP','VEHICLE','MODEL','CATAGORIES','CATEGORIES','CATEGORY','CROSS REFERNCE NO.','COMPETITOR PART NUMBER','ALTERNATE PART NUMBER','COMPANY PART NUMBER'].includes(item.key)||String(item.value||'').length>28
+  }));
+  let detailRows='';
+  for(let i=0;i<items.length;){
+    const first=items[i];
+    if(first.wide){
+      detailRows+='<div class="v115-mobile-detail-row v115-mobile-detail-wide"><div class="v115-mobile-detail-item"><span>'+escapeHtml(first.label)+'</span><b>'+escapeHtml(first.value)+'</b></div></div>';i++;continue;
+    }
+    const second=items[i+1];
+    if(second&&!second.wide){
+      detailRows+='<div class="v115-mobile-detail-row"><div class="v115-mobile-detail-item"><span>'+escapeHtml(first.label)+'</span><b>'+escapeHtml(first.value)+'</b></div><div class="v115-mobile-detail-item"><span>'+escapeHtml(second.label)+'</span><b>'+escapeHtml(second.value)+'</b></div></div>';i+=2;continue;
+    }
+    detailRows+='<div class="v115-mobile-detail-row v115-mobile-detail-wide"><div class="v115-mobile-detail-item"><span>'+escapeHtml(first.label)+'</span><b>'+escapeHtml(first.value)+'</b></div></div>';i++;
+  }
+  return '<div class="v115-mobile-details">'+
+    '<div class="v115-mobile-identity"><div><span>GROUP</span><b>'+escapeHtml(group(row))+'</b></div><div><span>CODE</span><b>'+escapeHtml(partCode(row))+'</b></div></div>'+
+    '<div class="v115-mobile-product-name"><span>PRODUCT NAME</span><b>'+escapeHtml(desc(row))+'</b></div>'+
+    '<div class="v115-mobile-detail-grid">'+detailRows+'</div></div>';
+}
 gridProductRow=function(row,serial){
   const idx=rowSourceIndex(row); const qtyId='v45qty-'+idx;
-  return '<tr><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'">'+escapeHtml(value)+'</td>'}).join('')+
-  '<td class="image-col"><div class="v46-image-order-line"><div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button">ADD</button></div>'+v83ThumbMarkup(row,idx)+'</div></td></tr>';
+  return '<tr class="v115-product-row"><td class="index-col">'+serial+'</td>'+visibleColumns.map(column=>{const key=keyOf(column),value=typeof displayFieldValue==='function'?displayFieldValue(row,column):field(row,column),part=key==='CODE',price=key==='RATE'||key==='MRP',left=part||key==='PRODUCT NAME',cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');return '<td class="'+cls+'" data-col="'+escAttr(key)+'">'+escapeHtml(value)+'</td>'}).join('')+
+  '<td class="image-col"><div class="v46-image-order-line"><div class="v45-product-actions"><button class="v45-qbtn" data-act="minus" data-row-index="'+idx+'" type="button">−</button><input id="'+qtyId+'" class="v45-qty" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="v45-qbtn" data-act="plus" data-row-index="'+idx+'" type="button">+</button><button class="v45-add" data-row-index="'+idx+'" type="button"><span class="v115-desktop-add">ADD</span><span class="v115-mobile-add">ADD TO CART</span></button></div>'+v83ThumbMarkup(row,idx)+v115MobileDetailsMarkup(row)+'<input class="v108-mobile-remark" data-row-index="'+idx+'" placeholder="Product remark"></div></td></tr>';
 };
 
 // Cycle image candidates without re-rendering the row.
@@ -530,7 +574,7 @@ function initAuthGate(){
   }
 
   const splash=q('#v74BootSplash');
-  const started=performance.now();
+  const started=Number(window.RAJ_V115_NAV_STARTED)||performance.now();
   let opened=false;
 
   const openPublicDashboard=()=>{
@@ -538,13 +582,16 @@ function initAuthGate(){
     const elapsed=performance.now()-started;
     const boot=window.RAJ_BOOT_STATE||{};
     const quickReady=!!boot.quick;
-    const hostedReady=!!boot.hosted;
     const fullReady=!!window.RAJ_FULL_PRELOAD_READY;
-    // Keep the Preparing screen visible long enough to finish the first stable render.
-    if(elapsed<5000){setTimeout(openPublicDashboard,5000-elapsed);return}
-    // V114: never expose the dashboard between bundled data and a hosted-data swap.
-    // 12 seconds is only a safety cap; hosted fetch itself is bounded to 10 seconds.
-    if((!quickReady||!fullReady||!hostedReady)&&elapsed<12000){setTimeout(openPublicDashboard,120);return}
+    // V115: AAYUB's static quick index is the first-screen dependency. The full
+    // search cache keeps warming behind the splash, while the hosted workbook check
+    // is allowed to finish in the background. This removes the 7-8 second wait.
+    if(elapsed<1500){setTimeout(openPublicDashboard,Math.max(40,1500-elapsed));return}
+    // Prefer a fully warmed search cache, but do not make the first AAYUB screen wait for it.
+    if(!fullReady&&elapsed<3500){setTimeout(openPublicDashboard,80);return}
+    // AAYUB quick metadata is the hard first-screen dependency. Give it a little longer
+    // on slower phones, while still keeping the perceived Preparing window near 5 sec max.
+    if(!quickReady&&elapsed<4000){setTimeout(openPublicDashboard,80);return}
     opened=true;
     splash?.setAttribute('aria-busy','false');
     splash?.classList.remove('open');

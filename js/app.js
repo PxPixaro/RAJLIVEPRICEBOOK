@@ -286,15 +286,19 @@ function v68StartBackgroundPreload(){
   const run=(deadline)=>{
     if(V68_PRELOAD.data!==allData){V68_PRELOAD.running=false;return v68StartBackgroundPreload()}
     const started=performance.now();let processed=0;
-    while(V68_PRELOAD.fast<allData.length&&processed<28){
-      if(processed>6&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<5)break;
-      if(processed>6&&!deadline&&performance.now()-started>2)break;
+    const bootSplashOpen=!!document.getElementById('v74BootSplash')?.classList.contains('open');
+    const maxChunk=bootSplashOpen?260:52;
+    const minChunk=bootSplashOpen?36:8;
+    const budgetMs=bootSplashOpen?7:2.5;
+    while(V68_PRELOAD.fast<allData.length&&processed<maxChunk){
+      if(processed>minChunk&&deadline&&typeof deadline.timeRemaining==='function'&&!deadline.didTimeout&&deadline.timeRemaining()<2)break;
+      if(processed>minChunk&&!deadline&&performance.now()-started>budgetMs)break;
       const i=V68_PRELOAD.fast++,row=allData[i];processed++;
       if(row&&(typeof row==='object'||typeof row==='function'))rowIndexMap.set(row,i);
       FAST_ROWS[i]=v68FastMeta(row,i);
     }
     if(V68_PRELOAD.fast<allData.length){
-      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:100});else setTimeout(()=>run(null),18);
+      if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:bootSplashOpen?35:100});else setTimeout(()=>run(null),bootSplashOpen?4:18);
     }else{
       V68_PRELOAD.ready=true;V68_PRELOAD.running=false;
       window.RAJ_FULL_PRELOAD_READY=true;
