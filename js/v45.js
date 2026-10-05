@@ -575,41 +575,67 @@ function initAuthGate(){
 
   const splash=q('#v74BootSplash');
   const started=Number(window.RAJ_V115_NAV_STARTED)||performance.now();
-  let opened=false;
+  let opened=false,revealStarted=false;
 
-  const openPublicDashboard=()=>{
-    if(opened)return;
-    const elapsed=performance.now()-started;
-    const boot=window.RAJ_BOOT_STATE||{};
-    const quickReady=!!boot.quick;
-    const fullReady=!!window.RAJ_FULL_PRELOAD_READY;
-    // V115: AAYUB's static quick index is the first-screen dependency. The full
-    // search cache keeps warming behind the splash, while the hosted workbook check
-    // is allowed to finish in the background. This removes the 7-8 second wait.
-    if(elapsed<1500){setTimeout(openPublicDashboard,Math.max(40,1500-elapsed));return}
-    // Prefer a fully warmed search cache, but do not make the first AAYUB screen wait for it.
-    if(!fullReady&&elapsed<3500){setTimeout(openPublicDashboard,80);return}
-    // AAYUB quick metadata is the hard first-screen dependency. Give it a little longer
-    // on slower phones, while still keeping the perceived Preparing window near 5 sec max.
-    if(!quickReady&&elapsed<4000){setTimeout(openPublicDashboard,80);return}
-    opened=true;
+  const finishReveal=()=>{
+    if(opened)return;opened=true;
     splash?.setAttribute('aria-busy','false');
     splash?.classList.remove('open');
-    setTimeout(()=>splash?.remove(),350);
+    setTimeout(()=>splash?.remove(),250);
     if(!V45.customer?.role){
       V45.customer=null;
       document.body.classList.remove('v46-admin');
       refreshProfileChip();
     }
+  };
+
+  const prepareAayubBeforeReveal=()=>{
+    if(revealStarted||opened)return;revealStarted=true;
+    // V121: start the public/AAYUB render while the Preparing screen is still covering
+    // the page. This removes the brief All Groups screen and the late brand-logo flash.
     if(!window.RAJ_AUTH_READY){
       window.RAJ_AUTH_READY=true;
       setTimeout(()=>window.dispatchEvent(new CustomEvent('raj-auth-ready',{detail:{customer:null,public:true}})),0);
     }
+    const gf=q('#groupFilter');
+    if(gf){
+      const a=[...gf.options].find(o=>normalizeSearchText(o.value)==='AAYUB');
+      if(a&&!gf.value)gf.value=a.value;
+    }
+    const logo=q('#brandLogo'),printLogo=q('#printBrandLogo');
+    try{if(logo)setBrandLogoImage(logo,'AAYUB');if(printLogo)setBrandLogoImage(printLogo,'AAYUB')}catch(_e){}
+    const stableSince=performance.now();
+    const waitStable=()=>{
+      if(opened)return;
+      const selected=normalizeSearchText(q('#groupFilter')?.value||'');
+      const countText=String(q('#recordCount')?.textContent||'').replace(/[^0-9]/g,'');
+      const hasRows=Number(countText)>0;
+      const logoReady=!logo||logo.dataset.logoResolved==='1'||(logo.complete&&logo.naturalWidth>0);
+      // Give the AAYUB render/logo a short covered window. Never hold the user longer
+      // than 900 ms here; on very slow devices the page still opens safely.
+      if((selected!=='AAYUB'||!hasRows||!logoReady)&&performance.now()-stableSince<900){
+        setTimeout(waitStable,45);return;
+      }
+      requestAnimationFrame(()=>requestAnimationFrame(finishReveal));
+    };
+    waitStable();
+  };
+
+  const openPublicDashboard=()=>{
+    if(opened||revealStarted)return;
+    const elapsed=performance.now()-started;
+    const boot=window.RAJ_BOOT_STATE||{};
+    const quickReady=!!boot.quick;
+    // V121: AAYUB quick metadata is enough for first paint. Full 45k-row search/cache
+    // and hosted workbook verification continue in the background instead of delaying UI.
+    if(elapsed<650){setTimeout(openPublicDashboard,Math.max(35,650-elapsed));return}
+    if(!quickReady&&elapsed<2600){setTimeout(openPublicDashboard,65);return}
+    prepareAayubBeforeReveal();
   };
 
   ['raj-boot-ready','raj-data-preloaded','raj-hosted-price-ready','raj-v69-aayub-ready'].forEach(eventName=>window.addEventListener(eventName,openPublicDashboard));
   openPublicDashboard();
-  setTimeout(openPublicDashboard,5000);
+  setTimeout(openPublicDashboard,2700);
 }
 async function doGateLogin(){
   const rawUser=clean(q('#v46LoginUser')?.value),password=q('#v46LoginPassword')?.value||'',msg=q('#v46LoginMsg');
