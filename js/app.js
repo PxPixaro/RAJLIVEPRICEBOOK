@@ -1739,6 +1739,10 @@ function pdfIndexFitFont(text,width,maxSize=8,minSize=4.0){
   return Math.max(minSize,Math.min(maxSize,fit));
 }
 function buildGroupIndexPages(productPages){
+  // V122: index rows must come from the SAME filtered product set used by the PDF.
+  // This prevents a Segment/Vehicle/Model filtered pricelist from showing unrelated brands.
+  const indexScopeRows=Array.isArray(V102_PDF_CONTEXT?.rows)?V102_PDF_CONTEXT.rows:(Array.isArray(filtered)?filtered:[]);
+  const indexScopeGroups=new Set(indexScopeRows.map(row=>indexGroupKey(clean(getField(row,'GROUP')))).filter(Boolean));
   // V102: normal group PDFs keep the old behavior. INDEX-wise downloads force an
   // index page regardless of the currently selected screen Group.
   const forceIndex=!!V102_PDF_CONTEXT?.forceAllGroupsIndex;
@@ -1758,6 +1762,7 @@ function buildGroupIndexPages(productPages){
   const hasRajGautam=productPages.some(p=>clean(p.group)==='Gautam');
   productPages.forEach((p,i)=>{
     const display=clean(p.group)||'OTHER',key=indexGroupKey(display)||display.toUpperCase();
+    if(indexScopeGroups.size&&!indexScopeGroups.has(key))return;
     if(key==='GAUTAM' && hasRajGautam && display!=='Gautam')return;
     let e=byKey.get(key);
     if(!e){e={key,group:display,first:i+1,last:i+1};byKey.set(key,e);entries.push(e)}
@@ -2187,6 +2192,8 @@ async function downloadOnlyIndex(){
 }
 
 async function downloadSelectedPriceListFast(){
+  // V122: commit any just-changed multi-select filter before building product pages/index.
+  try{applyFilters(false,false)}catch(_e){}
   if(!filtered.length){toast('Current filters me koi product nahi hai');return}
   const btn=$('#priceListDownloadBtn'),name=priceListPdfFileName();
   if(btn){btn.disabled=true;btn.textContent='Creating Full PDF…'}
