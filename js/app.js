@@ -1728,6 +1728,12 @@ function groupIndexDetails(group){
   for(const [name,details] of Object.entries(V86_INDEX_DETAILS)){if(indexGroupKey(name)===wanted)return details}
   return '';
 }
+function v126IndexProperCase(value){
+  let text=clean(value).toLowerCase().replace(/,\s*/g,', ');
+  text=text.replace(/(^|[\s,/&()\-])([a-z])/g,(m,p,c)=>p+c.toUpperCase());
+  text=text.replace(/\b(Hcv|Lcv|Rtv|Db|Uj|Ac|Pvc|Cng|Mpfi|Abs|Oe|Bs\d*)\b/gi,m=>m.toUpperCase());
+  return text;
+}
 function groupIndexSubGroups(groupRows){
   const values=[...new Set((groupRows||[]).map(row=>clean(subGroupValue(row))).filter(Boolean))].sort(natural);
   return values.length?values.join(', '):'-';
@@ -1824,7 +1830,7 @@ function buildGroupIndexPages(productPages){
       const a=e.first+pageCount;
       if(oi%2===1)cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${usable} ${rowH} re f`);
       cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${usable} ${rowH} re S`);x=margin;
-      const vals=[String(oi+1),e.group,e.details];
+      const vals=[String(oi+1),String(e.group||'').toUpperCase(),v126IndexProperCase(e.details)];
       for(let i=0;i<widths.length;i++){
         if(i>0)cmd.push(`0.82 0.85 0.89 RG ${x} ${H-y-rowH} m ${x} ${H-y} l S`);
         const val=vals[i];
@@ -1873,9 +1879,15 @@ function fastPdfPages(){
   const basePdfRows=Array.isArray(V102_PDF_CONTEXT?.rows)?V102_PDF_CONTEXT.rows:filtered;
   const sourcePdfRows=pixaroAdmin?basePdfRows.filter(isAdminPdfRowVisible):basePdfRows;
   const rows=sortedRows(sourcePdfRows),grouped=new Map();
-  rows.forEach(r=>{const g=clean(getField(r,'GROUP'))||'OTHER';if(!grouped.has(g))grouped.set(g,[]);grouped.get(g).push(r)});
-  const selected=V102_PDF_CONTEXT?.forceAllGroupsIndex?'':clean($('#groupFilter').value);
-  const groups=selected?[[selected,grouped.get(selected)||rows]]:[...grouped.entries()].sort((x,y)=>natural(x[0],y[0]));
+  // V126: group names are case-insensitive in PDFs. This merges source variants such as
+  // GAUTAM/Gautam and QH/Qh into one brand instead of creating duplicate brand sections.
+  rows.forEach(r=>{
+    const display=clean(getField(r,'GROUP'))||'OTHER',key=indexGroupKey(display)||display.toUpperCase();
+    if(!grouped.has(key))grouped.set(key,{display,rows:[]});
+    grouped.get(key).rows.push(r);
+  });
+  const selected=V102_PDF_CONTEXT?.forceAllGroupsIndex?'':clean($('#groupFilter').value),selectedKey=indexGroupKey(selected);
+  const groups=selected?[[selected,(grouped.get(selectedKey)?.rows)||rows]]:[...grouped.values()].map(x=>[x.display,x.rows]).sort((x,y)=>natural(x[0],y[0]));
   const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=98,rowH=adminPortrait?14.6:10.5,bandH=adminPortrait?15.6:12.4;
   const esc=pdfAscii;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
@@ -2108,11 +2120,26 @@ async function buildFastPdfBlob(){
   return new Blob(chunks,{type:'application/pdf'});
 }
 
-// V124: freeze the exact visible filter scope before any PDF is built.
-// Start from `filtered` (so search/special filters are preserved) and re-check every
-// structured filter once more. This prevents stale/default brand rows from leaking
-// into the PDF/index when a multi-select control changed just before download.
-function v124PdfFilteredRowsSnapshot(){
+// V126: freeze the exact visible filter scope before any PDF is built.
+// Segment membership is STRICT: selecting 2 WHEELERS includes only rows whose SEGMENT
+// cell actually contains 2 WHEELERS (including comma-separated cells). UNIVERSAL rows
+// no longer leak into a segment PDF/index unless UNIVERSAL itself is selected.
+function v126FacetToken(value){
+  let n=v94Norm(value).replace(/\s+/g,' ').trim();
+  if(n==='2 WHEELER'||n==='2 WHEELERS')return '2 WHEELERS';
+  if(n==='3 WHEELER'||n==='3 WHEELERS')return '3 WHEELER';
+  return n;
+}
+function v126DelimitedFacetTokens(value){
+  return String(value==null?'':value).split(/[,;|>\n]+/).map(v126FacetToken).filter(Boolean);
+}
+function v126StrictSegmentMatch(row,selections){
+  const wanted=(Array.isArray(selections)?selections:[selections]).map(v126FacetToken).filter(Boolean);
+  if(!wanted.length)return true;
+  const have=new Set(v126DelimitedFacetTokens(getField(row,'SEGMENT')));
+  return wanted.some(value=>have.has(value));
+}
+function v126PdfFilteredRowsSnapshot(){
   const source=Array.isArray(filtered)?filtered.slice():[];
   if(!source.length)return [];
   const multi=Object.fromEntries(V103_MULTI_FILTER_IDS.map(id=>[id,v103MultiValues(id)]));
@@ -2122,8 +2149,8 @@ function v124PdfFilteredRowsSnapshot(){
     else if(gv&&v94Norm(getField(row,'GROUP','GROUP / BRAND','BRAND'))!==v94Norm(gv))return false;
     if(multi.subGroupFilter.length){if(!v103MultiMatch(row,'subGroupFilter',multi.subGroupFilter))return false}
     else if(sv&&v94Norm(subGroupValue(row))!==v94Norm(sv))return false;
-    if(multi.segmentFilter.length){if(!v102MultiSegmentMatch(row,multi.segmentFilter))return false}
-    else if(segv&&!v94SegmentMatch(row,segv))return false;
+    if(multi.segmentFilter.length){if(!v126StrictSegmentMatch(row,multi.segmentFilter))return false}
+    else if(segv&&!v126StrictSegmentMatch(row,[segv]))return false;
     if(multi.vehicleFilter.length){if(!v103MultiMatch(row,'vehicleFilter',multi.vehicleFilter))return false}
     else if(vv&&!v94VehicleMatch(row,vv))return false;
     if(multi.modelFilter.length){if(!v103MultiMatch(row,'modelFilter',multi.modelFilter))return false}
@@ -2134,7 +2161,19 @@ function v124PdfFilteredRowsSnapshot(){
     return true;
   });
 }
+function v126ActivePdfIndexLabel(){
+  const first=(id)=>{const multi=v103MultiValues(id);if(multi.length===1)return clean(multi[0]);if(multi.length>1)return multi.map(clean).filter(Boolean).join(' + ');return clean($('#'+id)?.value)};
+  let label=first('segmentFilter')||first('vehicleFilter')||first('modelFilter')||first('categoryFilter')||first('subGroupFilter');
+  if(!label)return 'MAIN';
+  const n=v126FacetToken(label);
+  if(n==='2 WHEELERS')return '2 WHEEL';
+  return String(label).toUpperCase();
+}
+// Backward-compatible public name used by existing V124/V125 hooks.
+function v124PdfFilteredRowsSnapshot(){return v126PdfFilteredRowsSnapshot()}
 window.RAJ_V124_PDF_FILTER_SNAPSHOT=v124PdfFilteredRowsSnapshot;
+window.RAJ_V126_PDF_FILTER_SNAPSHOT=v126PdfFilteredRowsSnapshot;
+
 
 function priceListPdfFileName(){
   if(V102_PDF_CONTEXT?.fileName)return safePdfName(V102_PDF_CONTEXT.fileName);
@@ -2147,7 +2186,7 @@ async function createCompletePriceListPdfBlob(){
   // INDEX-wise buttons already provide their own explicit V102_PDF_CONTEXT rows.
   const previousContext=V102_PDF_CONTEXT;
   const transient=!Array.isArray(previousContext?.rows);
-  if(transient)V102_PDF_CONTEXT={rows:v124PdfFilteredRowsSnapshot(),filterSnapshot:true};
+  if(transient)V102_PDF_CONTEXT={rows:v126PdfFilteredRowsSnapshot(),filterSnapshot:true,indexLabel:v126ActivePdfIndexLabel()};
   try{
     const pdfRows=Array.isArray(V102_PDF_CONTEXT?.rows)?V102_PDF_CONTEXT.rows:[];
     if(!pdfRows.length)throw new Error('Current filters me koi product nahi hai');
