@@ -1952,17 +1952,28 @@ function fastPdfPages(){
 
     const band=(field,value,level)=>{
       if(!value)return;
-      if(y+bandH>H-24)newPage();
       const fills=[[255,243,189],[220,238,255],[237,243,251],[247,248,250]];
       const texts=[[90,59,0],[14,51,126],[39,54,74],[39,54,74]];
       const idx=Math.min(level,3),f=fills[idx],tc=texts[idx];
-      page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re f`);
-      page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-bandH} ${W-margin*2} ${bandH} re S`);
-      const bandFont=adminPortrait?9:(level===0?6.2:5.7);
-      const bandBase=adminPortrait?9.5:7.7;
-      // V84: print only the actual hierarchy value (Flywheel Assembly / CAR / SUV), not CATEGORIES/SEGMENT prefixes.
-      page.cmd.push(`BT /F2 ${bandFont} Tf ${rgb(...tc)} rg ${margin+4+level*(adminPortrait?6:8)} ${H-y-bandBase} Td (${esc(value)}) Tj ET`);
-      y+=bandH;
+      const indent=4+level*(adminPortrait?6:8),textW=Math.max(40,W-margin*2-indent-6);
+      const maxFont=adminPortrait?9:(level===0?6.2:5.7);
+      let font=pdfIndexFitFont(String(value),textW,maxFont,3.35);
+      let lines=[String(value)],actualH=bandH;
+      // V128: very long MODEL/VEHICLE hierarchy values must never run outside the page.
+      // Shrink first; if still too dense, wrap into at most two compact lines.
+      if(font<=3.36 && pdfAscii(value).length>100){
+        font=adminPortrait?4.5:3.8;
+        lines=pdfWrapText(String(value),textW,font,2);
+        actualH=adminPortrait?23.5:18.5;
+      }
+      if(y+actualH>H-24)newPage();
+      page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-actualH} ${W-margin*2} ${actualH} re f`);
+      page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-actualH} ${W-margin*2} ${actualH} re S`);
+      const x=margin+indent,lineGap=font*1.28;
+      const blockH=(lines.length-1)*lineGap;
+      const firstBase=H-y-(actualH/2)+blockH/2-font*.32;
+      lines.forEach((line,li)=>page.cmd.push(`BT /F2 ${font.toFixed(2)} Tf ${rgb(...tc)} rg ${x} ${(firstBase-li*lineGap).toFixed(2)} Td (${esc(line)}) Tj ET`));
+      y+=actualH;
     };
 
     newPage();
