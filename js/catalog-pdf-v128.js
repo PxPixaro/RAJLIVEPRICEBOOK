@@ -7,7 +7,7 @@
   'use strict';
 
   // V132: never reuse incomplete/stale V131 catalogue PDFs after image-pack fixes.
-  try{if('caches' in window)caches.delete('raj-catalog-pdf-v131').catch(()=>{})}catch(_e){}
+  try{if('caches' in window)caches.delete('raj-catalog-pdf-v132').catch(()=>{})}catch(_e){}
 
   const V116_PER_PAGE=12;
   const V116_IMAGE_CONCURRENCY=16;
@@ -70,6 +70,22 @@
     const fields=v117ViewByFields(rows);
     try{if(typeof sortRowsByFields==='function')return {rows:sortRowsByFields(rows,fields),fields}}catch(_e){}
     return {rows:[...rows],fields};
+  }
+  // V133: DELUX catalogue/index is intentionally simplified to SEGMENT > VEHICLE.
+  // MODEL remains product metadata, but it no longer creates hundreds of index sections/pages.
+  function v133EffectiveViewFields(group,rows,detectedFields){
+    const fields=Array.isArray(detectedFields)?detectedFields.filter(Boolean):[];
+    if(v116Key(group)!=='DELUX')return fields;
+    const wanted=new Set(['SEGMENT','VEHICLE']);
+    const reduced=fields.filter(field=>wanted.has(v125ShortViewLabel(v117ViewByLabel(field))));
+    if(reduced.length===2)return reduced;
+    // Defensive fallback for future Excel VIEW BY spelling/order changes.
+    const out=[];
+    ['SEGMENT','VEHICLE'].forEach(name=>{
+      const existing=fields.find(field=>v125ShortViewLabel(v117ViewByLabel(field))===name);
+      if(existing&&!out.includes(existing))out.push(existing);
+    });
+    return out.length?out:fields;
   }
   function v117SectionPath(row,fields){
     return fields.map(field=>({field,label:v117ViewByLabel(field),value:v117GroupValue(row,field)}));
@@ -570,6 +586,7 @@
       objects[indexPageIds[indexPageNo]-1]=`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> /XObject <<${indexX} >> >> /Contents ${indexContentObj} 0 R${indexAnnots.length?` /Annots [${indexAnnots.map(id=>id+' 0 R').join(' ')}]`:''} >>`;
     });
 
+    let v133PreviousSectionPath=[];
     pages.forEach((pagePlan,pageIndex)=>{
       const pageItems=pagePlan.items,cmd=[],pageAnnots=[];
       v116Rect(cmd,H,margin,14,W-margin*2,headerH-15,pale,blue,1.2);
@@ -588,35 +605,55 @@
       const topBackAnn=add(`<< /Type /Annot /Subtype /Link /Rect ${v125PdfRectFromTop(H,topBackX,topBackTop,topBackW,topBackH)} /Border [0 0 0] /Dest [${indexPageIds[0]} 0 R /Fit] >>`);
       pageAnnots.push(topBackAnn);
 
-      // V125: show a VIEW BY title only when a section begins. Continuation rows do not repeat it.
-      let lastSectionKeyOnPage=null;
+      // V133: hierarchical VIEW BY bands. The first VIEW BY value (Category/Segment/etc.)
+      // is printed once for its whole block; child headings change underneath without repeating the parent.
+      // State is carried across PDF pages so a long Segment/Category does not get duplicated on every page.
       for(let rowIndex=0;rowIndex<4;rowIndex++){
         const rowItems=pageItems.slice(rowIndex*3,rowIndex*3+3);
         if(!rowItems.some(Boolean))continue;
         const rowTop=contentTop+rowIndex*(rowBandH+cardH+gapY);
         const firstItem=rowItems.find(Boolean);
         const rowPath=firstItem&&fields.length?v117SectionPath(firstItem.row,fields):[];
-        const rowKey=rowPath.length?v117SectionKey(rowPath):'';
-        const showSection=!!(fields.length&&firstItem&&rowKey!==lastSectionKeyOnPage);
-        if(showSection){
-          const rx=margin,rw=W-margin*2,first=rowPath[0];
-          v116Rect(cmd,H,rx,rowTop,rw,9.5,v116Rgb(255,243,189),v116Rgb(122,155,196),.55);
-          v116Rect(cmd,H,rx,rowTop,4,9.5,orange,null,0);
-          const l1=(v125ShortViewLabel(v117ViewByLabel(first.field))+' - '+v116PdfText(first.value));
-          const s1=v118FitOneLineFont(l1,rw-11,6.3,3.4);
-          v116Text(cmd,H,l1,rx+8,rowTop+2.2,s1,'F2',v116Rgb(90,59,0));
-          if(fields.length>1){
-            const rest=rowPath.slice(1).map(entry=>v125ShortViewLabel(v117ViewByLabel(entry.field))+' - '+v116PdfText(entry.value)).join('  |  ');
-            v116Rect(cmd,H,rx,rowTop+10,rw,9.5,v116Rgb(220,238,255),v116Rgb(122,155,196),.55);
-            const s2=v118FitOneLineFont(rest,rw-9,5.9,3.1);
-            v116Text(cmd,H,rest,rx+5,rowTop+12.1,s2,'F2',deep);
+        let changedAt=-1;
+        if(rowPath.length){
+          for(let i=0;i<rowPath.length;i++){
+            const prev=v133PreviousSectionPath[i];
+            if(!prev||v116Key(prev.value)!==v116Key(rowPath[i].value)||v116Key(prev.label)!==v116Key(rowPath[i].label)){changedAt=i;break}
           }
         }
-        if(firstItem)lastSectionKeyOnPage=rowKey;
+        let bandUsedH=0;
+        if(changedAt>=0){
+          const rx=margin,rw=W-margin*2;
+          if(changedAt===0){
+            // Main VIEW BY: larger yellow title, shown once for the whole block.
+            const first=rowPath[0];
+            v116Rect(cmd,H,rx,rowTop,rw,10.5,v116Rgb(255,243,189),v116Rgb(122,155,196),.60);
+            v116Rect(cmd,H,rx,rowTop,4.5,10.5,orange,null,0);
+            const l1=(v125ShortViewLabel(v117ViewByLabel(first.field))+' - '+v116PdfText(first.value));
+            const s1=v118FitOneLineFont(l1,rw-13,7.2,4.1);
+            v116Text(cmd,H,l1,rx+8,rowTop+2.0,s1,'F2',v116Rgb(90,59,0));
+            bandUsedH=10.5;
+            if(rowPath.length>1){
+              const rest=rowPath.slice(1).map(entry=>v125ShortViewLabel(v117ViewByLabel(entry.field))+' - '+v116PdfText(entry.value)).join('  |  ');
+              v116Rect(cmd,H,rx,rowTop+10.5,rw,9.0,v116Rgb(220,238,255),v116Rgb(122,155,196),.50);
+              const s2=v118FitOneLineFont(rest,rw-9,5.7,3.0);
+              v116Text(cmd,H,rest,rx+5,rowTop+12.4,s2,'F2',deep);
+              bandUsedH=19.5;
+            }
+          }else{
+            // Only the changed child path is printed. Parent Segment/Category is not repeated.
+            const rest=rowPath.slice(changedAt).map(entry=>v125ShortViewLabel(v117ViewByLabel(entry.field))+' - '+v116PdfText(entry.value)).join('  |  ');
+            v116Rect(cmd,H,rx,rowTop,rw,9.5,v116Rgb(220,238,255),v116Rgb(122,155,196),.50);
+            const s2=v118FitOneLineFont(rest,rw-9,5.8,3.0);
+            v116Text(cmd,H,rest,rx+5,rowTop+2.0,s2,'F2',deep);
+            bandUsedH=9.5;
+          }
+          v133PreviousSectionPath=rowPath.map(x=>({...x}));
+        }
 
         rowItems.forEach((item,col)=>{
           if(!item)return;
-          const localIndex=rowIndex*3+col,x=margin+col*(cardW+gapX),top=rowTop+rowBandH;
+          const localIndex=rowIndex*3+col,x=margin+col*(cardW+gapX),top=rowTop+(fields.length?Math.max(10,bandUsedH):0);
           const data=item.row,code=v116Clean(getField(data,'CODE','PART NUMBER','PART NO'))||'—';
           const name=v120CleanProductName(getField(data,'PRODUCT NAME','DESCRIPTION'))||code;
           const details=v116ProductDetails(data,columns);
@@ -716,7 +753,7 @@
   function v124HashRows(rows,fields,group){
     let h=2166136261>>>0;
     const add=value=>{const str=v116Clean(value);for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}};
-    add('V132');add(group);add(rows.length);fields.forEach(add);
+    add('V133');add(group);add(rows.length);fields.forEach(add);
     const info=v121PackInfo(group);if(info){add(info.file);add(info.bytes);add(info.count)}
     for(const row of rows){
       add(getField(row,'CODE','PART NUMBER','PART NO'));add(getField(row,'PRODUCT NAME','DESCRIPTION'));
@@ -727,18 +764,20 @@
   }
   function v124CatalogueState(group){
     const rawRows=v116GroupRows(group);if(!rawRows.length)return null;
-    const sorted=v117SortRowsByViewBy(rawRows),rows=sorted.rows,viewFields=sorted.fields;
+    const detected=v117ViewByFields(rawRows),viewFields=v133EffectiveViewFields(group,rawRows,detected);
+    let rows=[...rawRows];
+    try{if(typeof sortRowsByFields==='function')rows=sortRowsByFields(rawRows,viewFields);else rows=v117SortRowsByViewBy(rawRows).rows}catch(_e){rows=v117SortRowsByViewBy(rawRows).rows}
     const hash=v124HashRows(rows,viewFields,group),key=v116Key(group)+'|'+rows.length+'|'+hash;
     return {group,rows,viewFields,key};
   }
   function v124CacheRequest(key){
-    try{return new Request(new URL('?raj-catalog-cache-v132='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
+    try{return new Request(new URL('?raj-catalog-cache-v133='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
   }
   async function v124PersistentGet(key){
     if(!('caches' in window))return null;
     try{
       const req=v124CacheRequest(key);if(!req)return null;
-      const cache=await caches.open('raj-catalog-pdf-v132');const hit=await cache.match(req);
+      const cache=await caches.open('raj-catalog-pdf-v133');const hit=await cache.match(req);
       if(!hit)return null;const blob=await hit.blob();return blob&&blob.size?blob:null;
     }catch(_e){return null}
   }
@@ -746,8 +785,8 @@
     if(!('caches' in window)||!blob?.size)return;
     try{
       const req=v124CacheRequest(key);if(!req)return;
-      const cache=await caches.open('raj-catalog-pdf-v132');
-      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'132'}}));
+      const cache=await caches.open('raj-catalog-pdf-v133');
+      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'133'}}));
     }catch(_e){}
   }
   async function v124PrepareCatalogue(group){

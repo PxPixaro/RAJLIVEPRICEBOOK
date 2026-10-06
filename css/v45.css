@@ -485,3 +485,20 @@ body:not(.v46-admin) #v46UserChip{display:none!important}
 .v82-image-hit-copy b{font-size:13px;color:#103f73}.v82-image-hit-copy small{font-size:11px;color:#526b83;line-height:1.25}
 .v82-image-score{white-space:nowrap;border-radius:999px;padding:5px 8px;background:#eef6ff;color:#0a5faa;font-size:11px}
 @media(max-width:560px){.v82-image-hit{grid-template-columns:58px minmax(0,1fr) auto}.v82-image-hit>img{width:58px;height:50px}}
+
+/* V133 — keep IMAGE / ORDER inside the visible desktop grid (no right-side hunt). */
+@media (min-width:761px){
+  .table-shell{overflow-x:hidden!important;}
+  #priceTable{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important;}
+  #priceTable th.image-col,#priceTable td.image-col{
+    width:158px!important;min-width:0!important;max-width:158px!important;
+    padding:3px!important;overflow:hidden!important;
+  }
+  #priceTable .v46-image-order-line{gap:2px!important;overflow:hidden!important;justify-content:center!important;}
+  #priceTable .v45-product-actions{gap:2px!important;min-width:0!important;overflow:hidden!important;}
+  #priceTable .v45-qbtn{flex:0 0 20px!important;width:20px!important;min-width:20px!important;height:25px!important;}
+  #priceTable .v45-qty{flex:0 0 30px!important;width:30px!important;min-width:30px!important;max-width:30px!important;height:25px!important;padding:1px!important;}
+  #priceTable .v45-add{flex:0 0 34px!important;width:34px!important;min-width:34px!important;height:25px!important;padding:2px!important;font-size:8px!important;}
+  #priceTable .view-image-btn{flex:0 0 40px!important;width:40px!important;min-width:40px!important;max-width:40px!important;height:38px!important;padding:2px!important;font-size:0!important;}
+  #priceTable .view-image-btn::after{content:"◉";font-size:14px!important;}
+}
