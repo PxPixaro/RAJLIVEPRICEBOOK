@@ -1,0 +1,39 @@
+RAJ LIVE PRICE BOOK V131 — OFFER VIEW + CATALOGUE INDEX/IMAGE FIX
+
+Sirf requested fixes. Baaki V130 functionality unchanged.
+
+1) OFFER / SCHEME — View Poster blank tab fix
+- View Poster ab data: image ko new blank browser tab me open nahi karta.
+- Poster same website ke full-screen professional viewer me khulega.
+- Close (X), outside click aur ESC se viewer close hoga.
+- PDF offer bhi viewer ke andar open hoga; Download option unchanged hai.
+
+2) CATALOGUE INDEX — Full VIEW BY hierarchy
+- Index ab sirf first VIEW BY level tak limited nahi hai.
+- Excel VIEW BY jaise CATAGORIES, SEGMENT ho to:
+  CATEGORY - Fly Wheel Assy
+    SEGMENT - CAR
+    SEGMENT - HCV
+    SEGMENT - LCV
+    SEGMENT - TRACTOR
+  CATEGORY - Fly Wheel Ring
+    SEGMENT - HCV
+- Har index entry clickable hai aur direct related product row/page par jump karti hai.
+- Vehicle / Model jaise additional VIEW BY levels bhi same nested method follow karenge.
+
+3) CATALOGUE PRODUCT IMAGES
+- Product-code exact packed image mapping ko first priority milti hai.
+- V131 naya PDF cache namespace use karta hai, isliye old Coming Soon cached PDF reuse nahi hoga.
+- Pack me image miss ho lekin manifest/direct product image available ho to direct-image safety fallback use hoga.
+
+4) NO-IMAGE PLACEHOLDER
+- Jis product ki image available nahi hai usme solid/double RAJ GROUP logo nahi aayega.
+- Light transparent RAJ GROUP mark + "IMAGE COMING SOON..." dikhaya jayega.
+- Real product image par existing transparent watermark same rahega.
+
+IMPORTANT REPLACE METHOD
+- Live website ka index.html replace MAT karein, kyunki admin se publish kiye Offer posters usme embedded ho sakte hain.
+- Sirf ye 2 files replace karein:
+  js/v45.js
+  js/catalog-pdf-v128.js
+- GitHub upload ke baad browser me ek baar Ctrl+F5 / Hard Refresh karein. Mobile Chrome me tab close/open ya cache refresh karein.
