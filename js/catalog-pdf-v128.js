@@ -1,4 +1,4 @@
-/* RAJ LIVE PRICE BOOK V128 — single-column catalogue index + strict filtered Price Book index.
+/* RAJ LIVE PRICE BOOK V131 — single-column catalogue index + strict filtered Price Book index.
    Keeps V123 catalogue design/image mapping exactly; only download preparation is accelerated.
    Keeps the approved V120 layout/content exactly, but removes click-time image decode/canvas work.
    Product thumbnails are fetched once as a compact per-group JPEG pack and embedded directly in PDF.
@@ -156,18 +156,53 @@
     if(/SUB\s*GROUP/.test(raw))return 'SUB GROUP';
     return raw||'SECTION';
   }
+  function v131IndexValues(row,field){
+    const label=v125ShortViewLabel(v117ViewByLabel(field));
+    const raw=v117GroupValue(row,field);
+    if(label==='SEGMENT'){
+      try{const values=typeof segmentTokens==='function'?segmentTokens(raw):[];if(values&&values.length)return values}catch(_e){}
+      return [...new Set(String(raw||'').split(/[,;|/&]+/).map(v=>v116Clean(v).toUpperCase()).filter(Boolean))]||[raw];
+    }
+    if(label==='VEHICLE'||label==='MODEL'){
+      try{
+        const id=label==='VEHICLE'?'vehicleFilter':'modelFilter';
+        const values=typeof v97FacetSourceMatches==='function'?v97FacetSourceMatches(id,raw):[];
+        if(Array.isArray(values)&&values.length)return [...new Set(values.map(v=>v116Clean(v)).filter(Boolean))];
+      }catch(_e){}
+    }
+    return [raw];
+  }
+  function v131IndexPaths(row,fields){
+    let paths=[[]];
+    fields.forEach(field=>{
+      const label=v125ShortViewLabel(v117ViewByLabel(field));
+      const values=v131IndexValues(row,field).filter(Boolean);
+      const next=[];
+      paths.forEach(path=>values.forEach(value=>next.push([...path,{field,label,value}])));
+      paths=next.length?next:paths;
+    });
+    return paths;
+  }
   function v125IndexEntries(pages,fields){
-    if(!fields.length)return {label:'PRODUCT',entries:[{value:'ALL PRODUCTS',pageIndex:0,rowIndex:0}]};
-    const field=fields[0],label=v125ShortViewLabel(v117ViewByLabel(field)),seen=new Set(),entries=[];
+    if(!fields.length)return {label:'PRODUCT',entries:[{level:0,label:'PRODUCT',value:'ALL PRODUCTS',pageIndex:0,rowIndex:0}]};
+    const seen=new Set(),entries=[];
     pages.forEach((page,pageIndex)=>{
       (page.items||[]).forEach((item,slotIndex)=>{
         if(!item)return;
-        const value=v117GroupValue(item.row,field),key=v116Key(value);
-        if(seen.has(key))return;
-        seen.add(key);
-        entries.push({value,pageIndex,rowIndex:Math.floor(slotIndex/3)});
+        const rowIndex=Math.floor(slotIndex/3);
+        v131IndexPaths(item.row,fields).forEach(path=>{
+          for(let level=0;level<path.length;level++){
+            const prefix=path.slice(0,level+1);
+            const key=prefix.map(x=>v116Key(x.label)+'='+v116Key(x.value)).join('|');
+            if(seen.has(key))continue;
+            seen.add(key);
+            const current=prefix[level];
+            entries.push({level,label:current.label,value:current.value,pageIndex,rowIndex});
+          }
+        });
       });
     });
+    const label=fields.map(field=>v125ShortViewLabel(v117ViewByLabel(field))).join(' > ');
     return {label,entries};
   }
   function v125PdfRectFromTop(H,x,top,w,h){
@@ -299,7 +334,21 @@
     // V121 fast path: ONE compact group-pack request, zero per-product image scanning,
     // zero image decode and zero canvas JPEG conversion at download time.
     const pack=await v121LoadGroupPack(group);
-    if(pack)return rows.map(row=>({row,image:v121PackedImage(row,pack)}));
+    if(pack){
+      const output=rows.map(row=>({row,image:v121PackedImage(row,pack)}));
+      const missing=output.map((item,index)=>!item.image&&v119ManifestImagePath(item.row)?index:-1).filter(index=>index>=0);
+      if(missing.length){
+        let next=0;
+        async function fillMissing(){
+          while(true){
+            const pos=next++;if(pos>=missing.length)return;
+            const index=missing[pos];output[index].image=await v116ResolveProductImage(output[index].row);
+          }
+        }
+        await Promise.all(Array.from({length:Math.min(4,missing.length)},fillMissing));
+      }
+      return output;
+    }
 
     // Safety fallback only if the pack file itself is unavailable. Existing manifest behavior
     // is preserved so the catalogue still works instead of failing completely.
@@ -488,12 +537,16 @@
       slice.forEach((entry,row)=>{
         const globalIndex=indexPageNo*indexRowsPerPage+row;
         const x=margin,top=listTop+row*indexRowH,colW=W-margin*2;
-        v116Rect(indexCmd,H,x,top,colW,indexRowH-2,'1 1 1',line,.45);
-        v116Rect(indexCmd,H,x,top,4,indexRowH-2,orange,null,0);
+        const level=Math.max(0,Number(entry.level)||0);
+        const rowFill=level===0?v116Rgb(250,252,255):level===1?v116Rgb(246,250,255):'1 1 1';
+        v116Rect(indexCmd,H,x,top,colW,indexRowH-2,rowFill,line,.45);
+        v116Rect(indexCmd,H,x,top,level===0?4:2,indexRowH-2,level===0?orange:blue,null,0);
         const no=String(globalIndex+1).padStart(2,'0');
-        v116Text(indexCmd,H,no,x+8,top+3.0,5.5,'F2',muted);
-        const name=v116PdfText(entry.value),nameSize=v118FitOneLineFont(name,colW-104,7.2,4.2);
-        v116Text(indexCmd,H,name,x+27,top+2.4,nameSize,'F2',deep);
+        v116Text(indexCmd,H,no,x+8,top+3.0,5.2,level===0?'F2':'F1',muted);
+        const indent=level*18;
+        const rawName=level===0?v116PdfText(entry.value):(v116PdfText(entry.label)+' - '+v116PdfText(entry.value));
+        const nameSize=v118FitOneLineFont(rawName,colW-104-indent,level===0?7.2:6.4,level===0?4.2:3.8);
+        v116Text(indexCmd,H,rawName,x+27+indent,top+(level===0?2.4:3.0),nameSize,level===0?'F2':'F1',level===0?deep:blue);
         const pageNo=indexPageCount+entry.pageIndex+1;
         v116Text(indexCmd,H,'PAGE '+pageNo,x+colW-46,top+3.0,5.5,'F2',blue);
         const rowTop=contentTop+entry.rowIndex*(rowBandH+cardH+gapY);
@@ -581,8 +634,16 @@
             const drawX=imgX+(imgW-fit.w)/2,drawTop=imgTop+(imgH-fit.h)/2,drawY=H-drawTop-fit.h;
             cmd.push(`q ${fit.w.toFixed(2)} 0 0 ${fit.h.toFixed(2)} ${drawX.toFixed(2)} ${drawY.toFixed(2)} cm /P${localIndex} Do Q`);
           }else{
-            if(rajObj)cmd.push(`q 72 0 0 38 ${(imgX+(imgW-72)/2).toFixed(2)} ${(H-imgTop-imgH/2-17).toFixed(2)} cm /RajLogo Do Q`);
-            v116Text(cmd,H,'COMING SOON',imgX+imgW/2-26,imgTop+imgH-16,7.2,'F2',muted);
+            if(wmObj){
+              const phW=Math.min(92,imgW*.64),phH=phW*(V125_WM_H/V125_WM_W);
+              const phX=imgX+(imgW-phW)/2,phTop=imgTop+(imgH-phH)/2-5;
+              cmd.push('q /GSP gs');
+              cmd.push(`q ${phW.toFixed(2)} 0 0 ${phH.toFixed(2)} ${phX.toFixed(2)} ${(H-phTop-phH).toFixed(2)} cm /Watermark Do Q`);
+              cmd.push('Q');
+            }
+            const soon='IMAGE COMING SOON...';
+            const soonSize=v118FitOneLineFont(soon,imgW-18,6.6,5.0);
+            v116Text(cmd,H,soon,imgX+imgW/2-(soon.length*soonSize*.26),imgTop+imgH-15,soonSize,'F2',v116Rgb(117,132,150));
           }
           if(wmObj&&item.image){
             const wmW=Math.min(82,imgW*.56),wmH=wmW*(V125_WM_H/V125_WM_W);
@@ -631,12 +692,12 @@
       const content=v116Latin1(cmd.join('\n')),contentObj=add({bin:content,head:`<< /Length ${content.length} >>`});
       let xObjects='';if(rajObj)xObjects+=` /RajLogo ${rajObj} 0 R`;if(brandObj)xObjects+=` /BrandLogo ${brandObj} 0 R`;if(wmObj)xObjects+=` /Watermark ${wmObj} 0 R`;
       pageItems.forEach((item,localIndex)=>{if(!item)return;const id=imageObjects.get(item);if(id)xObjects+=` /P${localIndex} ${id} 0 R`});
-      objects[pageIds[pageIndex]-1]=`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> /ExtGState << /GSW << /ca 0.30 /CA 0.30 >> >> /XObject <<${xObjects} >> >> /Contents ${contentObj} 0 R${pageAnnots.length?` /Annots [${pageAnnots.map(id=>id+' 0 R').join(' ')}]`:''} >>`;
+      objects[pageIds[pageIndex]-1]=`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> /ExtGState << /GSW << /ca 0.30 /CA 0.30 >> /GSP << /ca 0.16 /CA 0.16 >> >> /XObject <<${xObjects} >> >> /Contents ${contentObj} 0 R${pageAnnots.length?` /Annots [${pageAnnots.map(id=>id+' 0 R').join(' ')}]`:''} >>`;
     });
     objects[catalog-1]=`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
     const allPageIds=[...indexPageIds,...pageIds];
     objects[pagesObj-1]=`<< /Type /Pages /Kids [${allPageIds.map(id=>id+' 0 R').join(' ')}] /Count ${allPageIds.length} >>`;
-    const out=[v116Latin1('%PDF-1.4\n%V128\n')],offsets=[0];let length=out[0].length;
+    const out=[v116Latin1('%PDF-1.4\n%V131\n')],offsets=[0];let length=out[0].length;
     for(let i=0;i<objects.length;i++){
       offsets[i+1]=length;const prefix=v116Latin1(`${i+1} 0 obj\n`);out.push(prefix);length+=prefix.length;
       const obj=objects[i];
@@ -652,7 +713,7 @@
   function v124HashRows(rows,fields,group){
     let h=2166136261>>>0;
     const add=value=>{const str=v116Clean(value);for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}};
-    add('V128');add(group);add(rows.length);fields.forEach(add);
+    add('V131');add(group);add(rows.length);fields.forEach(add);
     const info=v121PackInfo(group);if(info){add(info.file);add(info.bytes);add(info.count)}
     for(const row of rows){
       add(getField(row,'CODE','PART NUMBER','PART NO'));add(getField(row,'PRODUCT NAME','DESCRIPTION'));
@@ -668,13 +729,13 @@
     return {group,rows,viewFields,key};
   }
   function v124CacheRequest(key){
-    try{return new Request(new URL('?raj-catalog-cache-v128='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
+    try{return new Request(new URL('?raj-catalog-cache-v131='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
   }
   async function v124PersistentGet(key){
     if(!('caches' in window))return null;
     try{
       const req=v124CacheRequest(key);if(!req)return null;
-      const cache=await caches.open('raj-catalog-pdf-v128');const hit=await cache.match(req);
+      const cache=await caches.open('raj-catalog-pdf-v131');const hit=await cache.match(req);
       if(!hit)return null;const blob=await hit.blob();return blob&&blob.size?blob:null;
     }catch(_e){return null}
   }
@@ -682,8 +743,8 @@
     if(!('caches' in window)||!blob?.size)return;
     try{
       const req=v124CacheRequest(key);if(!req)return;
-      const cache=await caches.open('raj-catalog-pdf-v128');
-      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'128'}}));
+      const cache=await caches.open('raj-catalog-pdf-v131');
+      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'131'}}));
     }catch(_e){}
   }
   async function v124PrepareCatalogue(group){
@@ -734,7 +795,7 @@
       }
       toast(`Catalogue ready: ${prepared.rows.length.toLocaleString('en-IN')} products · ${(prepared.pagePlan.length+1)} pages · Price Book VIEW BY hierarchy`);
     }catch(error){
-      console.error('V126 catalogue PDF error:',error);toast('Catalogue PDF create nahi hua. Please try again.');
+      console.error('V131 catalogue PDF error:',error);toast('Catalogue PDF create nahi hua. Please try again.');
     }finally{
       if(button){button.disabled=false;button.textContent=oldText}
       try{window.renderCatalogCard?.(group)}catch(_e){}
