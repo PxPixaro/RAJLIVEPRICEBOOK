@@ -687,6 +687,68 @@ function v71Key(o){return clean(o?.id)||[o?.brand,o?.title,o?.validTill,o?.fileN
 function v71Expired(o){if(!o?.validTill)return false;const d=new Date(o.validTill+'T23:59:59');return !isNaN(d)&&Date.now()>d.getTime()}
 function v71Url(o){if(o.previewUrl)return o.previewUrl;if(o.fileBlob instanceof Blob){o.previewUrl=URL.createObjectURL(o.fileBlob);return o.previewUrl}return o.file||''}
 async function v71Load(){const local=await v71DbAll(),embedded=v71Embedded(),current=V71_OFFERS.slice(),out=[],seen=new Set();[...current,...local,...embedded].forEach(o=>{const k=v71Key(o);if(!k||seen.has(k))return;seen.add(k);out.push(o)});V71_OFFERS=out;return out}
+
+/* ================= V132 OFFER VIEWER + HELP BUTTON VISIBILITY FIX =================
+   1) Offer poster opens inside the website in a full-screen image viewer.
+   2) Capture-phase delegation makes View Poster reliable even after async offer re-render.
+   3) How-to-use copy is larger/readable without changing the current index.html (preserves published offers). */
+function v132UiFixesEnsure(){
+  if(!q('#v132UiFixesStyle')){
+    const style=document.createElement('style');style.id='v132UiFixesStyle';style.textContent=`
+      .v129-help-btn{min-height:48px!important;padding:7px 10px!important;gap:8px!important}
+      .v129-help-icon{flex:0 0 27px!important;width:27px!important;height:27px!important;font-size:17px!important}
+      .v129-help-copy b{font-size:11.2px!important;line-height:1.12!important;letter-spacing:.01em!important}
+      .v129-help-copy small{font-size:8.2px!important;line-height:1.18!important;margin-top:3px!important}
+      #v132OfferViewer{position:fixed;inset:0;z-index:120000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(2,18,38,.90);backdrop-filter:blur(4px)}
+      #v132OfferViewer.open{display:flex!important}
+      #v132OfferViewer .v132-viewer-card{position:relative;width:min(96vw,1100px);height:min(94vh,920px);display:flex;flex-direction:column;background:#071b32;border:2px solid #0b67c2;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.5);overflow:hidden}
+      #v132OfferViewer .v132-viewer-head{flex:0 0 auto;min-height:48px;display:flex;align-items:center;gap:10px;padding:8px 58px 8px 14px;background:#fff;color:#0b376d;border-bottom:3px solid #f4a614}
+      #v132OfferViewer .v132-viewer-head b{font-size:15px}.v132-viewer-head span{font-size:11px;color:#667b92;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #v132OfferViewer .v132-viewer-body{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;overflow:auto;background:#1f1f1f;padding:10px}
+      #v132OfferViewer img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;margin:auto}
+      #v132OfferViewer iframe{width:100%;height:100%;border:0;background:#fff}
+      #v132OfferViewer .v132-viewer-close{position:absolute;right:10px;top:7px;z-index:4;width:38px;height:38px;border:0;border-radius:50%;background:#0b376d;color:#fff;font:900 23px/1 Arial;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.22)}
+      @media(max-width:700px){
+        .v129-help-btn{min-height:38px!important;padding:5px 6px!important;gap:5px!important}.v129-help-icon{flex-basis:22px!important;width:22px!important;height:22px!important;font-size:14px!important}.v129-help-copy b{font-size:8.4px!important}.v129-help-copy small{display:none!important}
+        #v132OfferViewer{padding:6px}#v132OfferViewer .v132-viewer-card{width:99vw;height:94vh;border-radius:11px}#v132OfferViewer .v132-viewer-head b{font-size:13px}
+      }
+    `;document.head.appendChild(style);
+  }
+  if(!q('#v132OfferViewer')){
+    document.body.insertAdjacentHTML('beforeend','<div id="v132OfferViewer" aria-hidden="true"><div class="v132-viewer-card"><button class="v132-viewer-close" type="button" aria-label="Close">×</button><div class="v132-viewer-head"><b id="v132OfferViewerTitle">Offer / Scheme</b><span id="v132OfferViewerSub"></span></div><div id="v132OfferViewerBody" class="v132-viewer-body"></div></div></div>');
+    const viewer=q('#v132OfferViewer');
+    const close=()=>{viewer.classList.remove('open');viewer.setAttribute('aria-hidden','true');const body=q('#v132OfferViewerBody');if(body)body.replaceChildren();const temp=viewer.dataset.tempUrl;if(temp){try{URL.revokeObjectURL(temp)}catch(_e){}delete viewer.dataset.tempUrl}};
+    q('#v132OfferViewer .v132-viewer-close').onclick=close;
+    viewer.addEventListener('click',e=>{if(e.target===viewer)close()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&viewer.classList.contains('open'))close()});
+  }
+}
+function v132OfferOpen(id,fallbackUrl){
+  v132UiFixesEnsure();
+  const o=V71_OFFERS.find(item=>String(item.id)===String(id));
+  const viewer=q('#v132OfferViewer'),body=q('#v132OfferViewerBody');if(!viewer||!body)return;
+  const title=q('#v132OfferViewerTitle'),sub=q('#v132OfferViewerSub');
+  if(title)title.textContent=o?.title||'Offer / Scheme';if(sub)sub.textContent=o?.brand||'';
+  let url=String(fallbackUrl||'')||(o?v71Url(o):'');if(!url)return;
+  body.replaceChildren();
+  const pdf=!!o&&((o.mime||'').includes('pdf')||offerType(url)==='pdf');
+  if(pdf){
+    const openPdf=async()=>{let finalUrl=url;if(String(url).startsWith('data:')){try{const blob=await fetch(url).then(r=>r.blob());finalUrl=URL.createObjectURL(blob);viewer.dataset.tempUrl=finalUrl}catch(_e){}}const frame=document.createElement('iframe');frame.title=o?.title||'Offer PDF';frame.src=finalUrl;body.appendChild(frame)};openPdf();
+  }else{
+    const img=document.createElement('img');img.alt=o?.title||'Offer Poster';img.decoding='async';img.src=url;body.appendChild(img);
+  }
+  viewer.classList.add('open');viewer.setAttribute('aria-hidden','false');
+}
+v132UiFixesEnsure();
+if(!window.RAJ_V132_OFFER_DELEGATE){
+  window.RAJ_V132_OFFER_DELEGATE=true;
+  document.addEventListener('click',e=>{
+    const btn=e.target?.closest?.('.v131-offer-open,.v52-offer-preview');if(!btn)return;
+    e.preventDefault();e.stopPropagation();
+    const card=btn.closest('.v45-offer'),preview=card?.querySelector('.v52-offer-preview img');
+    v132OfferOpen(btn.dataset.offerId,preview?.currentSrc||preview?.src||'');
+  },true);
+}
 function v131OfferViewerEnsure(){
   if(!q('#v131OfferViewerStyle')){
     const style=document.createElement('style');style.id='v131OfferViewerStyle';style.textContent='#v131OfferViewer{position:fixed;inset:0;z-index:120000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,23,46,.86);backdrop-filter:blur(4px)}#v131OfferViewer.open{display:flex}#v131OfferViewer .v131-viewer-card{position:relative;width:min(96vw,1100px);height:min(92vh,900px);display:flex;align-items:center;justify-content:center;background:#fff;border:2px solid #0b5fb7;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden}#v131OfferViewer img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}#v131OfferViewer iframe{width:100%;height:100%;border:0;background:#fff}#v131OfferViewer .v131-viewer-close{position:absolute;right:10px;top:10px;z-index:4;width:40px;height:40px;border:0;border-radius:50%;background:#0b376d;color:#fff;font:900 24px/1 Arial;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.25)}@media(max-width:700px){#v131OfferViewer{padding:8px}#v131OfferViewer .v131-viewer-card{width:98vw;height:92vh;border-radius:11px}}';document.head.appendChild(style);
@@ -709,7 +771,7 @@ async function v131OfferOpen(id){
   viewer.classList.add('open');viewer.setAttribute('aria-hidden','false');
 }
 function v71Card(o,admin){const url=v71Url(o),pdf=(o.mime||'').includes('pdf')||offerType(url)==='pdf',expired=v71Expired(o),oid=escAttr(o.id);const poster=pdf?'<div class="v50-pdf-poster"><b>PDF</b><span>OFFER / SCHEME</span></div>':'<button class="v52-offer-preview" type="button" data-offer-id="'+oid+'"><img src="'+escAttr(url)+'" alt="'+escAttr(o.title||'Offer')+'"></button>';return '<article class="v45-offer v50-offer-card '+(expired?'v67-expired-card':'')+'">'+poster+'<div class="v50-offer-copy"><div class="v67-offer-topline"><span class="v50-offer-brand">'+escapeHtml(o.brand||'ALL BRANDS')+'</span><span class="'+(expired?'v67-expired':'v67-active')+'">'+(expired?'EXPIRED':'ACTIVE')+'</span></div><strong>'+escapeHtml(o.title||'Offer Scheme')+'</strong>'+(o.narration?'<p>'+escapeHtml(o.narration)+'</p>':'')+'<small>'+(o.validTill?'Valid till '+escapeHtml(o.validTill):'Current scheme / offer')+'</small></div><div class="v45-actions v52-offer-actions"><button class="v45-secondary v131-offer-open" type="button" data-offer-id="'+oid+'">'+(pdf?'Open PDF':'View Poster')+'</button><a class="v45-primary" download="'+escAttr(o.fileName||'RAJ-Offer')+'" href="'+escAttr(url)+'">Download</a>'+(admin?'<button class="v45-danger v71-offer-delete" data-offer-id="'+oid+'" type="button">Delete Offer</button>':'')+'</div></article>'}
-function v71Render(admin){const grid=q('#v71OfferGrid'),cnt=q('#v71OfferCount');if(cnt)cnt.textContent=V71_OFFERS.length+' Offer'+(V71_OFFERS.length===1?'':'s');if(grid)grid.innerHTML=V71_OFFERS.length?V71_OFFERS.map(o=>v71Card(o,admin)).join(''):'<div class="v45-empty">No offer / scheme published yet.</div>';qa('.v52-offer-preview,.v131-offer-open').forEach(b=>b.onclick=()=>v131OfferOpen(b.dataset.offerId));qa('.v71-offer-delete').forEach(b=>b.onclick=async()=>{const id=b.dataset.offerId;V71_OFFERS=V71_OFFERS.filter(o=>String(o.id)!==String(id));await v71DbDelete(id);window.RAJ_EMBEDDED_OFFERS_V71=V71_OFFERS.map(o=>({...o,fileBlob:undefined,previewUrl:undefined,source:'embedded'}));v71Render(admin);notify('Offer deleted. Download Updated HTML to publish this change.')})}
+function v71Render(admin){const grid=q('#v71OfferGrid'),cnt=q('#v71OfferCount');if(cnt)cnt.textContent=V71_OFFERS.length+' Offer'+(V71_OFFERS.length===1?'':'s');if(grid)grid.innerHTML=V71_OFFERS.length?V71_OFFERS.map(o=>v71Card(o,admin)).join(''):'<div class="v45-empty">No offer / scheme published yet.</div>';qa('.v52-offer-preview,.v131-offer-open').forEach(b=>b.onclick=()=>{const card=b.closest('.v45-offer'),img=card?.querySelector('.v52-offer-preview img');v132OfferOpen(b.dataset.offerId,img?.currentSrc||img?.src||'')});qa('.v71-offer-delete').forEach(b=>b.onclick=async()=>{const id=b.dataset.offerId;V71_OFFERS=V71_OFFERS.filter(o=>String(o.id)!==String(id));await v71DbDelete(id);window.RAJ_EMBEDDED_OFFERS_V71=V71_OFFERS.map(o=>({...o,fileBlob:undefined,previewUrl:undefined,source:'embedded'}));v71Render(admin);notify('Offer deleted. Download Updated HTML to publish this change.')})}
 async function v71AddOfferNow(){const admin=V45.customer?.role==='admin'&&normalizeSearchText(V45.customer?.name)==='PIXARO';if(!admin)return;const brand=clean(q('#v50OfferBrand')?.value),title=clean(q('#v50OfferTitle')?.value),narration=clean(q('#v50OfferNarration')?.value),validTill=clean(q('#v50OfferValid')?.value),file=q('#v50OfferFile')?.files?.[0],msg=q('#v71OfferAdminMsg'),btn=q('#v50OfferAdd');if(!brand||!title){if(msg)msg.textContent='Brand Name aur Scheme Title required hai.';return}if(!file){if(msg)msg.textContent='Poster image ya PDF choose karein.';return}if(file.size>15*1024*1024){if(msg)msg.textContent='Poster file 15 MB se chhoti rakhein.';return}if(btn){btn.disabled=true;btn.textContent='Adding…'}const offer={id:'offer_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),brand,title,narration,validTill,fileBlob:file,fileName:file.name,mime:file.type,previewUrl:URL.createObjectURL(file),createdAt:new Date().toISOString(),source:'admin'};V71_OFFERS.unshift(offer);v71Render(true);if(msg)msg.textContent='Offer added. Preview ready below.';try{await v71DbPut({...offer,previewUrl:''});if(msg)msg.textContent='Offer saved. Download Updated HTML to publish on GitHub.'}catch(e){console.error(e);if(msg)msg.textContent='Preview ready. Browser storage failed; export Updated HTML now.'}finally{if(btn){btn.disabled=false;btn.textContent='Add Offer / Scheme'}}}
 async function openOffers(){const admin=V45.customer?.role==='admin'&&normalizeSearchText(V45.customer?.name)==='PIXARO';const upload=admin?'<section class="v50-offer-admin"><div class="v50-offer-admin-title"><span>PIXARO ADMIN ONLY</span><h3>Pixaro Offer Upload</h3><p>Brand-wise JPG, PNG, WEBP ya PDF poster add karein.</p></div><div class="v50-offer-form"><label>BRAND NAME<input id="v50OfferBrand" placeholder="Example: BRAVO"></label><label>SCHEME TITLE<input id="v50OfferTitle" placeholder="Example: New Gift Scheme"></label><label class="v50-offer-wide">NARRATION / DETAILS<textarea id="v50OfferNarration" placeholder="Offer details..."></textarea></label><label>VALID TILL (OPTIONAL)<input id="v50OfferValid" type="date"></label><label>POSTER FILE<input id="v50OfferFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label></div><button id="v50OfferAdd" class="v45-primary" type="button">Add Offer / Scheme</button><div id="v71OfferAdminMsg" class="v45-api-note">Image/PDF select karke Add karein. Card turant niche dikhega.</div></section>':'';drawer('<section class="v45-panel v50-offer-panel"><div class="v50-offer-head"><div><h2>Offer / Scheme</h2><p class="v45-sub">Latest brand offers, scheme posters and customer downloads.</p></div><span id="v71OfferCount" class="v50-offer-count">Loading…</span></div>'+upload+'<div id="v71OfferGrid" class="v45-offer-grid"><div class="v45-empty">Loading offers…</div></div></section>');if(admin){const b=q('#v50OfferAdd');if(b)b.onclick=v71AddOfferNow}v71Load().then(()=>v71Render(admin)).catch(()=>v71Render(admin));}
 function v71BlobToDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)})}

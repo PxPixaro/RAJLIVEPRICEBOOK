@@ -1,10 +1,13 @@
-/* RAJ LIVE PRICE BOOK V131 — single-column catalogue index + strict filtered Price Book index.
+/* RAJ LIVE PRICE BOOK V132 — single-column catalogue index + strict filtered Price Book index.
    Keeps V123 catalogue design/image mapping exactly; only download preparation is accelerated.
    Keeps the approved V120 layout/content exactly, but removes click-time image decode/canvas work.
    Product thumbnails are fetched once as a compact per-group JPEG pack and embedded directly in PDF.
    Keeps V122 layout/row behavior. Makes pack index self-contained and adds direct shared-image fallback. */
 (function(){
   'use strict';
+
+  // V132: never reuse incomplete/stale V131 catalogue PDFs after image-pack fixes.
+  try{if('caches' in window)caches.delete('raj-catalog-pdf-v131').catch(()=>{})}catch(_e){}
 
   const V116_PER_PAGE=12;
   const V116_IMAGE_CONCURRENCY=16;
@@ -251,7 +254,7 @@
     if(!key||!info||!info.file)return null;
     const cached=V121_PACK_CACHE.get(key);
     if(cached){v121TouchPackCache(key,cached);return cached}
-    const promise=fetch(info.file,{cache:'force-cache'}).then(async response=>{
+    const promise=fetch(info.file+'?v=132-'+encodeURIComponent(String(info.bytes||info.count||'pack')),{cache:'force-cache'}).then(async response=>{
       if(!response.ok)throw new Error('Catalogue image pack unavailable: '+response.status);
       const buffer=await response.arrayBuffer();
       return {key,info,buffer};
@@ -697,7 +700,7 @@
     objects[catalog-1]=`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`;
     const allPageIds=[...indexPageIds,...pageIds];
     objects[pagesObj-1]=`<< /Type /Pages /Kids [${allPageIds.map(id=>id+' 0 R').join(' ')}] /Count ${allPageIds.length} >>`;
-    const out=[v116Latin1('%PDF-1.4\n%V131\n')],offsets=[0];let length=out[0].length;
+    const out=[v116Latin1('%PDF-1.4\n%V132\n')],offsets=[0];let length=out[0].length;
     for(let i=0;i<objects.length;i++){
       offsets[i+1]=length;const prefix=v116Latin1(`${i+1} 0 obj\n`);out.push(prefix);length+=prefix.length;
       const obj=objects[i];
@@ -713,7 +716,7 @@
   function v124HashRows(rows,fields,group){
     let h=2166136261>>>0;
     const add=value=>{const str=v116Clean(value);for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}};
-    add('V131');add(group);add(rows.length);fields.forEach(add);
+    add('V132');add(group);add(rows.length);fields.forEach(add);
     const info=v121PackInfo(group);if(info){add(info.file);add(info.bytes);add(info.count)}
     for(const row of rows){
       add(getField(row,'CODE','PART NUMBER','PART NO'));add(getField(row,'PRODUCT NAME','DESCRIPTION'));
@@ -729,13 +732,13 @@
     return {group,rows,viewFields,key};
   }
   function v124CacheRequest(key){
-    try{return new Request(new URL('?raj-catalog-cache-v131='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
+    try{return new Request(new URL('?raj-catalog-cache-v132='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
   }
   async function v124PersistentGet(key){
     if(!('caches' in window))return null;
     try{
       const req=v124CacheRequest(key);if(!req)return null;
-      const cache=await caches.open('raj-catalog-pdf-v131');const hit=await cache.match(req);
+      const cache=await caches.open('raj-catalog-pdf-v132');const hit=await cache.match(req);
       if(!hit)return null;const blob=await hit.blob();return blob&&blob.size?blob:null;
     }catch(_e){return null}
   }
@@ -743,8 +746,8 @@
     if(!('caches' in window)||!blob?.size)return;
     try{
       const req=v124CacheRequest(key);if(!req)return;
-      const cache=await caches.open('raj-catalog-pdf-v131');
-      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'131'}}));
+      const cache=await caches.open('raj-catalog-pdf-v132');
+      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'132'}}));
     }catch(_e){}
   }
   async function v124PrepareCatalogue(group){
@@ -795,7 +798,7 @@
       }
       toast(`Catalogue ready: ${prepared.rows.length.toLocaleString('en-IN')} products · ${(prepared.pagePlan.length+1)} pages · Price Book VIEW BY hierarchy`);
     }catch(error){
-      console.error('V131 catalogue PDF error:',error);toast('Catalogue PDF create nahi hua. Please try again.');
+      console.error('V132 catalogue PDF error:',error);toast('Catalogue PDF create nahi hua. Please try again.');
     }finally{
       if(button){button.disabled=false;button.textContent=oldText}
       try{window.renderCatalogCard?.(group)}catch(_e){}
