@@ -1,0 +1,7 @@
+RAJ LIVE PRICE BOOK V132
+
+1. Offer / Scheme ka View Poster ab website ke andar full-screen viewer me reliably open hota hai. Async re-render ke baad bhi button capture-delegation se kaam karega.
+2. How to use this platform button ka text desktop par bada aur readable kiya gaya hai; mobile layout compact rakha gaya hai.
+3. Catalogue PDF cache V132 namespace par shift kiya gaya hai. Purana V131 incomplete-image PDF cache delete hota hai, isliye AAYUB jaise groups ka catalogue fresh rebuild hoga.
+4. Catalogue image pack request ko V132 query version diya gaya hai, taaki browser old/stale .bin pack na uthaye. Exact Product Code mapping first priority hai; alias/direct-image fallback existing logic ke saath retained hai.
+5. Existing filters, pricelist, order/cart, learning center, offers data aur index.html ko change nahi kiya gaya.

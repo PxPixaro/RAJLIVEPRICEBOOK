@@ -1,0 +1,17 @@
+V132 REPLACE INSTRUCTIONS
+
+Current live project V131/V130 par in files ko same path par replace/upload karein:
+1) js/v45.js
+2) js/catalog-pdf-v128.js
+3) js/catalog-pack-index-v123.js
+4) assets/catalog-packs-v121/ ka complete folder
+
+index.html ko replace NA karein. Isse aapke live published Offer/Scheme embedded data safe rahenge.
+
+Upload ke baad testing device par ek baar Ctrl+F5 / Hard Refresh karein (mobile Chrome me tab close karke site dubara open karein). V132 catalogue code purana V131 PDF cache khud delete karega aur fresh image catalogue rebuild karega.
+
+Expected AAYUB data check:
+- Products: 91
+- Exact product-code pack images: 88
+- Truly missing codes: AA1044, AA3016, AA3019
+In 3 missing products par hi IMAGE COMING SOON placeholder expected hai.
