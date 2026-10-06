@@ -1,0 +1,15 @@
+RAJ LIVE PRICE BOOK - V129 LEARNING CENTER
+
+Base: V128 Final + SOP Help. Existing Price Book/Catalogue/Cart/Search logic unchanged.
+
+Naya update:
+1. Existing "i - How to use this platform" button ab Learning Center kholta hai.
+2. Learning Center me 3 options:
+   - Quick Guided Tour: live screen ke controls ko step-by-step highlight karta hai.
+   - Watch Quick Video: ~71 second Hindi-caption tutorial video.
+   - Hindi SOP PDF: complete professional manual.
+3. Quick Tour filters, Search Anything, Universal/Voice Search, Image Search, Product Results, Image View, Qty/Add, Pricelist/Catalogue, Index-wise PDF aur Order Cart ko explain karta hai.
+4. Video project ke andar local MP4 hai; internet/YouTube ki dependency nahi hai.
+5. Desktop aur mobile responsive help UI.
+
+Core data, filters, PDF, catalogue, order, cart, logo, image-search aur existing V128 functionality me koi change nahi kiya gaya.
