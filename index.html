@@ -563,6 +563,17 @@
 }
 </style>
 
+
+<style id="v129-sop-help-button">
+.v129-help-btn{box-sizing:border-box;width:100%;min-height:36px;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 7px;border:1px solid #f0b84e;border-radius:10px;background:linear-gradient(180deg,#fff9e8,#fff);color:#0a4f99;text-decoration:none;box-shadow:0 2px 7px rgba(24,70,116,.06);font-family:inherit;cursor:pointer}
+.v129-help-btn:hover{border-color:#0b67c2;background:#eef7ff}
+.v129-help-icon{display:grid;place-items:center;flex:0 0 23px;width:23px;height:23px;border-radius:50%;background:#0b67c2;color:#fff;font:900 15px/1 Arial,sans-serif}
+.v129-help-copy{min-width:0;display:block;text-align:left;line-height:1.05}.v129-help-copy b{display:block;color:#0b4f91;font-size:8.2px;line-height:1.12}.v129-help-copy small{display:block;margin-top:2px;color:#6b7f95;font-size:6.5px;line-height:1.15}
+@media(max-width:700px){.v129-help-btn{min-height:31px;padding:4px;gap:4px}.v129-help-icon{flex-basis:19px;width:19px;height:19px;font-size:12px}.v129-help-copy b{font-size:6.7px}.v129-help-copy small{display:none}}
+@media(max-width:420px){.v129-help-copy b{font-size:6.2px}}
+@media print{.v129-help-btn{display:none!important}}
+</style>
+
 </head>
 <body><div id="v74BootSplash" class="v74-boot-splash open" aria-live="polite" aria-busy="true"><div class="v74-boot-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Preparing RAJ Live Price Book</h2><p>Loading the latest product data for a stable experience…</p><div class="v74-progress-track"><span></span></div><small>Please wait a few seconds</small></div></div><div class="print-watermark-layer" aria-hidden="true">
   <img class="print-watermark" src="assets/company-logo/rajgroup-watermark-93kb.png" alt="">
@@ -612,6 +623,7 @@
       <div class="panel-title v47-panel-title">
         <div><h3 data-editable="true" data-edit-key="filterTitle">Product Filters</h3><p data-editable="true" data-edit-key="filterTagline">Search products accurately using the filters below. Multiple filters work together for precise results.</p></div>
         <div class="v47-filter-actions">
+          <a id="v129HelpBtn" class="v129-help-btn" href="docs/RAJ-Live-Price-Book-How-To-Use-Hindi-SOP.pdf" target="_blank" rel="noopener noreferrer" title="How to use this platform - इस प्लेटफॉर्म को कैसे उपयोग करें" aria-label="How to use this platform - इस प्लेटफॉर्म को कैसे उपयोग करें"><span class="v129-help-icon" aria-hidden="true">i</span><span class="v129-help-copy"><b>How to use this platform</b><small>इस प्लेटफॉर्म को कैसे उपयोग करें</small></span></a>
           <button id="resetBtn" class="link-btn">Reset all</button>
           <button id="cartBtn" class="v46-header-cart v47-filter-cart" type="button" title="Open Order Cart"><span class="v46-cart-icon">🛒</span><span><small>ORDER CART</small><b>Products <em id="cartCount">0</em></b></span></button>
         </div>

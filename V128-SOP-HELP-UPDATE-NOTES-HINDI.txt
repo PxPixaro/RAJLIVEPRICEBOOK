@@ -1,0 +1,18 @@
+RAJ LIVE PRICE BOOK - V128 FINAL SOP HELP UPDATE
+
+Sirf user-help update add kiya gaya hai. Existing V128 functionality ko change nahi kiya gaya.
+
+1. Product Filters action area me naya information button add:
+   How to use this platform
+   इस प्लेटफॉर्म को कैसे उपयोग करें
+
+2. Button click/tap karte hi Hindi SOP PDF new browser tab me open hoti hai.
+
+3. SOP PDF project ke andar local path par included hai:
+   docs/RAJ-Live-Price-Book-How-To-Use-Hindi-SOP.pdf
+
+4. SOP me Filters, Search Anything, Universal Search, Voice Search, Image Search,
+   Product Image View, Pricelist PDF, Catalogue PDF, Qty +/- ADD, Cart, Remarks,
+   Excel Order aur WhatsApp Share ka professional Hindi guide diya gaya hai.
+
+5. Existing Price Book, Catalog, filters, PDFs, order/cart aur mobile logic untouched hai.
