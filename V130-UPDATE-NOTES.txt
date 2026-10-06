@@ -1,0 +1,14 @@
+RAJ LIVE PRICE BOOK V130
+
+Only requested updates on top of V129:
+1. Desktop Product Filters header: How to use this platform, Reset all and Order Cart are now side-by-side in the open center/right area. Mobile layout remains compact/stacked.
+2. Rate/MRP confirmation audio warning added for:
+   - Order Cart button
+   - Download Pricelist button
+   - Index Pricelist / Only Index download buttons
+   - Share Excel Order button
+3. Hindi warning line:
+   "रेट और एम आर पी ऊपर नीचे हो सकते हैं। कृपया रेट और एम आर पी कन्फर्म करके ही ऑर्डर की पुष्टि करें।"
+4. A matching on-screen warning toast is shown while the audio plays.
+5. Audio file is preloaded and browser Hindi speech is used as fallback if MP3 playback fails.
+6. All existing V129 Learning Center, Quick Tour, Video, SOP and V128 project functions remain unchanged.
