@@ -570,7 +570,7 @@ function initAuthGate(){
 
   // V74 customer-facing preparation splash.
   if(!q('#v74BootSplash')){
-    document.body.insertAdjacentHTML('beforeend','<div id="v74BootSplash" class="v74-boot-splash open"><div class="v74-boot-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Preparing RAJ Live Price Book</h2><p>Loading product data for a faster experience…</p><div class="v74-progress-track"><span></span></div><small>Opening in a few seconds</small></div></div>');
+    document.body.insertAdjacentHTML('beforeend','<div id="v74BootSplash" class="v74-boot-splash open" aria-busy="true"><div class="v132-parts-layer" aria-hidden="true"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA1004_1.webp" alt="" aria-hidden="true" style="--top:7%;--dur:12.5s;--delay:-1s;--size:74px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA3018_1.webp" alt="" aria-hidden="true" style="--top:18%;--dur:15s;--delay:-7s;--size:88px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA3003_1.webp" alt="" aria-hidden="true" style="--top:30%;--dur:13.5s;--delay:-4s;--size:68px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA1022_1.webp" alt="" aria-hidden="true" style="--top:43%;--dur:16.5s;--delay:-12s;--size:96px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA1032_1.webp" alt="" aria-hidden="true" style="--top:57%;--dur:14s;--delay:-9s;--size:78px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA1016_1.webp" alt="" aria-hidden="true" style="--top:72%;--dur:17s;--delay:-15s;--size:84px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA1006_1.webp" alt="" aria-hidden="true" style="--top:84%;--dur:12s;--delay:-5s;--size:70px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA3002_1.webp" alt="" aria-hidden="true" style="--top:12%;--dur:15.5s;--delay:-11s;--size:92px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA3026_1.webp" alt="" aria-hidden="true" style="--top:36%;--dur:13s;--delay:-2s;--size:76px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA7007_1.webp" alt="" aria-hidden="true" style="--top:64%;--dur:18s;--delay:-14s;--size:82px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA1041_1.webp" alt="" aria-hidden="true" style="--top:77%;--dur:14.8s;--delay:-8s;--size:68px"><img class="v132-part" src="assets/Products%20Images/AAYUB/AA4002_1.webp" alt="" aria-hidden="true" style="--top:50%;--dur:16s;--delay:-6s;--size:90px"></div><div class="v74-boot-card"><img src="assets/company-logo/raj-group-logo-optimized.webp" alt="Raj Group"><div class="v46-login-kicker">RAJ AGENCIES</div><h2>Preparing RAJ Live Price Book</h2><p>Latest products and prices are getting ready for you.</p><div id="v132BootStatus" class="v132-boot-status">Loading product data…</div><div class="v74-progress-track"><span></span></div><small>Please wait — opening automatically</small></div></div>');
   }
 
   const splash=q('#v74BootSplash');
@@ -621,21 +621,27 @@ function initAuthGate(){
     waitStable();
   };
 
+  const bootStatus=q('#v132BootStatus');
+  const v132StatusMessages=['Loading product data…','Checking latest live prices…','Preparing filters & product images…','Almost ready…'];
+  let v132StatusIndex=0;
+  const v132StatusTimer=setInterval(()=>{if(opened){clearInterval(v132StatusTimer);return}v132StatusIndex=(v132StatusIndex+1)%v132StatusMessages.length;if(bootStatus)bootStatus.textContent=v132StatusMessages[v132StatusIndex]},1450);
+
   const openPublicDashboard=()=>{
     if(opened||revealStarted)return;
     const elapsed=performance.now()-started;
     const boot=window.RAJ_BOOT_STATE||{};
-    const quickReady=!!boot.quick;
-    // V121: AAYUB quick metadata is enough for first paint. Full 45k-row search/cache
-    // and hosted workbook verification continue in the background instead of delaying UI.
-    if(elapsed<650){setTimeout(openPublicDashboard,Math.max(35,650-elapsed));return}
-    if(!quickReady&&elapsed<2600){setTimeout(openPublicDashboard,65);return}
+    // V132: keep the engaging Preparing screen up while the hosted workbook/filter
+    // readiness check finishes. On slow networks we allow up to ~9 seconds, then use
+    // the bundled data safely instead of trapping the customer on a loader.
+    if(elapsed<1100){setTimeout(openPublicDashboard,Math.max(45,1100-elapsed));return}
+    if(!boot.ready&&elapsed<9000){setTimeout(openPublicDashboard,90);return}
+    clearInterval(v132StatusTimer);if(bootStatus)bootStatus.textContent=boot.ready?'Latest price book ready':'Opening with saved price book…';
     prepareAayubBeforeReveal();
   };
 
-  ['raj-boot-ready','raj-data-preloaded','raj-hosted-price-ready','raj-v69-aayub-ready'].forEach(eventName=>window.addEventListener(eventName,openPublicDashboard));
+  ['raj-boot-ready','raj-data-preloaded','raj-hosted-price-ready','raj-v69-aayub-ready','raj-filter-master-ready'].forEach(eventName=>window.addEventListener(eventName,openPublicDashboard));
   openPublicDashboard();
-  setTimeout(openPublicDashboard,2700);
+  setTimeout(openPublicDashboard,9100);
 }
 async function doGateLogin(){
   const rawUser=clean(q('#v46LoginUser')?.value),password=q('#v46LoginPassword')?.value||'',msg=q('#v46LoginMsg');

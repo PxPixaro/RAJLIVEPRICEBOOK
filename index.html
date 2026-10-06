@@ -501,17 +501,24 @@
 
 <style id="v114-first-paint-splash">
 /* V114: critical boot splash is inline so the dashboard can never paint first. */
-#v74BootSplash.v74-boot-splash{position:fixed;inset:0;z-index:10040;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#123b68,#0c5a91 58%,#176fa3)}
+#v74BootSplash.v74-boot-splash{position:fixed;inset:0;z-index:10040;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden;background:radial-gradient(circle at 50% 44%,#1169a8 0,#0a4f86 43%,#062d58 100%)}
 #v74BootSplash.v74-boot-splash:not(.open){display:none}
-#v74BootSplash .v74-boot-card{width:min(380px,92vw);padding:30px 28px 26px;border-radius:22px;background:#fff;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.28)}
-#v74BootSplash .v74-boot-card img{width:100px;height:auto;margin-bottom:7px}
-#v74BootSplash .v46-login-kicker{color:#0b66c3;font-size:10px;font-weight:900;letter-spacing:.12em}
-#v74BootSplash .v74-boot-card h2{margin:7px 0;color:#123f70;font-size:23px;line-height:1.15}
-#v74BootSplash .v74-boot-card p{margin:0 0 18px;color:#687e94;font-size:11px;font-weight:700}
+#v74BootSplash:before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,.035),transparent 42%,rgba(255,176,0,.05));pointer-events:none}
+#v74BootSplash .v132-parts-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#v74BootSplash .v132-part{--size:82px;position:absolute;left:-140px;top:var(--top);width:var(--size);height:var(--size);padding:8px;border:1px solid rgba(255,255,255,.28);border-radius:18px;background:rgba(255,255,255,.92);box-shadow:0 14px 35px rgba(0,20,55,.24);object-fit:contain;opacity:.76;animation:v132PartFly var(--dur) linear infinite;animation-delay:var(--delay);will-change:transform}
+#v74BootSplash .v74-boot-card{position:relative;z-index:2;width:min(390px,92vw);padding:30px 28px 25px;border:1px solid rgba(255,255,255,.75);border-radius:24px;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);text-align:center;box-shadow:0 28px 85px rgba(0,0,0,.30)}
+#v74BootSplash .v74-boot-card>img{width:112px;height:auto;margin-bottom:7px;filter:drop-shadow(0 5px 10px rgba(5,57,107,.13))}
+#v74BootSplash .v46-login-kicker{color:#0b66c3;font-size:10px;font-weight:900;letter-spacing:.14em}
+#v74BootSplash .v74-boot-card h2{margin:7px 0 5px;color:#123f70;font-size:23px;line-height:1.15}
+#v74BootSplash .v74-boot-card p{margin:0 0 16px;color:#627990;font-size:11px;font-weight:700}
+#v74BootSplash .v132-boot-status{min-height:16px;margin:0 0 10px;color:#0a5faa;font-size:10px;font-weight:800;letter-spacing:.02em}
 #v74BootSplash .v74-boot-card small{display:block;margin-top:11px;color:#8293a3;font-size:9px;font-weight:800}
-#v74BootSplash .v74-progress-track{position:relative;height:8px;overflow:hidden;border-radius:999px;background:#e7eff7}
-#v74BootSplash .v74-progress-track span{position:absolute;inset:0 auto 0 0;width:42%;border-radius:inherit;background:linear-gradient(90deg,#0b66c3,#1a8ad5);animation:v114BootMove 1.05s ease-in-out infinite}
+#v74BootSplash .v74-progress-track{position:relative;height:8px;overflow:hidden;border-radius:999px;background:#e1ebf5}
+#v74BootSplash .v74-progress-track span{position:absolute;inset:0 auto 0 0;width:42%;border-radius:inherit;background:linear-gradient(90deg,#0b66c3,#1a8ad5,#ffb000);animation:v114BootMove 1.05s ease-in-out infinite}
 @keyframes v114BootMove{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
+@keyframes v132PartFly{0%{transform:translate3d(-8vw,28px,0) rotate(-7deg) scale(.82)}50%{transform:translate3d(58vw,-18px,0) rotate(7deg) scale(1)}100%{transform:translate3d(122vw,-50px,0) rotate(-3deg) scale(.88)}}
+@media(max-width:700px){#v74BootSplash .v132-part{--size:64px;opacity:.62}#v74BootSplash .v74-boot-card{padding:26px 22px 22px}#v74BootSplash .v74-boot-card>img{width:96px}}
+@media(prefers-reduced-motion:reduce){#v74BootSplash .v132-part{animation-duration:22s!important}#v74BootSplash .v74-progress-track span{animation-duration:2.2s!important}}
 </style>
 
 <style id="v115-mobile-product-table">
@@ -1794,22 +1801,40 @@
 
     function v103InstallMultiControls(){
       FAST_FILTERS.filter(function(def){return V103_MULTI_IDS.includes(def.id)}).forEach(function(def){
-        const select=document.getElementById(def.id);if(!select||v103Control(def.id))return;
+        const select=document.getElementById(def.id);if(!select)return;
         select.classList.add('v103-native-select');
-        const wrap=document.createElement('div');wrap.className='v103-multi-wrap';wrap.dataset.filterId=def.id;
-        wrap.innerHTML='<button class="v103-multi-button" type="button" aria-haspopup="listbox"></button><div class="v103-multi-panel" role="listbox" aria-multiselectable="true"><div class="v104-multi-search-host"></div><div class="v107-multi-clear-host"><button class="v107-multi-clear" type="button">CLEAR</button></div><div class="v104-multi-options"></div></div>';
-        select.insertAdjacentElement('afterend',wrap);
+
+        // V132: exported HTML can already contain the visible multi-select markup.
+        // Re-use it and bind events instead of returning early; otherwise every
+        // dropdown looks correct but is completely dead after an admin HTML export.
+        let wrap=v103Control(def.id);
+        if(!wrap){
+          wrap=document.createElement('div');wrap.className='v103-multi-wrap';wrap.dataset.filterId=def.id;
+          wrap.innerHTML='<button class="v103-multi-button" type="button" aria-haspopup="listbox"></button><div class="v103-multi-panel" role="listbox" aria-multiselectable="true"><div class="v104-multi-search-host"></div><div class="v107-multi-clear-host"><button class="v107-multi-clear" type="button">CLEAR</button></div><div class="v104-multi-options"></div></div>';
+          select.insertAdjacentElement('afterend',wrap);
+        }
+        if(wrap.dataset.v132Bound==='1'){v103RenderMulti(def.id);return}
+        wrap.dataset.v132Bound='1';
+
         const button=wrap.querySelector('.v103-multi-button'),panel=wrap.querySelector('.v103-multi-panel'),clearButton=wrap.querySelector('.v107-multi-clear');
-        const search=document.querySelector('.filter-search[data-target="'+def.id+'"]');
-        if(search){search.classList.add('v104-panel-search');wrap.querySelector('.v104-multi-search-host').appendChild(search);search.addEventListener('click',function(event){event.stopPropagation()});search.addEventListener('keydown',function(event){if(event.key==='Escape'){event.preventDefault();wrap.classList.remove('open');button.focus()}})}
-        button.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){if(x!==wrap)x.classList.remove('open')});const opening=!wrap.classList.contains('open');wrap.classList.toggle('open');v103RenderMulti(def.id);if(opening&&search)requestAnimationFrame(function(){search.focus();search.select()})});
+        if(!button||!panel)return;
+        let search=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');
+        const searchHost=wrap.querySelector('.v104-multi-search-host');
+        if(search&&searchHost&&search.parentElement!==searchHost)searchHost.appendChild(search);
+        if(search){search.classList.add('v104-panel-search');search.addEventListener('click',function(event){event.stopPropagation()});search.addEventListener('keydown',function(event){if(event.key==='Escape'){event.preventDefault();wrap.classList.remove('open');button.setAttribute('aria-expanded','false');button.focus()}})}
+        button.setAttribute('aria-expanded','false');
+        button.addEventListener('click',function(event){
+          event.preventDefault();event.stopPropagation();
+          document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){if(x!==wrap){x.classList.remove('open');x.querySelector('.v103-multi-button')?.setAttribute('aria-expanded','false')}});
+          const opening=!wrap.classList.contains('open');wrap.classList.toggle('open',opening);button.setAttribute('aria-expanded',opening?'true':'false');
+          v103RenderMulti(def.id);if(opening&&search)requestAnimationFrame(function(){search.focus();search.select()});
+        });
         if(clearButton)clearButton.addEventListener('click',function(event){
           event.preventDefault();event.stopPropagation();
           window.RAJ_V103_SET_MULTI_SELECTIONS(def.id,[],{silent:true});select.value='';
           const typed=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');
           if(typed)typed.value='';
-          v103RenderMulti(def.id);
-          wrap.classList.remove('open');
+          v103RenderMulti(def.id);wrap.classList.remove('open');button.setAttribute('aria-expanded','false');
           USER_FILTER_SCOPE_ACTIVE=true;if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();applyFilters(true);
         });
         panel.addEventListener('change',function(event){
@@ -1819,9 +1844,6 @@
           else{const value=clean(input.dataset.v103Value);if(input.checked){if(value&&!values.some(function(x){return v98SameValue(x,value)}))values.push(value)}else values=values.filter(function(x){return !v98SameValue(x,value)})}
           window.RAJ_V103_SET_MULTI_SELECTIONS(def.id,values,{silent:true});select.value='';
           const typed=wrap.querySelector('.filter-search[data-target="'+def.id+'"]')||document.querySelector('.filter-search[data-target="'+def.id+'"]');
-          // V106: keep the search text visible after ticking so the just-selected
-          // result stays on-screen and visibly checked. Focus/select the search text
-          // afterwards; typing the next name replaces it immediately.
           v103RenderMulti(def.id);
           USER_FILTER_SCOPE_ACTIVE=true;if(typeof flushPendingFilterApply==='function')flushPendingFilterApply();applyFilters(true);
           if(typed)requestAnimationFrame(function(){if(wrap.classList.contains('open')){typed.focus();typed.select()}});
@@ -1830,7 +1852,10 @@
         new MutationObserver(function(){v103RenderMulti(def.id)}).observe(select,{childList:true,subtree:true});
         v103RenderMulti(def.id);
       });
-      document.addEventListener('click',function(event){if(!event.target.closest('.v103-multi-wrap'))document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){x.classList.remove('open')})});
+      if(!document.documentElement.dataset.v132MultiDocBound){
+        document.documentElement.dataset.v132MultiDocBound='1';
+        document.addEventListener('click',function(event){if(!event.target.closest('.v103-multi-wrap'))document.querySelectorAll('.v103-multi-wrap.open').forEach(function(x){x.classList.remove('open');x.querySelector('.v103-multi-button')?.setAttribute('aria-expanded','false')})});
+      }
     }
     v103InstallMultiControls();
 
