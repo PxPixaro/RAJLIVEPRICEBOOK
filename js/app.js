@@ -1988,8 +1988,11 @@ function fastPdfPages(){
       lastPath=[];
     };
 
-    const band=(field,value,level)=>{
-      if(!value)return;
+    // V135: measure hierarchy bands before drawing them. This keeps a CATEGORY/VEHICLE
+    // heading attached to at least its first product row instead of leaving an orphan
+    // heading at the bottom of the previous PDF page and repeating it on the next page.
+    const bandLayout=(value,level)=>{
+      if(!value)return {actualH:0};
       const fills=[[255,243,189],[220,238,255],[237,243,251],[247,248,250]];
       const texts=[[90,59,0],[14,51,126],[39,54,74],[39,54,74]];
       const idx=Math.min(level,3),f=fills[idx],tc=texts[idx];
@@ -2004,6 +2007,14 @@ function fastPdfPages(){
         lines=pdfWrapText(String(value),textW,font,2);
         actualH=adminPortrait?23.5:18.5;
       }
+      return {f,tc,indent,font,lines,actualH};
+    };
+
+    const band=(field,value,level)=>{
+      if(!value)return;
+      const layout=bandLayout(value,level),{f,tc,indent,font,lines,actualH}=layout;
+      // Normal page breaks are decided before hierarchy bands are drawn (V135).
+      // Keep this only as a defensive fallback for an unexpectedly tall single band.
       if(y+actualH>H-24)newPage();
       page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-actualH} ${W-margin*2} ${actualH} re f`);
       page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-actualH} ${W-margin*2} ${actualH} re S`);
@@ -2019,10 +2030,7 @@ function fastPdfPages(){
       const path=hierarchyFields.map(field=>groupValue(r,field)); // blank hierarchy value => OTHER
       let changedAt=-1;
       for(let i=0;i<path.length;i++){if(path[i]!==lastPath[i]){changedAt=i;break}}
-      if(changedAt>=0){
-        for(let i=changedAt;i<path.length;i++)band(hierarchyFields[i],path[i],i);
-        lastPath=path.slice();
-      }
+
       const wrapped=adminPortrait?cols.map((col,i)=>{
         const key=keyOf(col),value=displayFieldValue(r,col);
         // Product Name is always a single line; it uses shrink-to-fit like Excel.
@@ -2030,6 +2038,22 @@ function fastPdfPages(){
         return pdfWrapText(value,widths[i],7.5,2);
       }):[];
       const currentRowH=adminPortrait?Math.max(rowH,4.2+Math.max(1,...wrapped.map((lines,i)=>keyOf(cols[i])==='PRODUCT NAME'?1:lines.length))*8.0):rowH;
+
+      // Reserve the changed hierarchy bands AND the first data row as one atomic block.
+      // If they do not fit together, move the complete current hierarchy to the next page.
+      // This fixes SENDING UNIT/FORD, WATER PUMP ASSEMBLY/SWARAJ, CURVED HOSE, etc.
+      const changedBandH=changedAt>=0
+        ? path.slice(changedAt).reduce((sum,value,offset)=>sum+bandLayout(value,changedAt+offset).actualH,0)
+        : 0;
+      if(y+changedBandH+currentRowH>H-24){
+        newPage();
+        for(let i=0;i<path.length;i++)band(hierarchyFields[i],path[i],i);
+        lastPath=path.slice();
+      }else if(changedAt>=0){
+        for(let i=changedAt;i<path.length;i++)band(hierarchyFields[i],path[i],i);
+        lastPath=path.slice();
+      }
+      // Defensive row-only fallback. In normal flow the preflight above already guarantees fit.
       if(y+currentRowH>H-24){newPage();for(let i=0;i<path.length;i++)band(hierarchyFields[i],path[i],i);lastPath=path.slice()}
       serial++;let x=margin;
       if(serial%2===0)page.cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-currentRowH} ${W-margin*2} ${currentRowH} re f`);
