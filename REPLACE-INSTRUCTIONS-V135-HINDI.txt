@@ -1,0 +1,6 @@
+Agar server par V134 already chal raha hai, to V135 ke liye sirf ye 2 files replace karna enough hai:
+1) index.html
+2) js/app.js
+
+Baaki V134 files same reh sakti hain.
+Upload ke baad browser me Ctrl+F5 / Hard Refresh karein. CDN/Cloudflare ho to cache purge kar dein.

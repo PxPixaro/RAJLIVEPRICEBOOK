@@ -1,0 +1,17 @@
+RAJ LIVE PRICE BOOK - V135 PDF PAGE HEADING FIX
+
+Is update me sirf PDF page-break / hierarchy heading placement improve kiya gaya hai.
+
+FIX:
+1. CATEGORY / VEHICLE / MODEL jaise hierarchy headings ab previous page ke bottom par akeli nahi chhutengi.
+2. Agar heading + uska first product row current page me saath fit nahi hota, to heading ko product ke saath next page par move kiya jayega.
+3. Isse SENDING UNIT (TEMP. T) / FORD, WATER PUMP ASSEMBLY / SWARAJ aur CURVED HOSE jaise cases me duplicate/orphan heading remove hogi.
+4. New PDF page par continuation ke liye complete current hierarchy repeat hogi, lekin previous page ke end par same heading akeli print nahi hogi.
+5. Ye common fast PDF generator me fix hai, isliye sabhi groups/price books par apply hota hai.
+6. V134 ke MASTER CATEGORY, ZERO BLANK, NET RATE, shrink-to-fit aur Delux fixes preserve kiye gaye hain.
+
+V134 se V135 update karne ke liye minimum files:
+- index.html
+- js/app.js
+
+Browser/CDN old JS cache avoid karne ke liye index.html me app.js cache-buster V135 kiya gaya hai.
