@@ -502,3 +502,8 @@ body:not(.v46-admin) #v46UserChip{display:none!important}
   #priceTable .view-image-btn{flex:0 0 40px!important;width:40px!important;min-width:40px!important;max-width:40px!important;height:38px!important;padding:2px!important;font-size:0!important;}
   #priceTable .view-image-btn::after{content:"◉";font-size:14px!important;}
 }
+
+
+/* V134: NET RATE marker + safe product-name rendering */
+.net-rate-mark{display:inline-block;margin-left:6px;color:#d40000!important;font-weight:900;font-size:.82em;white-space:nowrap;vertical-align:middle}
+.product-name-text{vertical-align:middle}

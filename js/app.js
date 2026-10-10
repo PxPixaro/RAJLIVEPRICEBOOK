@@ -1463,9 +1463,42 @@ function formatGstForDisplay(value){
   if(!Number.isFinite(num))return raw;
   return `${Number.isInteger(num)?num:num.toString()}%`;
 }
+// V134: display-only cleanup. Source Excel values are never changed here.
+const V134_NET_RATE_GROUP_NAMES=[
+  'Ashwamegh-C','Ashwamegh Grease-N','Ashwamegh-W','Blue Bird-N','Emmbross-N','Fenner-N',
+  'Baloon','Lock Nut-N','Gcpa-N','Haldex-N','Kbxh-N','Pooja-N','Spicer-N','Svl-N','Tvs-N','Valeo-N'
+];
+function v134GroupKey(value){return clean(value).toUpperCase().replace(/[^A-Z0-9]/g,'')}
+const V134_NET_RATE_GROUP_KEYS=new Set(V134_NET_RATE_GROUP_NAMES.map(v134GroupKey));
+function v134IsNetRateGroup(value){return V134_NET_RATE_GROUP_KEYS.has(v134GroupKey(value))}
+function v134IsNetRateRow(row){
+  // User's NET RATE list maps to Price Book SUB GROUP values (e.g. Spicer-N, Svl-N, Baloon).
+  // Keep GROUP as a fallback only for future masters where the same label is stored at Group level.
+  let sub='';try{sub=typeof subGroupValue==='function'?subGroupValue(row):getField(row,'SUB GROUP','SUB-GROUP','SUBGROUP')}catch(_e){sub=getField(row,'SUB GROUP','SUB-GROUP','SUBGROUP')}
+  return v134IsNetRateGroup(sub)||v134IsNetRateGroup(getField(row,'GROUP'));
+}
+window.RAJ_V134_IS_NET_RATE_GROUP=v134IsNetRateGroup;
+window.RAJ_V134_IS_NET_RATE_ROW=v134IsNetRateRow;
+function v134IsDisplayZero(value){
+  const raw=clean(value).replace(/,/g,'');
+  if(!raw)return false;
+  return /^[-+]?0+(?:\.0+)?%?$/.test(raw);
+}
 function displayFieldValue(row,column){
-  const value=getField(row,column);
-  return keyOf(column)==='GST'?formatGstForDisplay(value):value;
+  const key=keyOf(column),value=getField(row,column);
+  let out=key==='GST'?formatGstForDisplay(value):value;
+  // Keep identity/text columns intact; numeric/business values that are exactly zero display blank.
+  if(!['CODE','PRODUCT NAME','UNIT'].includes(key)&&v134IsDisplayZero(out))return '';
+  return out;
+}
+function v134ProductNameFontSize(value){
+  const n=clean(value).replace(/\s+/g,' ').length;
+  if(n>120)return 4.2;if(n>95)return 4.8;if(n>78)return 5.4;if(n>62)return 6.1;if(n>48)return 6.9;return 8.0;
+}
+function v134ProductNameCellHtml(row,value,forPrint=false){
+  const badge=v134IsNetRateRow(row)?'<span class="net-rate-mark">NET RATE</span>':'';
+  const style=forPrint?` style="font-size:${v134ProductNameFontSize(value)}px"`:'';
+  return `<span class="product-name-text"${style}>${escapeHtml(value)}</span>${badge}`;
 }
 function printColumnWeights(columns){
   const weights=columns.map(column=>{
@@ -1484,7 +1517,10 @@ function printColumnWeights(columns){
   };
 }
 function printProductRow(row,columns,serial){
-  return `<tr><td class="serial">${serial}</td>${columns.map(column=>`<td class="${printCellClass(column)}">${escapeHtml(displayFieldValue(row,column))}</td>`).join('')}</tr>`;
+  return `<tr><td class="serial">${serial}</td>${columns.map(column=>{
+    const value=displayFieldValue(row,column),key=keyOf(column);
+    return `<td class="${printCellClass(column)}${key==='PRODUCT NAME'?' product-name-cell':''}">${key==='PRODUCT NAME'?v134ProductNameCellHtml(row,value,true):escapeHtml(value)}</td>`;
+  }).join('')}</tr>`;
 }
 function hierarchyVisual(level,mode='grid'){
   const depth=level+1;
@@ -1601,6 +1637,8 @@ function buildLightweightPrintHtml(){
     .serial{width:24px;text-align:center}
     th.left{text-align:left}th.right,th.price{text-align:right;color:#fff!important}
     td.left{text-align:left}td.right{text-align:right;white-space:nowrap}td.price{text-align:right;color:#0757b8;font-weight:800;white-space:nowrap}
+    td.product-name-cell{white-space:nowrap!important;overflow:hidden!important;overflow-wrap:normal!important;word-break:normal!important}
+    .product-name-text{vertical-align:middle}.net-rate-mark{display:inline-block;margin-left:5px;color:#d40000!important;font-weight:900;font-size:.82em;white-space:nowrap;vertical-align:middle}
     .pdf-group-heading{break-after:avoid;page-break-after:avoid}
     .pdf-group-heading td{font-weight:800;text-align:left!important;white-space:normal!important;border-color:#7a9bc4!important}
     .pdf-level-1 td{background:#dceeff!important;color:#0e337e;font-size:9.4px;padding:4.6px 5px}
@@ -2003,9 +2041,11 @@ function fastPdfPages(){
         const key=keyOf(cols[i]),val=displayFieldValue(r,cols[i]),isPrice=/^(RATE|MRP)$/i.test(cols[i]);
         if(adminPortrait){
           if(key==='PRODUCT NAME'){
-            const text=pdfAscii(val).replace(/\s+/g,' ').trim();
-            const size=pdfFitProductNameFont(text,widths[i],7.5,3.2);
+            const text=pdfAscii(val).replace(/\s+/g,' ').trim(),netRate=v134IsNetRateRow(r);
+            const reserved=netRate?35:0,textWidth=Math.max(22,widths[i]-reserved);
+            const size=pdfFitProductNameFont(text,textWidth,7.5,2.75);
             page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${rowBase} Td (${esc(text)}) Tj ET`);
+            if(netRate)page.cmd.push(`BT /F2 5.1 Tf 0.82 0.02 0.02 rg ${(x+widths[i]-32).toFixed(2)} ${rowBase} Td (NET RATE) Tj ET`);
           }else{
             const lines=wrapped[i];
             const lineStep=7.8,totalTextH=Math.max(0,(lines.length-1)*lineStep),firstBase=rowBase+totalTextH/2;
@@ -2458,7 +2498,11 @@ function viewByLabel(field){
 function groupValue(row, field){
   const token=compactFieldKey(field);
   if(['SUBGROUP','SUBGROUPNAME'].includes(token))return subGroupValue(row)||'OTHER';
-  if(['CATAGORIES','CATEGORIES','CATEGORY'].includes(token))return clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY'))||'OTHER';
+  if(['CATAGORIES','CATEGORIES','CATEGORY'].includes(token)){
+    // V134: AIR FILTER / Air Filter / air filter are one CATEGORY block.
+    const value=clean(getField(row,'CATAGORIES','CATEGORIES','CATEGORY')).replace(/\s+/g,' ').trim();
+    return value?value.toUpperCase():'OTHER';
+  }
   return clean(getField(row,field))||'OTHER';
 }
 function partNumberValue(row){return clean(getField(row,'CODE','PART NUMBER','PART NO'))}
@@ -2662,7 +2706,8 @@ function gridProductRow(row,serial){
     const price=key==='RATE'||key==='MRP';
     const left=part||key==='PRODUCT NAME';
     const cls=[part?'part-code':'',price?'price-value':'',left?'cell-left':'cell-right'].filter(Boolean).join(' ');
-    return `<td class="${cls}" data-col="${escapeHtml(key)}">${escapeHtml(value)}</td>`;
+    const content=key==='PRODUCT NAME'?v134ProductNameCellHtml(row,value,false):escapeHtml(value);
+    return `<td class="${cls}" data-col="${escapeHtml(key)}">${content}</td>`;
   }).join('')+`<td class="image-col"><button class="view-image-btn" type="button" data-row-index="${rowSourceIndex(row)}">View Image</button></td></tr>`;
 }
 function miniGroupedBody(rows, startIndex=0, contextRows=rows){

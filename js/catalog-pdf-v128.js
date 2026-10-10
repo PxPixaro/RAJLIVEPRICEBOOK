@@ -8,6 +8,7 @@
 
   // V132: never reuse incomplete/stale V131 catalogue PDFs after image-pack fixes.
   try{if('caches' in window)caches.delete('raj-catalog-pdf-v132').catch(()=>{})}catch(_e){}
+  try{if('caches' in window)caches.delete('raj-catalog-pdf-v133').catch(()=>{})}catch(_e){}
 
   const V116_PER_PAGE=12;
   const V116_IMAGE_CONCURRENCY=16;
@@ -660,7 +661,9 @@
           v116Rect(cmd,H,x,top,cardW,cardH,'1 1 1',line,.85);
           v116Rect(cmd,H,x,top,cardW,3,orange,null,0);
 
-          const codeBadgeW=Math.min(54,Math.max(42,cardW*.28)),nameX=x+11+codeBadgeW,nameW=cardW-codeBadgeW-16;
+          const codeBadgeW=Math.min(54,Math.max(42,cardW*.28)),nameX=x+11+codeBadgeW;
+          const netRate=typeof window.RAJ_V134_IS_NET_RATE_ROW==='function'&&window.RAJ_V134_IS_NET_RATE_ROW(item.row);
+          const netTagW=netRate?34:0,nameW=Math.max(34,cardW-codeBadgeW-16-netTagW);
           const nameLayout=v120NameLayout(name,nameW);
           const detailRows=Math.max(1,Math.ceil(Math.min(details.length,10)/2)),detailStep=8.0;
           const detailAreaH=detailRows*detailStep+6;
@@ -698,6 +701,7 @@
           const codeFont=code.length>10?4.7:code.length>7?5.3:5.9;
           v116Text(cmd,H,code,x+8,codeTop+3,codeFont,'F2','1 1 1');
           v116TextLines(cmd,H,nameLayout.lines,nameX,codeTop,nameLayout.size,'F2',deep,nameLayout.gap);
+          if(netRate)v116Text(cmd,H,'NET RATE',x+cardW-36,codeTop+3.3,4.0,'F2','0.82 0.02 0.02');
 
           const infoTop=codeTop+Math.max(12,nameLayout.height)+2;
           v116Line(cmd,H,x+5,infoTop,x+cardW-5,infoTop,line,.55);
@@ -753,7 +757,7 @@
   function v124HashRows(rows,fields,group){
     let h=2166136261>>>0;
     const add=value=>{const str=v116Clean(value);for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}};
-    add('V133');add(group);add(rows.length);fields.forEach(add);
+    add('V134');add(group);add(rows.length);fields.forEach(add);
     const info=v121PackInfo(group);if(info){add(info.file);add(info.bytes);add(info.count)}
     for(const row of rows){
       add(getField(row,'CODE','PART NUMBER','PART NO'));add(getField(row,'PRODUCT NAME','DESCRIPTION'));
@@ -771,13 +775,13 @@
     return {group,rows,viewFields,key};
   }
   function v124CacheRequest(key){
-    try{return new Request(new URL('?raj-catalog-cache-v133='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
+    try{return new Request(new URL('?raj-catalog-cache-v134='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
   }
   async function v124PersistentGet(key){
     if(!('caches' in window))return null;
     try{
       const req=v124CacheRequest(key);if(!req)return null;
-      const cache=await caches.open('raj-catalog-pdf-v133');const hit=await cache.match(req);
+      const cache=await caches.open('raj-catalog-pdf-v134');const hit=await cache.match(req);
       if(!hit)return null;const blob=await hit.blob();return blob&&blob.size?blob:null;
     }catch(_e){return null}
   }
@@ -785,8 +789,8 @@
     if(!('caches' in window)||!blob?.size)return;
     try{
       const req=v124CacheRequest(key);if(!req)return;
-      const cache=await caches.open('raj-catalog-pdf-v133');
-      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'133'}}));
+      const cache=await caches.open('raj-catalog-pdf-v134');
+      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'134'}}));
     }catch(_e){}
   }
   async function v124PrepareCatalogue(group){
