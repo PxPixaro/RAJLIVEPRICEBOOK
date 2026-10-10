@@ -1,0 +1,13 @@
+V136 - MULTI GROUP PREPARING SCREEN
+
+- Preparing RAJ Live Price Book screen me AAYUB-only images hata kar sabhi available product-image groups include kiye gaye.
+- Total available image groups: 25
+- Har group se maximum 2 product images li gayi hain.
+- Total floating images: 50
+- Images ko chhota aur zyada quantity me screen par spread kiya gaya hai.
+- Existing transparency/visual feel same rakha gaya hai.
+- V135 ke baaki saare fixes unchanged hain.
+
+Replace files:
+1. index.html
+2. js/v45.js
