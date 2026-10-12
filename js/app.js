@@ -219,7 +219,7 @@ function v102EnsureIndexMap(){
 }
 function v102IndexPriceBookTags(){return [...v102EnsureIndexMap().values()].map(x=>x.tag).sort(v102IndexTagSort)}
 function v102IndexRows(tag){return (v102EnsureIndexMap().get(v102IndexTagKey(tag))?.rows||[]).slice()}
-function v102InvalidateIndexMap(){V102_INDEX_MAP_SOURCE=null;V102_INDEX_MAP=new Map()}
+function v102InvalidateIndexMap(){V102_INDEX_MAP_SOURCE=null;V102_INDEX_MAP=new Map();if(typeof v142ClearIndexPdfCache==='function')v142ClearIndexPdfCache()}
 function v102UpdateIndexDownloadState(){
   const select=$('#indexPriceBookFilter'),button=$('#indexPriceBookDownloadBtn'),onlyButton=$('#indexOnlyDownloadBtn'),status=$('#indexPriceBookStatus');
   if(!select)return;
@@ -2189,7 +2189,12 @@ function fastPdfPages(){
 }
 
 async function buildFastPdfBlob(){
-  const productPages=fastPdfPages(),indexPages=buildGroupIndexPages(productPages);
+  // V142: ONLY INDEX used to call fastPdfPages() for the whole workbook and then throw
+  // every product page away. MAIN could therefore freeze for 15-20 seconds.
+  const productPages=V102_PDF_CONTEXT?.onlyIndex
+    ? v142OnlyIndexSeedPages(Array.isArray(V102_PDF_CONTEXT?.rows)?V102_PDF_CONTEXT.rows:filtered)
+    : fastPdfPages();
+  const indexPages=buildGroupIndexPages(productPages);
   if(V102_PDF_CONTEXT?.onlyIndex)indexPages.forEach(page=>{page.indexLinks=[]});
   const pages=V102_PDF_CONTEXT?.onlyIndex?indexPages:[...indexPages,...productPages],jpeg=b64Bytes(FAST_WATERMARK_JPEG_B64),company=b64Bytes(V77_COMPANY_LOGO_JPEG_B64),objects=[];
   const add=o=>{objects.push(o);return objects.length};
@@ -2359,6 +2364,26 @@ function priceListPdfFileName(){
 }
 let V141_PDF_CACHE_KEY='';
 let V141_PDF_CACHE_BLOB=null;
+// V142: INDEX downloads have their own cache because V102 uses an explicit row snapshot.
+// V141 intentionally skipped explicit-context caching, which made every INDEX click rebuild the PDF.
+const V142_INDEX_PDF_CACHE=new Map();
+function v142IndexCacheKey(tag,onlyIndex,rows){
+  const first=rows&&rows.length?clean(getField(rows[0],'CODE')):'';
+  const last=rows&&rows.length?clean(getField(rows[rows.length-1],'CODE')):'';
+  return [onlyIndex?'ONLY':'FULL',v102IndexTagKey(tag),rows?.length||0,allData.length,first,last,isPixaroAdminPdfMode()?1:0].join('|');
+}
+function v142ClearIndexPdfCache(){V142_INDEX_PDF_CACHE.clear()}
+function v142OnlyIndexSeedPages(rows){
+  // ONLY INDEX does not print page numbers and its links are removed before serialization.
+  // Therefore generating tens of thousands of product rows just to discover group names is wasted work.
+  const seen=new Set(),pages=[];
+  for(const row of (rows||[])){
+    const display=clean(getField(row,'GROUP'))||'OTHER',key=indexGroupKey(display)||display.toUpperCase();
+    if(seen.has(key))continue;seen.add(key);
+    pages.push({group:display,W:595,H:842,adminPortrait:true});
+  }
+  return pages;
+}
 function v141PdfCacheKey(){
   if(Array.isArray(V102_PDF_CONTEXT?.rows))return '';
   const ids=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'];
@@ -2432,15 +2457,20 @@ async function downloadIndexPriceBook(){
   const select=$('#indexPriceBookFilter'),button=$('#indexPriceBookDownloadBtn');
   const tag=clean(select?.value);if(!tag){toast('Download Price Book INDEX select karein.');return}
   const rows=v102IndexRows(tag);if(!rows.length){toast(tag+' INDEX me koi product nahi mila.');return}
+  const key=v142IndexCacheKey(tag,false,rows),cached=V142_INDEX_PDF_CACHE.get(key);
+  if(cached){downloadPdfBlob(cached,tag+' PRICE BOOK.pdf');toast(tag+' Price Book ready from fast cache.');return}
   const previous=V102_PDF_CONTEXT;
   V102_PDF_CONTEXT={rows,forceAllGroupsIndex:true,indexLabel:tag,docTitle:tag+' Price Book',fileName:tag+' PRICE BOOK.pdf'};
   if(button){button.disabled=true;button.textContent='Creating '+tag+' PDF…'}
   try{
+    // Paint the button state before the large PDF job starts so the browser never looks dead.
+    await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
     const blob=await createCompletePriceListPdfBlob();
+    V142_INDEX_PDF_CACHE.set(key,blob);
     downloadPdfBlob(blob,priceListPdfFileName());
     toast(`${tag} Price Book ready: ${rows.length.toLocaleString('en-IN')} products · ${(blob.size/1024/1024).toFixed(1)} MB`);
   }catch(err){
-    console.error('V102 index-wise PDF error:',err);toast('INDEX-wise PDF create nahi hua. Please try again.');
+    console.error('V142 index-wise PDF error:',err);toast('INDEX-wise PDF create nahi hua. Please try again.');
   }finally{
     V102_PDF_CONTEXT=previous;
     if(button){button.disabled=false;button.textContent='Download Index Pricelist'}
@@ -2452,13 +2482,18 @@ async function downloadOnlyIndex(){
   const select=$('#indexPriceBookFilter'),button=$('#indexOnlyDownloadBtn');
   const tag=clean(select?.value);if(!tag){toast('Download Price Book INDEX select karein.');return}
   const rows=v102IndexRows(tag);if(!rows.length){toast(tag+' INDEX me koi product nahi mila.');return}
+  const key=v142IndexCacheKey(tag,true,rows),cached=V142_INDEX_PDF_CACHE.get(key);
+  if(cached){downloadPdfBlob(cached,tag+' INDEX ONLY.pdf');toast(tag+' Only Index PDF ready from fast cache.');return}
   const previous=V102_PDF_CONTEXT;
   V102_PDF_CONTEXT={rows,forceAllGroupsIndex:true,indexLabel:tag,docTitle:tag+' Price Book Index',fileName:tag+' INDEX ONLY.pdf',onlyIndex:true};
   if(button){button.disabled=true;button.textContent='Creating Index…'}
   try{
-    const blob=await createCompletePriceListPdfBlob();downloadPdfBlob(blob,priceListPdfFileName());
+    await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+    const blob=await createCompletePriceListPdfBlob();
+    V142_INDEX_PDF_CACHE.set(key,blob);
+    downloadPdfBlob(blob,priceListPdfFileName());
     toast(tag+' Only Index PDF ready.');
-  }catch(err){console.error('V103 only-index PDF error:',err);toast('Only INDEX PDF create nahi hua. Please try again.');}
+  }catch(err){console.error('V142 only-index PDF error:',err);toast('Only INDEX PDF create nahi hua. Please try again.');}
   finally{V102_PDF_CONTEXT=previous;if(button){button.disabled=false;button.textContent='Download Only Index'}v102UpdateIndexDownloadState()}
 }
 
