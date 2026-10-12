@@ -1726,65 +1726,34 @@ function pdfWrapText(value,width,fontSize=10,maxLines=8){
   if(line&&lines.length<maxLines)lines.push(line);
   return lines.length?lines:[''];
 }
-function v139TextWidthPt(value,fontSize=7.5,bold=false){
-  const text=pdfAscii(value).replace(/\s+/g,' ').trim();
-  if(!text)return 0;
-  // Helvetica is a proportional font. This approximation is intentionally conservative
-  // so the printed column hugs its longest real value without clipping it.
-  let units=0;
-  for(const ch of text){
-    if(/[MW@#%&]/.test(ch))units+=.82;
-    else if(/[ilI1.,:'|]/.test(ch))units+=.28;
-    else if(/[A-Z0-9]/.test(ch))units+=.58;
-    else units+=.50;
-  }
-  return units*fontSize*(bold?1.035:1);
-}
-function v139HeaderTokens(key,label){
-  if(key==='STD PKG')return ['STD','PKG'];
-  if(key==='CLUTCH DIA')return ['CLUTCH','DIA'];
-  if(key==='NO. OF TEETH')return ['NO. OF','TEETH'];
-  return [label];
-}
-function v139ColumnNeededWidth(column,rows){
-  const key=keyOf(column),label=key.replace(/\s+/g,' '),font=7.5,pad=5;
-  const header=Math.max(...v139HeaderTokens(key,label).map(x=>v139TextWidthPt(x,font,true)),0)+pad;
-  let data=0;
-  for(const row of (rows||[])){
-    const value=displayFieldValue(row,column);
-    if(!clean(value))continue;
-    data=Math.max(data,v139TextWidthPt(value,font,/^(RATE|MRP)$/i.test(key))+pad);
-  }
-  const minByKey={CODE:38,UNIT:26,GST:27,RATE:35,MRP:35,'STD PKG':34,NDB:36,EVEREST:42,'CLUTCH DIA':40,'NO. OF TEETH':44};
-  const maxByKey={CODE:104,UNIT:42,GST:36,RATE:52,MRP:52,'STD PKG':46,NDB:54,EVEREST:58,'CLUTCH DIA':52,'NO. OF TEETH':58};
-  const min=minByKey[key]||34,max=maxByKey[key]||68;
-  return Math.max(min,Math.min(max,Math.max(header,data)));
-}
 function adminPortraitColumnWidths(columns,rows,usable){
-  // V139: every non-description column hugs the longest visible heading/value for THIS group.
-  // All saved width is donated to PRODUCT NAME, so MANN/SVL/etc. can use the full printable area.
-  const fixed=columns.map(column=>keyOf(column)==='PRODUCT NAME'?null:v139ColumnNeededWidth(column,rows));
+  // V137: keep business/numeric columns close to their headings and donate the saved
+  // width to PRODUCT NAME. Long cell values shrink-to-fit instead of stealing width.
+  const fixed=columns.map(column=>{
+    const key=keyOf(column),label=key.replace(/\s+/g,' ');
+    if(key==='PRODUCT NAME')return null;
+    if(key==='CODE')return 88;
+    if(key==='UNIT')return 31;
+    if(key==='GST')return 30;
+    if(key==='RATE'||key==='MRP')return 44;
+    if(key==='STD PKG')return 54;
+    if(key==='NDB'||key==='EVEREST')return 51;
+    if(key==='CLUTCH DIA')return 48;
+    if(key==='NO. OF TEETH')return 55;
+    // Other columns hug the heading, with a sensible printable cap.
+    return Math.max(36,Math.min(64,label.length*5.3+10));
+  });
   const productIndex=columns.findIndex(c=>keyOf(c)==='PRODUCT NAME');
   if(productIndex<0){
     const sum=fixed.reduce((a,b)=>a+(b||0),0)||1;
     return fixed.map(v=>(v||0)*usable/sum);
   }
   let fixedSum=fixed.reduce((a,b)=>a+(b||0),0);
-  const minProduct=Math.max(215,usable*.48);
-  if(fixedSum>usable-minProduct){
-    // Preserve CODE first, then squeeze the other utility columns only as much as needed.
-    const squeezeIndexes=columns.map((c,i)=>({i,key:keyOf(c)})).filter(x=>x.i!==productIndex&&x.key!=='CODE').map(x=>x.i);
-    let excess=fixedSum-(usable-minProduct);
-    for(const i of squeezeIndexes){
-      if(excess<=0)break;
-      const floor=keyOf(columns[i])==='GST'?25:28;
-      const take=Math.min(excess,Math.max(0,fixed[i]-floor));
-      fixed[i]-=take;excess-=take;
-    }
-    if(excess>0){
-      const codeIndex=columns.findIndex(c=>keyOf(c)==='CODE');
-      if(codeIndex>=0){const take=Math.min(excess,Math.max(0,fixed[codeIndex]-34));fixed[codeIndex]-=take;excess-=take}
-    }
+  // Guarantee a strong Product Name area; proportionally squeeze fixed columns if needed.
+  const targetProduct=Math.max(205,usable*.44);
+  if(fixedSum>usable-targetProduct){
+    const scale=(usable-targetProduct)/Math.max(1,fixedSum);
+    for(let i=0;i<fixed.length;i++)if(i!==productIndex&&fixed[i]!=null)fixed[i]=Math.max(24,fixed[i]*scale);
     fixedSum=fixed.reduce((a,b)=>a+(b||0),0);
   }
   fixed[productIndex]=Math.max(150,usable-fixedSum);
@@ -1795,28 +1764,8 @@ function adminPortraitColumnWidths(columns,rows,usable){
 
 function adminPdfHeaderLines(column,width){
   const key=keyOf(column);
-  if(key==='STD PKG')return ['STD','PKG'];
   if(key==='CLUTCH DIA')return ['CLUTCH','DIA'];
-  if(key==='NO. OF TEETH')return ['NO. OF','TEETH'];
-  return pdfWrapText(column,width,7.5,2);
-}
-function v139WrapAllText(value,width,fontSize=7.1){
-  const text=pdfAscii(value).replace(/\s+/g,' ').trim();
-  if(!text)return [''];
-  const maxChars=Math.max(3,Math.floor(Math.max(6,width-4)/(fontSize*.52)));
-  const tokens=[];
-  text.split(' ').forEach(word=>{
-    if(word.length<=maxChars){tokens.push(word);return}
-    for(let i=0;i<word.length;i+=maxChars)tokens.push(word.slice(i,i+maxChars));
-  });
-  const lines=[];let line='';
-  for(const token of tokens){
-    const test=line?line+' '+token:token;
-    if(test.length<=maxChars)line=test;
-    else{if(line)lines.push(line);line=token}
-  }
-  if(line)lines.push(line);
-  return lines.length?lines:[''];
+  return pdfWrapText(column,width,8,2);
 }
 
 const V86_INDEX_DETAILS={"AAYUB":"FLY WHEEL ASSY.","ALLIED":"BRAKE LINING & BRAKE PAD","APPOLO":"ALL TYPE OF PACKING","APRISTIC":"ALL TYPE OF PACKING","ASHWAMEGH":"GREASE, ULTRAPURE AND DISTILE WATER","ASK":"BRAKE LINING","ATOP":"SPRING WASHAR","BALOON":"SPRING BALOONG","BLUE BIRD":"DIESEL ENGINE OIL,4 STROKE OIL,TRANSMISSION OIL,INDUSTRIAL OIL","BRAVO":"SHOCK ABSORBER, GEAR LEVER, ENGINE MOUNTING, HOSE PIPE","BULLDOG":"GASKET TUBE, RTV & SILK BOTEL","C.I.":"ARM REST/ROOF HANDLES,B.OPENER,DB LOCK/ DOOR LOCK W/K","CHAMPION":"SPRAK PLUG, HEATER PLUG, WIPER BLADE","CHENER":"TIE ROD, DRAG LINK KIT,GEAR LEVER END,BALL JOINT","CRC":"POWER SPRAY","DC":"U.J.CROSS,GEAR JHAMELA,SLEEVE YOKE","DELUX":"KING PIN, CLUTCH & TAPPER BEARING & ALL BERING","ELOFIC":"ALL TYPE FILTER ,COOLANT","EMMBROSS":"REAR AXLE H.C.V. DIVISION","FENNER":"V-BELTS & POLY V-BELTS","GATES":"BELTS, METALS & KITS, TENSIONER","GAUTAM":"SYNCROMIZER RING, WASHER,TATA PARTS,BENJO BOLT, NUT-BOLT,SPRING BALOON,GAPE PLATE,KING PIN KIT,SHIMS,JACK TOMI","GAUTAM B-T":"BERTRY TERMINALS","GCL":"CLUTCH PLATES & PRESSURE PLATES,SPRING SET,LEVER FINGER KIT","GCPA":"CLUTCH PLATES & PRESSURE PLATES","GF":"RADIATOR FAN","GMT":"BOLT,PIN,NUT,WASHERS,NIPPLE,SPANNER","HALDEX":"SLACK ADJ. ASSY","HFL":"HEX BOLT AND FLANGE BOLT","HOLD ON":"HOSE PIPE CLIP","IFLEX":"FUEL LINE & DIESEL PIPE","JHAVERI":"RING PANA & FIX PANA & WHEEL SPANER","JM TOMI":"TOMI","KBX":"BRAKE OIL, BRAKE PARTS, BRAKE SHOE KIT","KBX HITACHI":"PIN HORN, TANK FUEL PUMP, SPEED SENSORS, ELE. REGULATORS","KD":"HOSE PIPE","KLIP-WEL":"HOSE PIPE CLIP","LAPOX":"LA-SEAL & EPOXY PUTTY","LASCO":"AIR FILTER","LGS":"FLY WHEEL RING","LOCTITE":"SUPERFLEX TUBE, RUST BUST SPRAY","LUMAN":"FILTER’S,AIR FILTER,COOLANT","MAGMA":"BRAKE PADS, BRAKE DISC ROTER","MANN-WIX":"FILTERS","MEKO":"WATER PUMP, REPAIR KIT & ROTTER SHAFT","MK GOLD":"WATER PUMP","MONROE":"STRUT KIT,COIL SPRING,TOP MOUNT,SHOCK ABSO.,ELEMENT","NEOLITE":"HEAD LAMP ASSY.","NGK":"SPARK PLUGS & HITER PLUGS","NOVEX":"RUBBER PARTS","OEPLUS":"WIPER BLADE,WIPER ARM","OLMA":"AUTOMOTIV COMPONENTS,TATA PARTS","OSRAM":"BULB","PIONNER":"OIL SEAL, WATER PUMP SEAL, HOSE PIPE","PIPE ROLL":"DIESEL & PETROL PIPE ROLL","PLATINUM":"SIDE GLASS","POLY GRIP":"FOAM FAST & GRIP FAST","POOJA":"UNC, UNF, BSW, BSF,BOLT,NUT,SPECIAL BOLT","PRIMA":"GREASE GUN, BERAL PUMP & OIL CUPPY. LOOSE PARTS","QH":"TIE ROD, SUSP. & JOINT PARTS","RAICAM":"CLUTCH SET","RAJNISH":"DIESEL FUEL INJECTION PUMP PARTS","RAVI JACK":"JACK & POPULAR SHAFT PIPE","RDS":"U.J.CROSS, PROPELLER SHAFTS,BEARING,TIE ROD END","REMSONS":"ACCELERATOR, SPEEDO, BONNET CABLE, DOOR OPENER","REOX":"SIDE MIRROR, SUB MIRROR","RIVIT":"BRACK LINER & CLUCH RIVIT","RKD":"CLUTCH PLATES & PRESSURE PLATES,SPRING SET,LEVER KIT","RM":"ALL TYPE BRAKE DISK & DRUM","RNF":"ADJUSTER, HYDROLIC JACK","ROSE":"SYNCROMIZER RING, WASHER,TATA PARTS,BENJO BOLT, NUT-BOLT,SPRING","SADHU FORGE":"GEAR PARTS & CROWN WHEEL PINION & SPIDER KIT","SHANCO":"WIRE & CABLE","SORL":"VALVE,ADJUSTER,PUMP,AIR COIL","SPICER":"UJ CROSS, SLEVE YOKE, CEN.FLANGE, CEN. BEARING","STAR GOLD":"COOLENT","STL":"UNC, UNF, BSW, BSF,BOLT,NUT,SPECIAL BOLT","SUPER-LAC":"OIL SEAL & FOUNDATION, RUBBER PARTS","SUPER-TIGHT":"CENTER BOLT","SVL":"UJ CROSS, SLEVE YOKE, CEN.FLANGE, CEN. BEARING","UVAL":"BULB","VALEO":"CLUTCH PLATES & PRESSURE PLATES","VEETHREE":"METER, SPEEDO CABLE, TANKE UNIT, DISEL GAJE"};
@@ -2098,13 +2047,11 @@ function fastPdfPages(){
 
       const wrapped=adminPortrait?cols.map((col,i)=>{
         const key=keyOf(col),value=displayFieldValue(r,col);
-        // V139: never cut Product Name. Use the extra donated width first, then wrap all
-        // remaining text and grow the row instead of shrinking it to unreadable size.
-        if(key==='PRODUCT NAME')return v139WrapAllText(value,widths[i],7.1);
+        // Product Name is always a single line; it uses shrink-to-fit like Excel.
+        if(key==='PRODUCT NAME')return [pdfAscii(value).replace(/\s+/g,' ').trim()];
         return pdfWrapText(value,widths[i],7.5,2);
       }):[];
-      const productLines=adminPortrait?Math.max(1,...cols.map((c,i)=>keyOf(c)==='PRODUCT NAME'?(wrapped[i]?.length||1):1)):1;
-      const currentRowH=adminPortrait?Math.max(rowH,5.2+productLines*7.6):rowH;
+      const currentRowH=rowH;
 
       // Reserve the changed hierarchy bands AND the first data row as one atomic block.
       // If they do not fit together, move the complete current hierarchy to the next page.
@@ -2132,11 +2079,9 @@ function fastPdfPages(){
         const key=keyOf(cols[i]),val=displayFieldValue(r,cols[i]),isPrice=/^(RATE|MRP)$/i.test(cols[i]);
         if(adminPortrait){
           if(key==='PRODUCT NAME'){
-            const lines=wrapped[i]||[''];
-            const size=7.1,lineGap=7.6;
-            const blockH=(lines.length-1)*lineGap;
-            const firstBase=rowBase+blockH/2;
-            lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${(firstBase-lineIndex*lineGap).toFixed(2)} Td (${esc(line)}) Tj ET`));
+            const text=pdfAscii(val).replace(/\s+/g,' ').trim();
+            const size=pdfFitProductNameFont(text,Math.max(22,widths[i]-2),7.5,3.45);
+            page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${rowBase} Td (${esc(text)}) Tj ET`);
           }else{
             const text=pdfAscii(val).replace(/\s+/g,' ').trim();
             const size=pdfFitFont(text,widths[i],7.5,3.2);
