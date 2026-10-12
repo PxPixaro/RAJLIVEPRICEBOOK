@@ -1812,29 +1812,42 @@ function adminPdfHeaderLines(column,width){
   if(key==='NO. OF TEETH')return ['NO. OF','TEETH'];
   return pdfWrapText(column,width,7.5,2);
 }
+// V141: O(n) product-name wrapping. V139/V140 repeatedly re-measured the whole
+// growing line for every token/character, which became expensive on large pricelists.
+// This produces the same no-clipping behaviour while keeping PDF generation fast.
+function v141CharWidthPt(ch,fontSize=7.1,bold=false){
+  let unit=.50;
+  if(/[MW@#%&]/.test(ch))unit=.82;
+  else if(/[ilI1.,:'|]/.test(ch))unit=.28;
+  else if(/[A-Z0-9]/.test(ch))unit=.58;
+  return unit*fontSize*(bold?1.035:1);
+}
+function v141TokenWidthPt(text,fontSize=7.1,bold=false){
+  let width=0;
+  for(let i=0;i<text.length;i++)width+=v141CharWidthPt(text[i],fontSize,bold);
+  return width;
+}
 function v139WrapAllText(value,width,fontSize=7.1){
   const text=pdfAscii(value).replace(/\s+/g,' ').trim();
   if(!text)return [''];
-  const maxWidth=Math.max(8,width-5),lines=[];
-  const splitWord=word=>{
-    const parts=[];let part='';
-    for(const ch of word){
-      const test=part+ch;
-      if(part && v139TextWidthPt(test,fontSize,false)>maxWidth){parts.push(part);part=ch}else part=test;
-    }
-    if(part)parts.push(part);
-    return parts;
-  };
+  const maxWidth=Math.max(8,width-5),spaceW=v141CharWidthPt(' ',fontSize,false),lines=[];
   const tokens=[];
   for(const word of text.split(' ')){
-    if(v139TextWidthPt(word,fontSize,false)<=maxWidth)tokens.push(word);
-    else tokens.push(...splitWord(word));
+    const wordW=v141TokenWidthPt(word,fontSize,false);
+    if(wordW<=maxWidth){tokens.push([word,wordW]);continue}
+    let part='',partW=0;
+    for(const ch of word){
+      const cw=v141CharWidthPt(ch,fontSize,false);
+      if(part && partW+cw>maxWidth){tokens.push([part,partW]);part=ch;partW=cw}
+      else{part+=ch;partW+=cw}
+    }
+    if(part)tokens.push([part,partW]);
   }
-  let line='';
-  for(const token of tokens){
-    const test=line?line+' '+token:token;
-    if(!line || v139TextWidthPt(test,fontSize,false)<=maxWidth)line=test;
-    else{lines.push(line);line=token;}
+  let line='',lineW=0;
+  for(const [token,tokenW] of tokens){
+    const nextW=line?lineW+spaceW+tokenW:tokenW;
+    if(!line || nextW<=maxWidth){line=line?line+' '+token:token;lineW=nextW}
+    else{lines.push(line);line=token;lineW=tokenW}
   }
   if(line)lines.push(line);
   return lines.length?lines:[''];
@@ -2035,9 +2048,9 @@ function fastPdfPages(){
       .filter((field,index,array)=>field&&array.findIndex(x=>compactFieldKey(x)===compactFieldKey(field))===index);
     const gr=sortRowsByFields(sourceRows.slice(),hierarchyFields);
     const cols=visibleColumnsForRows(gr),usable=W-margin*2;
-    const printWeights=printColumnWeights(cols,gr).columns.map(Number),weightSum=printWeights.reduce((a,b)=>a+b,0)||1;
-    // V84: consume the full printable width. The old percentage math left a fake blank column/gap at the right.
-    const widths=adminPortrait?adminPortraitColumnWidths(cols,gr,usable):printWeights.map(p=>usable*p/weightSum);
+    // V141 performance: every PDF is A4 portrait here, so do NOT run the old browser-print
+    // weight calculator first. V140 was scanning every row/column twice before page building.
+    const widths=adminPortraitColumnWidths(cols,gr,usable);
     const headerH=adminPortrait?19:rowH;
     let page=null,y=0,serial=0,lastPath=[];
 
@@ -2344,7 +2357,19 @@ function priceListPdfFileName(){
   const label=groups.length===1?groups[0]:(groups.length>1?'MULTI GROUP FILTERED PRICELIST':clean($('#groupFilter').value)||'ALL GROUPS FILTERED PRICELIST');
   return safePdfName(label)+'.pdf';
 }
+let V141_PDF_CACHE_KEY='';
+let V141_PDF_CACHE_BLOB=null;
+function v141PdfCacheKey(){
+  if(Array.isArray(V102_PDF_CONTEXT?.rows))return '';
+  const ids=['groupFilter','subGroupFilter','segmentFilter','vehicleFilter','modelFilter','categoryFilter','subCategoryFilter'];
+  const filters=ids.map(id=>[id,clean($('#'+id)?.value),v103MultiValues(id).map(clean)]);
+  return JSON.stringify([filters,clean($('#searchInput')?.value),clean($('#universalSearchInput')?.value),filtered.length,isPixaroAdminPdfMode()]);
+}
+function v141InvalidatePdfCache(){V141_PDF_CACHE_KEY='';V141_PDF_CACHE_BLOB=null}
 async function createCompletePriceListPdfBlob(){
+  // V141: same filter + same data can reuse the already generated blob immediately.
+  const cacheKey=v141PdfCacheKey();
+  if(cacheKey && V141_PDF_CACHE_BLOB && cacheKey===V141_PDF_CACHE_KEY)return V141_PDF_CACHE_BLOB;
   // V124: every normal Pricelist/Share PDF gets an immutable filter snapshot.
   // INDEX-wise buttons already provide their own explicit V102_PDF_CONTEXT rows.
   const previousContext=V102_PDF_CONTEXT;
@@ -2356,6 +2381,7 @@ async function createCompletePriceListPdfBlob(){
     if(isPixaroAdminPdfMode()&&!pdfRows.some(isAdminPdfRowVisible))throw new Error('Pixaro PDF ke liye koi Visible product nahi hai');
     const blob=await buildFastPdfBlob();
     if(!blob||!blob.size)throw new Error('PDF output is empty');
+    if(cacheKey){V141_PDF_CACHE_KEY=cacheKey;V141_PDF_CACHE_BLOB=blob}
     return blob;
   }finally{
     if(transient)V102_PDF_CONTEXT=previousContext;
@@ -2437,8 +2463,14 @@ async function downloadOnlyIndex(){
 }
 
 async function downloadSelectedPriceListFast(){
-  // V122: commit any just-changed multi-select filter before building product pages/index.
-  try{applyFilters(false,false)}catch(_e){}
+  // V141 performance: onchange already applies dropdown filters. Re-running applyFilters()
+  // on every download scanned the full workbook and re-rendered the grid before PDF work,
+  // which made the click look hung. Only flush/apply when a text-search debounce is pending.
+  try{
+    const hadPending=!!filterInputTimer;
+    flushPendingFilterApply();
+    if(hadPending)applyFilters(false,false);
+  }catch(_e){}
   if(!filtered.length){toast('Current filters me koi product nahi hai');return}
   const btn=$('#priceListDownloadBtn'),name=priceListPdfFileName();
   if(btn){btn.disabled=true;btn.textContent='Creating Full PDF…'}
@@ -2810,6 +2842,8 @@ function applyFilters(resetPage=true,doCascade=false){
     out.push(row);
   }
   filtered=out;sortedFilteredSource=null;
+  // Any real filter change invalidates the one-entry generated PDF cache.
+  if(typeof v141InvalidatePdfCache==='function')v141InvalidatePdfCache();
   const columnRows=(isDefaultAllView()&&filtered.length>2500)?filtered.slice(0,1200):filtered;
   visibleColumns=visibleColumnsForRows(columnRows);document.body.classList.toggle('table-compact',visibleColumns.length>12);if(resetPage)page=1;render();
 }
