@@ -148,7 +148,8 @@ const HIDDEN_COLUMNS = new Set([
   'VIEW BY','VIEWBY','LIST DATE','LISTDATE','SUB GROUP','SUB-GROUP','SUBGROUP','SUB GROUP NAME',
   'CATALOG','CATALOG LINK','CATALOG URL','CATALOG NAME','CATALOG FILE',
   'NEW PRODUCT LAUNCH','DEAD STOCK','FSN CLASS','INDEX',
-  'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE','YES/NO','YES / NO','YES NO'
+  'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE','YES/NO','YES / NO','YES NO',
+  'NET RATE','NETRATE','NET-RATE','NET RATE FLAG','NETRATE FLAG'
 ]);
 const ALWAYS = ['CODE','PRODUCT NAME','UNIT','GST','RATE','MRP'];
 const NUMERIC_COLUMNS = new Set(['RATE','MRP','STD PKG','CRT PKG','BOX QTY','PACK']);
@@ -1463,22 +1464,21 @@ function formatGstForDisplay(value){
   if(!Number.isFinite(num))return raw;
   return `${Number.isInteger(num)?num:num.toString()}%`;
 }
-// V134: display-only cleanup. Source Excel values are never changed here.
-const V134_NET_RATE_GROUP_NAMES=[
-  'Ashwamegh-C','Ashwamegh Grease-N','Ashwamegh-W','Blue Bird-N','Emmbross-N','Fenner-N',
-  'Baloon','Lock Nut-N','Gcpa-N','Haldex-N','Kbxh-N','Pooja-N','Spicer-N','Svl-N','Tvs-N','Valeo-N'
-];
-function v134GroupKey(value){return clean(value).toUpperCase().replace(/[^A-Z0-9]/g,'')}
-const V134_NET_RATE_GROUP_KEYS=new Set(V134_NET_RATE_GROUP_NAMES.map(v134GroupKey));
-function v134IsNetRateGroup(value){return V134_NET_RATE_GROUP_KEYS.has(v134GroupKey(value))}
-function v134IsNetRateRow(row){
-  // User's NET RATE list maps to Price Book SUB GROUP values (e.g. Spicer-N, Svl-N, Baloon).
-  // Keep GROUP as a fallback only for future masters where the same label is stored at Group level.
-  let sub='';try{sub=typeof subGroupValue==='function'?subGroupValue(row):getField(row,'SUB GROUP','SUB-GROUP','SUBGROUP')}catch(_e){sub=getField(row,'SUB GROUP','SUB-GROUP','SUBGROUP')}
-  return v134IsNetRateGroup(sub)||v134IsNetRateGroup(getField(row,'GROUP'));
+// V137: NET RATE now comes ONLY from the master Excel NET RATE column.
+// The old hard-coded Group/Sub Group list is intentionally retired.
+function v137NetRateFlag(row){
+  return clean(getField(row,'NET RATE','NETRATE','NET-RATE','NET RATE FLAG','NETRATE FLAG'));
 }
-window.RAJ_V134_IS_NET_RATE_GROUP=v134IsNetRateGroup;
-window.RAJ_V134_IS_NET_RATE_ROW=v134IsNetRateRow;
+function v137IsNetRateRow(row){
+  const raw=v137NetRateFlag(row);
+  if(!raw)return false;
+  const key=normalizeSearchText(raw);
+  return !['0','NO','N','FALSE','NA','N A','NORMAL','RATE'].includes(key);
+}
+// Keep legacy globals harmless for older catalogue modules: no red NET RATE badge anymore.
+window.RAJ_V134_IS_NET_RATE_GROUP=()=>false;
+window.RAJ_V134_IS_NET_RATE_ROW=()=>false;
+window.RAJ_V137_IS_NET_RATE_ROW=v137IsNetRateRow;
 function v134IsDisplayZero(value){
   const raw=clean(value).replace(/,/g,'');
   if(!raw)return false;
@@ -1496,18 +1496,18 @@ function v134ProductNameFontSize(value){
   if(n>120)return 4.2;if(n>95)return 4.8;if(n>78)return 5.4;if(n>62)return 6.1;if(n>48)return 6.9;return 8.0;
 }
 function v134ProductNameCellHtml(row,value,forPrint=false){
-  const badge=v134IsNetRateRow(row)?'<span class="net-rate-mark">NET RATE</span>':'';
   const style=forPrint?` style="font-size:${v134ProductNameFontSize(value)}px"`:'';
-  return `<span class="product-name-text"${style}>${escapeHtml(value)}</span>${badge}`;
+  return `<span class="product-name-text"${style}>${escapeHtml(value)}</span>`;
 }
 function printColumnWeights(columns){
   const weights=columns.map(column=>{
     const key=keyOf(column);
-    if(key==='PRODUCT NAME')return 5.6;
-    if(key==='CODE')return 1.55;
-    if(key==='UNIT'||key==='GST')return .82;
-    if(key==='RATE'||key==='MRP')return 1.0;
-    return 1.18;
+    if(key==='PRODUCT NAME')return 8.4;
+    if(key==='CODE')return 1.65;
+    if(key==='UNIT'||key==='GST')return .62;
+    if(key==='RATE'||key==='MRP')return .72;
+    if(key==='STD PKG')return .88;
+    return .92;
   });
   const serialWeight=.45;
   const total=serialWeight+weights.reduce((sum,value)=>sum+value,0);
@@ -1714,44 +1714,41 @@ function pdfWrapText(value,width,fontSize=10,maxLines=8){
   return lines.length?lines:[''];
 }
 function adminPortraitColumnWidths(columns,rows,usable){
-  const mins=[],desired=[];
-  columns.forEach(column=>{
-    const key=keyOf(column);
-    let min=34,max=74,base=9;
-    if(key==='CODE'){min=35;max=82;base=7}
-    else if(key==='PRODUCT NAME'){min=105;max=185;base=22}
-    else if(key==='UNIT'){min=25;max=36;base=4}
-    else if(key==='GST'){min=22;max=30;base=3}
-    else if(key==='CLUTCH DIA'){min=32;max=44;base=6}
-    else if(key==='RATE'||key==='MRP'){min=38;max=54;base=7}
-    else if(key==='NO. OF TEETH'){min=38;max=58;base=7}
-    let maxLen=base;
-    // Scan a representative set; widths are capped so one extreme value cannot waste the page.
-    const step=Math.max(1,Math.floor(rows.length/1800));
-    for(let i=0;i<rows.length;i+=step){
-      const len=pdfAscii(getField(rows[i],column)).length;
-      if(len>maxLen)maxLen=len;
-    }
-    const want=Math.min(max,Math.max(min,maxLen*5.2+7));
-    mins.push(min);desired.push(want);
+  // V137: keep business/numeric columns close to their headings and donate the saved
+  // width to PRODUCT NAME. Long cell values shrink-to-fit instead of stealing width.
+  const fixed=columns.map(column=>{
+    const key=keyOf(column),label=key.replace(/\s+/g,' ');
+    if(key==='PRODUCT NAME')return null;
+    if(key==='CODE')return 88;
+    if(key==='UNIT')return 31;
+    if(key==='GST')return 30;
+    if(key==='RATE'||key==='MRP')return 44;
+    if(key==='STD PKG')return 54;
+    if(key==='NDB'||key==='EVEREST')return 51;
+    if(key==='CLUTCH DIA')return 48;
+    if(key==='NO. OF TEETH')return 55;
+    // Other columns hug the heading, with a sensible printable cap.
+    return Math.max(36,Math.min(64,label.length*5.3+10));
   });
-  const minSum=mins.reduce((a,b)=>a+b,0);
-  if(minSum>=usable){
-    const scale=usable/minSum;
-    return mins.map(v=>v*scale);
+  const productIndex=columns.findIndex(c=>keyOf(c)==='PRODUCT NAME');
+  if(productIndex<0){
+    const sum=fixed.reduce((a,b)=>a+(b||0),0)||1;
+    return fixed.map(v=>(v||0)*usable/sum);
   }
-  const extra=usable-minSum;
-  const needs=desired.map((v,i)=>Math.max(0,v-mins[i]));
-  const needSum=needs.reduce((a,b)=>a+b,0)||1;
-  let widths=mins.map((v,i)=>v+extra*(needs[i]/needSum));
-  // If desired widths use less than page width, give the balance mainly to Product Name.
-  const used=widths.reduce((a,b)=>a+b,0);
-  if(used<usable-.1){
-    const productIndex=columns.findIndex(c=>keyOf(c)==='PRODUCT NAME');
-    widths[productIndex>=0?productIndex:0]+=usable-used;
+  let fixedSum=fixed.reduce((a,b)=>a+(b||0),0);
+  // Guarantee a strong Product Name area; proportionally squeeze fixed columns if needed.
+  const targetProduct=Math.max(205,usable*.44);
+  if(fixedSum>usable-targetProduct){
+    const scale=(usable-targetProduct)/Math.max(1,fixedSum);
+    for(let i=0;i<fixed.length;i++)if(i!==productIndex&&fixed[i]!=null)fixed[i]=Math.max(24,fixed[i]*scale);
+    fixedSum=fixed.reduce((a,b)=>a+(b||0),0);
   }
-  return widths;
+  fixed[productIndex]=Math.max(150,usable-fixedSum);
+  const sum=fixed.reduce((a,b)=>a+(b||0),0);
+  if(Math.abs(sum-usable)>.1)fixed[productIndex]+=usable-sum;
+  return fixed;
 }
+
 function adminPdfHeaderLines(column,width){
   const key=keyOf(column);
   if(key==='CLUTCH DIA')return ['CLUTCH','DIA'];
@@ -1925,12 +1922,19 @@ function fastPdfPages(){
     grouped.get(key).rows.push(r);
   });
   const selected=V102_PDF_CONTEXT?.forceAllGroupsIndex?'':clean($('#groupFilter').value),selectedKey=indexGroupKey(selected);
-  const groups=selected?[[selected,(grouped.get(selectedKey)?.rows)||rows]]:[...grouped.values()].map(x=>[x.display,x.rows]).sort((x,y)=>natural(x[0],y[0]));
+  const baseGroups=selected?[[selected,(grouped.get(selectedKey)?.rows)||rows]]:[...grouped.values()].map(x=>[x.display,x.rows]).sort((x,y)=>natural(x[0],y[0]));
+  const groups=[];
+  baseGroups.forEach(([group,groupRows])=>{
+    const regularRows=groupRows.filter(row=>!v137IsNetRateRow(row));
+    const netRows=groupRows.filter(v137IsNetRateRow);
+    if(regularRows.length)groups.push([group,regularRows,false,group]);
+    if(netRows.length)groups.push([group,netRows,true,`${group} - NET`]);
+  });
   const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=98,rowH=adminPortrait?14.6:10.5,bandH=adminPortrait?15.6:12.4;
   const esc=pdfAscii;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
 
-  for(const [group,sourceRows] of groups){
+  for(const [group,sourceRows,isNetSection,sectionTitle] of groups){
     // Excel VIEW BY is the single source of truth. Column position is irrelevant.
     // First comma-separated heading = level 1, second = level 2, etc.
     // PDF hierarchy must follow exactly what is written in the VIEW BY heading.
@@ -1957,11 +1961,13 @@ function fastPdfPages(){
       page.cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${W-margin*2} ${headerH} re f`);
       for(let i=0;i<cols.length;i++){
         if(adminPortrait){
-          const lines=adminPdfHeaderLines(cols[i],widths[i]);
+          const headerLabel=isNetSection&&keyOf(cols[i])==='RATE'?'NET RATE':cols[i];
+          const lines=adminPdfHeaderLines(headerLabel,widths[i]);
           lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F2 7.5 Tf 1 1 1 rg ${x+2} ${H-y-8.5-lineIndex*7.8} Td (${esc(line)}) Tj ET`));
         }else{
           const max=Math.max(3,Math.floor(widths[i]/3));
-          page.cmd.push(`BT /F2 4.8 Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (${esc(truncText(cols[i],max))}) Tj ET`);
+          const headerLabel=isNetSection&&keyOf(cols[i])==='RATE'?'NET RATE':cols[i];
+          page.cmd.push(`BT /F2 4.8 Tf 1 1 1 rg ${x+2} ${H-y-6.7} Td (${esc(truncText(headerLabel,max))}) Tj ET`);
         }
         x+=widths[i];
       }
@@ -1977,7 +1983,7 @@ function fastPdfPages(){
         page.cmd.push(`BT /${font} ${size} Tf ${color} rg ${Math.max(margin,center-approx)} ${H-yPos} Td (${esc(text)}) Tj ET`);
       };
       centerText('RAJ AGENCIES','F2',7.6,31,rgb(220,108,11));
-      centerText(group,'F2',14.5,47,rgb(14,51,126));
+      centerText(sectionTitle,'F2',14.5,47,rgb(14,51,126));
       centerText('LIVE PRICE BOOK','F2',6.2,58,rgb(14,51,126));
       const meta=`COMPANY LIST DATE: ${listDateForRows(gr)}`;
       const boxW=adminPortrait?132:150,boxX=center-boxW/2,boxY=H-72,boxH=9;
@@ -1998,15 +2004,10 @@ function fastPdfPages(){
       const idx=Math.min(level,3),f=fills[idx],tc=texts[idx];
       const indent=4+level*(adminPortrait?6:8),textW=Math.max(40,W-margin*2-indent-6);
       const maxFont=adminPortrait?9:(level===0?6.2:5.7);
-      let font=pdfIndexFitFont(String(value),textW,maxFont,3.35);
-      let lines=[String(value)],actualH=bandH;
-      // V128: very long MODEL/VEHICLE hierarchy values must never run outside the page.
-      // Shrink first; if still too dense, wrap into at most two compact lines.
-      if(font<=3.36 && pdfAscii(value).length>100){
-        font=adminPortrait?4.5:3.8;
-        lines=pdfWrapText(String(value),textW,font,2);
-        actualH=adminPortrait?23.5:18.5;
-      }
+      // V137: hierarchy/model titles stay on one line and shrink to the frame width.
+      // This prevents long SVL/model headings from running outside the blue/yellow band.
+      const font=pdfIndexFitFont(String(value),textW,maxFont,2.2);
+      const lines=[String(value)],actualH=bandH;
       return {f,tc,indent,font,lines,actualH};
     };
 
@@ -2037,7 +2038,7 @@ function fastPdfPages(){
         if(key==='PRODUCT NAME')return [pdfAscii(value).replace(/\s+/g,' ').trim()];
         return pdfWrapText(value,widths[i],7.5,2);
       }):[];
-      const currentRowH=adminPortrait?Math.max(rowH,4.2+Math.max(1,...wrapped.map((lines,i)=>keyOf(cols[i])==='PRODUCT NAME'?1:lines.length))*8.0):rowH;
+      const currentRowH=rowH;
 
       // Reserve the changed hierarchy bands AND the first data row as one atomic block.
       // If they do not fit together, move the complete current hierarchy to the next page.
@@ -2065,15 +2066,13 @@ function fastPdfPages(){
         const key=keyOf(cols[i]),val=displayFieldValue(r,cols[i]),isPrice=/^(RATE|MRP)$/i.test(cols[i]);
         if(adminPortrait){
           if(key==='PRODUCT NAME'){
-            const text=pdfAscii(val).replace(/\s+/g,' ').trim(),netRate=v134IsNetRateRow(r);
-            const reserved=netRate?35:0,textWidth=Math.max(22,widths[i]-reserved);
-            const size=pdfFitProductNameFont(text,textWidth,7.5,2.75);
+            const text=pdfAscii(val).replace(/\s+/g,' ').trim();
+            const size=pdfFitProductNameFont(text,Math.max(22,widths[i]-2),7.5,3.45);
             page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${rowBase} Td (${esc(text)}) Tj ET`);
-            if(netRate)page.cmd.push(`BT /F2 5.1 Tf 0.82 0.02 0.02 rg ${(x+widths[i]-32).toFixed(2)} ${rowBase} Td (NET RATE) Tj ET`);
           }else{
-            const lines=wrapped[i];
-            const lineStep=7.8,totalTextH=Math.max(0,(lines.length-1)*lineStep),firstBase=rowBase+totalTextH/2;
-            lines.forEach((line,lineIndex)=>page.cmd.push(`BT /${isPrice?'F2':'F1'} 7.5 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${firstBase-lineIndex*lineStep} Td (${esc(line)}) Tj ET`));
+            const text=pdfAscii(val).replace(/\s+/g,' ').trim();
+            const size=pdfFitFont(text,widths[i],7.5,3.2);
+            page.cmd.push(`BT /${isPrice?'F2':'F1'} ${size.toFixed(2)} Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${rowBase} Td (${esc(text)}) Tj ET`);
           }
         }else{
           const max=Math.max(3,Math.floor(widths[i]/2.8));
@@ -2532,6 +2531,8 @@ function groupValue(row, field){
 function partNumberValue(row){return clean(getField(row,'CODE','PART NUMBER','PART NO'))}
 function sortRowsByFields(rows,fields){
   return [...rows].sort((a,b)=>{
+    const netCompare=Number(v137IsNetRateRow(a))-Number(v137IsNetRateRow(b));
+    if(netCompare)return netCompare;
     for(const field of fields){
       const compare=natural(groupValue(a,field),groupValue(b,field));
       if(compare)return compare;
@@ -2552,6 +2553,8 @@ function sortedRows(rows){
   return [...rows].sort((a,b)=>{
     const ag=clean(getField(a,'GROUP')),bg=clean(getField(b,'GROUP'));
     const groupCompare=natural(ag,bg);if(groupCompare)return groupCompare;
+    const netCompare=Number(v137IsNetRateRow(a))-Number(v137IsNetRateRow(b));
+    if(netCompare)return netCompare;
     const fields=fieldCache.get(ag)||[];
     for(const field of fields){
       const compare=natural(groupValue(a,field),groupValue(b,field));
@@ -2734,32 +2737,55 @@ function gridProductRow(row,serial){
     return `<td class="${cls}" data-col="${escapeHtml(key)}">${content}</td>`;
   }).join('')+`<td class="image-col"><button class="view-image-btn" type="button" data-row-index="${rowSourceIndex(row)}">View Image</button></td></tr>`;
 }
+function v137NetGridHeader(title){
+  const cells=visibleColumns.map(column=>{
+    const key=keyOf(column),label=key==='RATE'?'NET RATE':escapeHtml(column);
+    const align=(key==='CODE'||key==='PRODUCT NAME')?'left':'right';
+    return `<th style="padding:7px 8px;border:1px solid #6f95c4;background:#0e337e;color:#fff;text-align:${align};font-size:11px;font-weight:900;white-space:nowrap">${label}</th>`;
+  }).join('');
+  return `<tr class="v137-net-section-title"><td colspan="${visibleColumns.length+2}" style="padding:8px 10px;background:#fff0b8;color:#5a3b00;border:1px solid #e3b73e;font-weight:900;font-size:14px">${escapeHtml(title)}</td></tr>`+
+    `<tr class="v137-net-column-header"><th style="padding:7px 6px;border:1px solid #6f95c4;background:#0e337e;color:#fff;text-align:center;font-size:11px">#</th>${cells}<th style="padding:7px 6px;border:1px solid #6f95c4;background:#0e337e;color:#fff;text-align:center;font-size:11px;white-space:nowrap">IMAGE / ORDER</th></tr>`;
+}
 function miniGroupedBody(rows, startIndex=0, contextRows=rows){
   const fields=viewByFields(contextRows);
   let html='',serial=startIndex;
 
-  const renderProducts=items=>{
-    sortRowsByFields(items,[]).forEach(row=>{
-      serial++;
-      html+=gridProductRow(row,serial);
-    });
-  };
-  const renderLevel=(items,level,path)=>{
-    if(level>=fields.length){renderProducts(items);return}
-    const field=fields[level];
-    groupedEntries(items,field,fields.slice(level+1)).forEach(([title,groupItems])=>{
-      const nextPath=[...path,title];
-      const total=hierarchyCount(contextRows,fields,nextPath);
-      const visual=hierarchyVisual(level,'grid');
-      html+=`<tr class="group-heading ${visual.className}" data-group-level="${visual.depth}" style="--view-indent:${visual.indent}px"><td colspan="${visibleColumns.length+2}"><span class="group-field-label">${escapeHtml(viewByLabel(field))}</span><span class="group-title">${escapeHtml(title)}</span><span class="group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`;
-      renderLevel(groupItems,level+1,nextPath);
-    });
+  const renderBlock=(items,blockContext)=>{
+    if(!items.length)return;
+    const renderProducts=products=>{
+      sortRowsByFields(products,[]).forEach(row=>{
+        serial++;
+        html+=gridProductRow(row,serial);
+      });
+    };
+    const renderLevel=(levelItems,level,path)=>{
+      if(level>=fields.length){renderProducts(levelItems);return}
+      const field=fields[level];
+      groupedEntries(levelItems,field,fields.slice(level+1)).forEach(([title,groupItems])=>{
+        const nextPath=[...path,title];
+        const total=hierarchyCount(blockContext,fields,nextPath);
+        const visual=hierarchyVisual(level,'grid');
+        html+=`<tr class="group-heading ${visual.className}" data-group-level="${visual.depth}" style="--view-indent:${visual.indent}px"><td colspan="${visibleColumns.length+2}"><span class="group-field-label">${escapeHtml(viewByLabel(field))}</span><span class="group-title">${escapeHtml(title)}</span><span class="group-count">${total.toLocaleString('en-IN')} Products</span></td></tr>`;
+        renderLevel(groupItems,level+1,nextPath);
+      });
+    };
+    if(fields.length)renderLevel(sortRowsByFields(items,fields),0,[]);
+    else renderProducts(items);
   };
 
-  if(fields.length)renderLevel(sortRowsByFields(rows,fields),0,[]);
-  else renderProducts(rows);
+  const normalRows=rows.filter(row=>!v137IsNetRateRow(row));
+  const netRows=rows.filter(v137IsNetRateRow);
+  const normalContext=contextRows.filter(row=>!v137IsNetRateRow(row));
+  const netContext=contextRows.filter(v137IsNetRateRow);
+  renderBlock(normalRows,normalContext);
+  if(netRows.length){
+    const group=clean(getField(netRows[0],'GROUP'))||'PRICE BOOK';
+    html+=v137NetGridHeader(`${group} - NET`);
+    renderBlock(netRows,netContext);
+  }
   return {html,serial};
 }
+
 function makeBody(rows, startIndex=0, contextRows=filtered){
   const selectedGroup=$('#groupFilter').value;
   if(selectedGroup){
