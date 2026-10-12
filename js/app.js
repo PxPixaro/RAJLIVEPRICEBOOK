@@ -1464,7 +1464,7 @@ function formatGstForDisplay(value){
   if(!Number.isFinite(num))return raw;
   return `${Number.isInteger(num)?num:num.toString()}%`;
 }
-// V137: NET RATE now comes ONLY from the master Excel NET RATE column.
+// V138: NET RATE comes ONLY from the master Excel NET RATE column and is used only as a section flag.
 // The old hard-coded Group/Sub Group list is intentionally retired.
 function v137NetRateFlag(row){
   return clean(getField(row,'NET RATE','NETRATE','NET-RATE','NET RATE FLAG','NETRATE FLAG'));
@@ -1577,8 +1577,15 @@ function buildPrintGroupSection(groupName,groupRows,index){
   const widths=printColumnWeights(cols);
   const colgroup=`<colgroup><col style="width:${widths.serial}%">${cols.map((c,colIndex)=>`<col style="width:${widths.columns[colIndex]}%">`).join('')}</colgroup>`;
   const head=cols.map(c=>`<th class="${printCellClass(c)}">${escapeHtml(c)}</th>`).join('');
-  const output=[];
-  appendPrintHierarchy(output,rows,groupRows,cols,{value:0});
+  const output=[],serialState={value:0};
+  const regularRows=rows.filter(row=>!v137IsNetRateRow(row));
+  const netRows=rows.filter(v137IsNetRateRow);
+  if(regularRows.length)appendPrintHierarchy(output,regularRows,regularRows,cols,serialState);
+  if(netRows.length){
+    output.push(`<tr class="pdf-net-section-title"><td colspan="${cols.length+1}">${escapeHtml(groupName)} - NET RATE</td></tr>`);
+    output.push(`<tr class="pdf-net-column-header"><td class="serial">#</td>${cols.map(c=>`<td class="${printCellClass(c)}">${keyOf(c)==='RATE'?'NET RATE':escapeHtml(c)}</td>`).join('')}</tr>`);
+    appendPrintHierarchy(output,netRows,netRows,cols,serialState);
+  }
   const logoId=`pdfBrandLogo${index}`;
   const logoCandidates=logoCandidatesForBrand(groupName);
   const logoScript=`<script>(function(){var c=${JSON.stringify(logoCandidates)};var i=0;var img=document.getElementById(${JSON.stringify(logoId)});if(!img)return;function next(){if(i>=c.length){img.removeAttribute('src');img.style.visibility='hidden';return}img.src=c[i++];img.style.visibility='visible'}img.onload=function(){img.style.visibility='visible'};img.onerror=next;next()})()<\/script>`;
@@ -1650,6 +1657,12 @@ function buildLightweightPrintHtml(){
     .pdf-group-label{display:inline-block;margin-right:6px;padding:1px 4px;border:1px solid currentColor;border-radius:3px;font-size:.82em;letter-spacing:.05em}
     .pdf-group-title{font-weight:900}
     .pdf-group-count{float:right;font-size:.85em;font-weight:800}
+    .pdf-net-section-title{break-before:page;page-break-before:always;break-after:avoid;page-break-after:avoid}
+    .pdf-net-section-title td{background:#fff0b8!important;color:#5a3b00!important;font-size:12px!important;font-weight:900!important;text-align:left!important;padding:6px 7px!important;border-color:#e3b73e!important}
+    .pdf-net-column-header{break-after:avoid;page-break-after:avoid}
+    .pdf-net-column-header td{background:#0e337e!important;color:#fff!important;font-weight:900!important;font-size:var(--pdf-font,8px)!important;padding:var(--pdf-pad,3px)!important;border-color:#355a91!important;white-space:normal!important}
+    .pdf-net-column-header td.right,.pdf-net-column-header td.price{text-align:right!important}
+    .pdf-net-column-header td.left{text-align:left!important}
     .footer-note{text-align:center;margin-top:4px;font-size:7.2px;color:#4a5568}
     @media screen{body{padding:10px}}
   </style></head><body>
@@ -1928,7 +1941,7 @@ function fastPdfPages(){
     const regularRows=groupRows.filter(row=>!v137IsNetRateRow(row));
     const netRows=groupRows.filter(v137IsNetRateRow);
     if(regularRows.length)groups.push([group,regularRows,false,group]);
-    if(netRows.length)groups.push([group,netRows,true,`${group} - NET`]);
+    if(netRows.length)groups.push([group,netRows,true,`${group} - NET RATE`]);
   });
   const pages=[],W=adminPortrait?595:842,H=adminPortrait?842:595,margin=adminPortrait?18:22,contentTop=98,rowH=adminPortrait?14.6:10.5,bandH=adminPortrait?15.6:12.4;
   const esc=pdfAscii;
@@ -2780,7 +2793,7 @@ function miniGroupedBody(rows, startIndex=0, contextRows=rows){
   renderBlock(normalRows,normalContext);
   if(netRows.length){
     const group=clean(getField(netRows[0],'GROUP'))||'PRICE BOOK';
-    html+=v137NetGridHeader(`${group} - NET`);
+    html+=v137NetGridHeader(`${group} - NET RATE`);
     renderBlock(netRows,netContext);
   }
   return {html,serial};
