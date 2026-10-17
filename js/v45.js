@@ -557,34 +557,69 @@ function v72CloseAdminLogin(){
 window.RAJ_OPEN_ADMIN_LOGIN=v72ShowAdminLogin;
 
 function v144LoaderPartsHtml(){
-  const source=Array.isArray(window.RAJ_IMAGE_SEARCH_INDEX_V82)?window.RAJ_IMAGE_SEARCH_INDEX_V82:[];
-  const picked=[],perGroup=new Map();
-  for(const item of source){
-    const path=String(item?.path||'').trim(),brand=String(item?.brand||'').trim();
-    if(!path||!brand)continue;
-    const n=perGroup.get(brand)||0;
-    if(n>=2)continue;
-    perGroup.set(brand,n+1);picked.push({path,brand});
-    if(picked.length>=50)break;
-  }
-  // Fallback kept small and verified against the bundled product-image folders.
-  if(!picked.length){
-    [
-      ['assets/Products Images/AAYUB/AA1001_1.webp','AAYUB'],
-      ['assets/Products Images/ALIED/ALABS122S_1.webp','ALIED'],
-      ['assets/Products Images/ASK/11091_1.webp','ASK'],
-      ['assets/Products Images/GCPA/310 PTL_1.webp','GCPA'],
-      ['assets/Products Images/QH/cross member lower_1.webp','QH'],
-      ['assets/Products Images/WIX/WA11241A_1.webp','WIX']
-    ].forEach(x=>picked.push({path:x[0],brand:x[1]}));
-  }
+  // V145: use only product-image files verified in the bundled project.
+  // Two images per available product-image group keep the loader rich and
+  // independent from the visual-search index/cache loading order.
+  const picked=[
+    ['assets/Products Images/AAYUB/AA1001_1.webp','AAYUB'],
+    ['assets/Products Images/AAYUB/AA1002_1.webp','AAYUB'],
+    ['assets/Products Images/ALIED/ALABS122S_1.webp','ALIED'],
+    ['assets/Products Images/ALIED/ALABS123S_1.webp','ALIED'],
+    ['assets/Products Images/ASK/11091R_1.webp','ASK'],
+    ['assets/Products Images/ASK/11091_1.webp','ASK'],
+    ['assets/Products Images/BULLDOG/B SEAL FAST_1.webp','BULLDOG'],
+    ['assets/Products Images/BULLDOG/B SEAL REGULAR_1.webp','BULLDOG'],
+    ['assets/Products Images/DC/DC101_1.webp','DC'],
+    ['assets/Products Images/DC/DC103_1.webp','DC'],
+    ['assets/Products Images/EMMBROSS/EM1095_1.webp','EMMBROSS'],
+    ['assets/Products Images/EMMBROSS/EM1109_1.webp','EMMBROSS'],
+    ['assets/Products Images/GAUTAM BT/11BT330_1.webp','GAUTAM BT'],
+    ['assets/Products Images/GAUTAM BT/12BT500_1.webp','GAUTAM BT'],
+    ['assets/Products Images/GCL/GC30222_1.webp','GCL'],
+    ['assets/Products Images/GCL/GC30227_1.webp','GCL'],
+    ['assets/Products Images/GCPA/310 PTL_1.webp','GCPA'],
+    ['assets/Products Images/GCPA/G-330-FWA-125S_1.webp','GCPA'],
+    ['assets/Products Images/GF/GF1109_1.webp','GF'],
+    ['assets/Products Images/GF/GF1210_1.webp','GF'],
+    ['assets/Products Images/HALDEX/21174A_1.webp','HALDEX'],
+    ['assets/Products Images/HALDEX/21174_1.webp','HALDEX'],
+    ['assets/Products Images/IFLEX/IF1502P_1.webp','IFLEX'],
+    ['assets/Products Images/IFLEX/IF1504E_1.webp','IFLEX'],
+    ['assets/Products Images/JHAVERI/JFP1415_1.webp','JHAVERI'],
+    ['assets/Products Images/JHAVERI/JFP1417_1.webp','JHAVERI'],
+    ['assets/Products Images/KD/KA118_1.webp','KD'],
+    ['assets/Products Images/KD/KA119_1.webp','KD'],
+    ['assets/Products Images/MK GOLD/MK222U_1.webp','MK GOLD'],
+    ['assets/Products Images/MK GOLD/MK2725_1.webp','MK GOLD'],
+    ['assets/Products Images/NGK/NGBKR5E11_1.webp','NGK'],
+    ['assets/Products Images/NGK/NGBKR5EGP_1.webp','NGK'],
+    ['assets/Products Images/OE PLUS/91017_1.webp','OE PLUS'],
+    ['assets/Products Images/OE PLUS/91213_1.webp','OE PLUS'],
+    ['assets/Products Images/OLMA/1019_1.webp','OLMA'],
+    ['assets/Products Images/OLMA/1020_1.webp','OLMA'],
+    ['assets/Products Images/OSRAM/622118RL_1.webp','OSRAM'],
+    ['assets/Products Images/OSRAM/OS62210CBM_1.webp','OSRAM'],
+    ['assets/Products Images/QH/QBSJ0512FSDS_1.webp','QH'],
+    ['assets/Products Images/QH/QDL0202_1.webp','QH'],
+    ['assets/Products Images/RAICAM/1043622_1.webp','RAICAM'],
+    ['assets/Products Images/RAICAM/1043625_1.webp','RAICAM'],
+    ['assets/Products Images/RAJNISH/J8002_1.webp','RAJNISH'],
+    ['assets/Products Images/RAJNISH/RJ018001_1.webp','RAJNISH'],
+    ['assets/Products Images/RIVIT/RI1010_1.webp','RIVIT'],
+    ['assets/Products Images/RIVIT/RI1012_1.webp','RIVIT'],
+    ['assets/Products Images/SHANCO/S-STL_1.webp','SHANCO'],
+    ['assets/Products Images/SHANCO/S11CBT_1.webp','SHANCO'],
+    ['assets/Products Images/WIX/WA11241A_1.webp','WIX'],
+    ['assets/Products Images/WIX/WA11243_1.webp','WIX']
+  ].map(x=>({path:x[0],brand:x[1]}));
   const esc=v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return picked.map((item,i)=>{
-    const top=(4+((i*17)%90))+'%';
-    const dur=(11.8+((i*13)%67)/10).toFixed(1)+'s';
-    const delay=(-(0.5+((i*29)%181)/10)).toFixed(1)+'s';
-    const size=(52+((i*11)%27))+'px';
-    return '<img class="v132-part" src="'+esc(item.path)+'" alt="" aria-hidden="true" data-group="'+esc(item.brand)+'" loading="eager" decoding="async" onerror="this.remove()" style="--top:'+top+';--dur:'+dur+';--delay:'+delay+';--size:'+size+'">';
+    const top=(3+((i*19)%91))+'%';
+    const dur=(12.6+((i*17)%59)/10).toFixed(1)+'s';
+    const delay=(-(1+((i*31)%211)/10)).toFixed(1)+'s';
+    const size=(50+((i*13)%31))+'px';
+    const src=item.path+'?v=145-loader';
+    return '<img class="v132-part" src="'+esc(src)+'" alt="" aria-hidden="true" data-group="'+esc(item.brand)+'" loading="eager" decoding="async" onerror="this.remove()" style="--top:'+top+';--dur:'+dur+';--delay:'+delay+';--size:'+size+'">';
   }).join('');
 }
 
