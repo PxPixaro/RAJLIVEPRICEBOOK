@@ -149,7 +149,8 @@ const HIDDEN_COLUMNS = new Set([
   'CATALOG','CATALOG LINK','CATALOG URL','CATALOG NAME','CATALOG FILE',
   'NEW PRODUCT LAUNCH','DEAD STOCK','FSN CLASS','INDEX',
   'VISIBLE / NOT VISIBLE','VISIBLE/NOT VISIBLE','VISIBLE NOT VISIBLE','YES/NO','YES / NO','YES NO',
-  'NET RATE','NETRATE','NET-RATE','NETT RATE','NETTRATE','NETT-RATE','NET RATE FLAG','NETRATE FLAG','NETT RATE FLAG','NETTRATE FLAG'
+  'NET RATE','NETRATE','NET-RATE','NETT RATE','NETTRATE','NETT-RATE','NET RATE FLAG','NETRATE FLAG','NETT RATE FLAG','NETTRATE FLAG',
+  'IMAGES','IMAGE','IMAGE FILE','IMAGE NAME','PRODUCT IMAGE'
 ]);
 const ALWAYS = ['CODE','PRODUCT NAME','UNIT','GST','RATE','MRP'];
 const NUMERIC_COLUMNS = new Set(['RATE','MRP','STD PKG','CRT PKG','BOX QTY','PACK']);
@@ -1056,26 +1057,32 @@ async function refreshHostedFilterMaster(){
 
 function safePathPart(v){return clean(v).replace(/[<>:"/\\|?*]/g,'_').trim()}
 function productImageCandidates(row){
+  // V143: Excel BG/IMAGES is now the ONLY image-mapping source.
+  // Blank IMAGES means no product image should be auto-matched by CODE.
+  const explicitRaw=clean(getField(row,'IMAGES','IMAGE','IMAGE FILE','IMAGE NAME','PRODUCT IMAGE'));
+  if(!explicitRaw)return [];
+
+  // Allow a full hosted URL/path too, but the normal use is an exact filename such as AA3006.webp.
+  if(/^https?:\/\//i.test(explicitRaw)||/^assets\//i.test(explicitRaw))return [explicitRaw];
+
   const rawGroup=safePathPart(getField(row,'GROUP'));
   const groupBase=rawGroup.replace(/\s*-\s*OK$/i,'').trim();
-  const code=safePathPart(getField(row,'CODE','PART NUMBER','PART NO'));
-
-  // Optimized image folders can be copied directly as GROUP - OK, for example:
-  // assets/Products Images/AAYUB - OK/AA201_1.webp
-  // The old format (Aayub/AA201.png) remains supported too.
-  const folders=[
-    `${groupBase.toUpperCase()} - OK`,
-    rawGroup,
-    groupBase,
-    groupBase.toUpperCase(),
-    `${groupBase} - OK`
-  ].filter((v,i,a)=>v && a.indexOf(v)===i);
-  const fileBases=[`${code}_1`,code,`${code}_01`].filter((v,i,a)=>v && a.indexOf(v)===i);
-  const extensions=['webp','png','jpg','jpeg','WEBP','PNG','JPG','JPEG'];
+  const folders=[rawGroup,groupBase,groupBase.toUpperCase(),`${groupBase.toUpperCase()} - OK`,`${groupBase} - OK`]
+    .filter((v,i,a)=>v && a.indexOf(v)===i);
+  const filename=explicitRaw.replace(/^.*[\\/]/,'').trim();
+  const dot=filename.lastIndexOf('.');
+  const base=dot>0?filename.slice(0,dot):filename;
+  const ext=dot>0?filename.slice(dot+1):'';
+  const names=[];
+  const addName=n=>{if(n&&!names.includes(n))names.push(n)};
+  addName(filename);
+  // Friendly fallback for existing files that use the historic _1 suffix.
+  if(base&&!/_1$/i.test(base))addName(`${base}_1${ext?'.'+ext:''}`);
+  if(!ext){
+    ['webp','png','jpg','jpeg','WEBP','PNG','JPG','JPEG'].forEach(e=>{addName(`${base}.${e}`);addName(`${base}_1.${e}`)});
+  }
   const candidates=[];
-  folders.forEach(folder=>fileBases.forEach(fileBase=>extensions.forEach(ext=>{
-    candidates.push(`assets/Products Images/${encodeURIComponent(folder)}/${encodeURIComponent(fileBase)}.${ext}`);
-  })));
+  folders.forEach(folder=>names.forEach(name=>candidates.push(`assets/Products Images/${encodeURIComponent(folder)}/${encodeURIComponent(name)}`)));
   return candidates;
 }
 

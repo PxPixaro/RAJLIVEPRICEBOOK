@@ -1,4 +1,4 @@
-/* RAJ LIVE PRICE BOOK V132 — single-column catalogue index + strict filtered Price Book index.
+/* RAJ LIVE PRICE BOOK V143 — Excel IMAGES mapping + direct catalogue pages (no catalogue index).
    Keeps V123 catalogue design/image mapping exactly; only download preparation is accelerated.
    Keeps the approved V120 layout/content exactly, but removes click-time image decode/canvas work.
    Product thumbnails are fetched once as a compact per-group JPEG pack and embedded directly in PDF.
@@ -247,11 +247,32 @@
       BDUPVC250:'assets/Products Images/BULLDOG/Bulldog%20Upvc%20Solvent%20Cement%20100Ml_1.webp',BDUPVC500:'assets/Products Images/BULLDOG/Bulldog%20Upvc%20Solvent%20Cement%20100Ml_1.webp'
     })
   });
-  function v119ManifestImagePath(row){
+  function v143ExplicitImageValue(row){
+    return v116Clean(getField(row,'IMAGES','IMAGE','IMAGE FILE','IMAGE NAME','PRODUCT IMAGE'));
+  }
+  function v143ExplicitImageCandidates(row){
+    const raw=v143ExplicitImageValue(row);
+    if(!raw)return [];
+    if(/^https?:\/\//i.test(raw)||/^assets\//i.test(raw))return [raw];
     const group=v116Clean(getField(row,'GROUP'));
-    const code=v116Clean(getField(row,'CODE','PART NUMBER','PART NO'));
-    const groupKey=v116Key(group),codeKey=v116Key(code);
-    return V123_DIRECT_IMAGE_ALIASES[groupKey]?.[codeKey]||V119_IMAGE_MANIFEST[groupKey+'|'+codeKey]||'';
+    const groupBase=group.replace(/\s*-\s*OK$/i,'').trim();
+    const folders=[group,groupBase,groupBase.toUpperCase(),`${groupBase.toUpperCase()} - OK`,`${groupBase} - OK`]
+      .filter((v,i,a)=>v&&a.indexOf(v)===i);
+    const filename=raw.replace(/^.*[\\/]/,'').trim();
+    const dot=filename.lastIndexOf('.');
+    const base=dot>0?filename.slice(0,dot):filename;
+    const ext=dot>0?filename.slice(dot+1):'';
+    const names=[];const add=n=>{if(n&&!names.includes(n))names.push(n)};
+    add(filename);
+    if(base&&!/_1$/i.test(base))add(`${base}_1${ext?'.'+ext:''}`);
+    if(!ext)['webp','png','jpg','jpeg','WEBP','PNG','JPG','JPEG'].forEach(e=>{add(`${base}.${e}`);add(`${base}_1.${e}`)});
+    const out=[];
+    folders.forEach(folder=>names.forEach(name=>out.push(`assets/Products Images/${encodeURIComponent(folder)}/${encodeURIComponent(name)}`)));
+    return out;
+  }
+  function v119ManifestImagePath(row){
+    // V143: BG/IMAGES controls mapping completely. Blank means no image.
+    return v143ExplicitImageCandidates(row)[0]||'';
   }
   function v121PackInfo(group){
     const map=window.RAJ_CATALOG_PACK_INDEX_V123||window.RAJ_CATALOG_PACK_INDEX_V121||{};
@@ -340,91 +361,35 @@
   async function v116ResolveProductImage(row){
     const group=v116Clean(getField(row,'GROUP'));
     const code=v116Clean(getField(row,'CODE','PART NUMBER','PART NO'));
-    const cacheKey=v116Key(group)+'|'+v116Key(code);
+    const explicit=v143ExplicitImageValue(row);
+    // Same filename can intentionally be reused for many products; cache once per group+image filename.
+    const cacheKey=v116Key(group)+'|'+v116Key(explicit);
     if(V116_IMAGE_CACHE.has(cacheKey))return V116_IMAGE_CACHE.get(cacheKey);
-    const path=v119ManifestImagePath(row);
-    if(!path){V116_IMAGE_CACHE.set(cacheKey,null);return null}
-    const img=await v116LoadOneImage(path,3200);
-    if(!img){V116_IMAGE_CACHE.set(cacheKey,null);return null}
-    const jpeg=v116ImageToJpeg(img);
-    if(jpeg){const result={...jpeg,path};V116_IMAGE_CACHE.set(cacheKey,result);return result}
+    const candidates=v143ExplicitImageCandidates(row);
+    if(!candidates.length){V116_IMAGE_CACHE.set(cacheKey,null);return null}
+    for(const path of candidates){
+      const img=await v116LoadOneImage(path,2200);
+      if(!img)continue;
+      const jpeg=v116ImageToJpeg(img);
+      if(jpeg){const result={...jpeg,path};V116_IMAGE_CACHE.set(cacheKey,result);return result}
+    }
     V116_IMAGE_CACHE.set(cacheKey,null);return null;
   }
   async function v116CollectItems(rows,group){
-    // V121 fast path: ONE compact group-pack request, zero per-product image scanning,
-    // zero image decode and zero canvas JPEG conversion at download time.
-    const pack=await v121LoadGroupPack(group);
-    if(pack){
-      const output=rows.map(row=>({row,image:v121PackedImage(row,pack)}));
-      const missing=output.map((item,index)=>!item.image&&v119ManifestImagePath(item.row)?index:-1).filter(index=>index>=0);
-      if(missing.length){
-        let next=0;
-        async function fillMissing(){
-          while(true){
-            const pos=next++;if(pos>=missing.length)return;
-            const index=missing[pos];output[index].image=await v116ResolveProductImage(output[index].row);
-          }
-        }
-        await Promise.all(Array.from({length:Math.min(4,missing.length)},fillMissing));
-      }
-      return output;
-    }
-
-    // Safety fallback only if the pack file itself is unavailable. Existing manifest behavior
-    // is preserved so the catalogue still works instead of failing completely.
-    const output=new Array(rows.length);let next=0;
+    // V143: the Excel IMAGES column is authoritative. Do not auto-map blank rows by CODE.
+    // Only rows with IMAGES filled perform image I/O; one filename can intentionally be reused on many products.
+    const output=rows.map(row=>({row,image:null}));
+    const targets=[];
+    rows.forEach((row,index)=>{if(v143ExplicitImageValue(row))targets.push(index)});
+    let next=0;
     async function worker(){
       while(true){
-        const index=next++;if(index>=rows.length)return;
-        const row=rows[index];
-        output[index]={row,image:await v116ResolveProductImage(row)};
+        const pos=next++;if(pos>=targets.length)return;
+        const index=targets[pos];output[index].image=await v116ResolveProductImage(rows[index]);
       }
     }
-    await Promise.all(Array.from({length:Math.min(V116_IMAGE_CONCURRENCY,Math.max(1,rows.length))},worker));
-    return output.filter(Boolean);
-  }
-
-  function v116DetailColumns(rows){
-    let visible=[];
-    try{if(typeof visibleColumnsForRows==='function')visible=visibleColumnsForRows(rows)||[]}catch(_e){}
-    if(!visible.length){try{visible=dataColumns()||[]}catch(_e){}}
-    const priorities=['SEGMENT','VEHICLE','MODEL','UNIT','GST','HSN','HSN CODE','STD PKG','PKG SIZE','CLUTCH DIA','NO. OF TEETH','NUMBER OF TEETH','DIA','SIZE','SIZE MM','THICKNESS MM','WIDTH MM','BOX QTY','PACK'];
-    const all=[];
-    const add=col=>{if(col&&!all.some(x=>keyOf(x)===keyOf(col)))all.push(col)};
-    priorities.forEach(k=>{
-      const found=visible.find(c=>keyOf(c)===keyOf(k));if(found)add(found);
-      else{try{const foundAll=(dataColumns()||[]).find(c=>keyOf(c)===keyOf(k));if(foundAll)add(foundAll)}catch(_e){}}
-    });
-    visible.forEach(add);
-    const blocked=/^(GROUP|SUB GROUP|SUB-GROUP|SUBGROUP|CODE|PART NUMBER|PART NO|PRODUCT NAME|DESCRIPTION|IMAGE|IMAGE LINK|CATALOG|CATALOG LINK|CATALOG URL|INDEX|VISIBLE|VISIBILITY|RATE|MRP)$/i;
-    return all.filter(col=>!blocked.test(keyOf(col))).filter(col=>rows.some(row=>v116Clean(displayFieldValue(row,col))));
-  }
-  function v116Hierarchy(row){
-    const parts=[];
-    const defs=[['Sub Group',['SUB GROUP','SUB-GROUP','SUBGROUP']],['Category',['CATEGORY','CATEGORIES','CATAGORIES']],['Segment',['SEGMENT']],['Vehicle',['VEHICLE']],['Model',['MODEL']]];
-    defs.forEach(([label,keys])=>{
-      const value=v116Clean(getField(row,...keys));if(value&&!parts.some(x=>x.value===value))parts.push({label,value});
-    });
-    return parts;
-  }
-  function v116ProductDetails(row,columns){
-    const details=[],seen=new Set();
-    const push=(label,value)=>{
-      value=v116Clean(value);label=v116Clean(label).replace(/\s+/g,' ').trim();
-      const k=v116Key(label);
-      if(!value||!label||seen.has(k)||/^(RATE|MRP)$/.test(k))return;
-      if(/^https?:\/\//i.test(value))return;
-      seen.add(k);details.push({label,value});
-    };
-    push('SEGMENT',getField(row,'SEGMENT'));
-    push('VEHICLE',getField(row,'VEHICLE'));
-    push('MODEL',getField(row,'MODEL'));
-    columns.forEach(col=>{
-      const label=keyOf(col).replace(/\s+/g,' ').trim();
-      if(/^(RATE|MRP)$/i.test(label))return;
-      push(label,displayFieldValue(row,col));
-    });
-    return details.slice(0,10);
+    await Promise.all(Array.from({length:Math.min(V116_IMAGE_CONCURRENCY,Math.max(1,targets.length))},worker));
+    return output;
   }
 
   function v116BytesFromDataUrl(dataUrl){
@@ -512,26 +477,31 @@
       wmObj=add({bin:wmRgb,head:`<< /Type /XObject /Subtype /Image /Width ${V125_WM_W} /Height ${V125_WM_H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /SMask ${wmMask} 0 R /Length ${wmRgb.length} >>`});
     }catch(_e){wmObj=0}
 
-    const imageObjects=new Map();
+    const imageObjects=new Map(),sharedImageObjects=new Map();
     items.forEach((item,index)=>{
       if(item.image){
-        const bytes=item.image.bytes||v116BytesFromDataUrl(item.image.dataUrl);
-        const dim=(item.image.width&&item.image.height)?{width:item.image.width,height:item.image.height}:(jpegDimensions(bytes)||{width:1,height:1});
-        const id=add({bin:bytes,head:`<< /Type /XObject /Subtype /Image /Width ${dim.width} /Height ${dim.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>`});
-        imageObjects.set(item,id);item._v116Dim=dim;
+        const sharedKey=v116Clean(item.image.path)||('packed-'+index);
+        let shared=sharedImageObjects.get(sharedKey);
+        if(!shared){
+          const bytes=item.image.bytes||v116BytesFromDataUrl(item.image.dataUrl);
+          const dim=(item.image.width&&item.image.height)?{width:item.image.width,height:item.image.height}:(jpegDimensions(bytes)||{width:1,height:1});
+          const id=add({bin:bytes,head:`<< /Type /XObject /Subtype /Image /Width ${dim.width} /Height ${dim.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>`});
+          shared={id,dim};sharedImageObjects.set(sharedKey,shared);
+        }
+        imageObjects.set(item,shared.id);item._v116Dim=shared.dim;
       }
       item._v116PdfIndex=index;
     });
 
     // V126: Catalogue index is always single-column. Fill downward first; only when the
     // page is full continue the remaining sections on the next index page.
-    const indexInfo=v125IndexEntries(pages,fields);
-    const indexEntries=indexInfo.entries;
+    // V143: catalogue index removed. Product/image catalogue starts on page 1.
+    const indexInfo={entries:[],label:''};
+    const indexEntries=[];
     const listTop=151,listBottom=H-footerH-18,indexRowH=16;
     const indexRowsPerPage=Math.max(1,Math.floor((listBottom-listTop)/indexRowH));
     const indexSlices=[];
     for(let i=0;i<indexEntries.length;i+=indexRowsPerPage)indexSlices.push(indexEntries.slice(i,i+indexRowsPerPage));
-    if(!indexSlices.length)indexSlices.push([]);
     const indexPageIds=indexSlices.map(()=>add(''));
     const pageIds=pages.map(()=>add(''));
     const indexPageCount=indexPageIds.length;
@@ -599,12 +569,7 @@
       v116Rect(cmd,H,brandBoxX,22,78,42,'1 1 1',orange,.8);
       if(brandObj)cmd.push(`q 66 0 0 30 ${brandBoxX+6} ${H-58} cm /BrandLogo Do Q`);
 
-      // V128: second BACK TO INDEX control at the top of every catalogue product page.
-      const topBackW=67,topBackH=9.5,topBackX=W-margin-topBackW,topBackTop=72;
-      v116Rect(cmd,H,topBackX,topBackTop,topBackW,topBackH,pale,blue,.55);
-      v116Text(cmd,H,'BACK TO INDEX',topBackX+7,topBackTop+1.8,4.9,'F2',blue);
-      const topBackAnn=add(`<< /Type /Annot /Subtype /Link /Rect ${v125PdfRectFromTop(H,topBackX,topBackTop,topBackW,topBackH)} /Border [0 0 0] /Dest [${indexPageIds[0]} 0 R /Fit] >>`);
-      pageAnnots.push(topBackAnn);
+      // V143: no catalogue index, so product page starts directly without BACK TO INDEX controls.
 
       // V133: hierarchical VIEW BY bands. The first VIEW BY value (Category/Segment/etc.)
       // is printed once for its whole block; child headings change underneath without repeating the parent.
@@ -724,12 +689,8 @@
       v116Rect(cmd,H,W/2-30,footerTop-7,60,17,deep,orange,.8);
       v116Text(cmd,H,'PAGE '+(pageIndex+indexPageCount+1),W/2-17,footerTop-3,7.2,'F2','1 1 1');
 
-      const backX=margin,backTop=footerTop+4,backW=67,backH=11;
-      v116Rect(cmd,H,backX,backTop,backW,backH,pale,blue,.55);
-      v116Text(cmd,H,'BACK TO INDEX',backX+7,backTop+2.3,5.1,'F2',blue);
-      const backAnn=add(`<< /Type /Annot /Subtype /Link /Rect ${v125PdfRectFromTop(H,backX,backTop,backW,backH)} /Border [0 0 0] /Dest [${indexPageIds[0]} 0 R /Fit] >>`);
-      pageAnnots.push(backAnn);
-      v116Text(cmd,H,'RAJ GROUP  •  '+group,backX+75,footerTop+10,5.3,'F1',muted);
+      const backX=margin;
+      v116Text(cmd,H,'RAJ GROUP  •  '+group,backX,footerTop+10,5.3,'F1',muted);
       const right='PRODUCTS '+items.length;
       v116Text(cmd,H,right,W-margin-52,footerTop+10,5.3,'F1',muted);
 
@@ -757,12 +718,12 @@
   function v124HashRows(rows,fields,group){
     let h=2166136261>>>0;
     const add=value=>{const str=v116Clean(value);for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}};
-    add('V134');add(group);add(rows.length);fields.forEach(add);
+    add('V143');add(group);add(rows.length);fields.forEach(add);
     const info=v121PackInfo(group);if(info){add(info.file);add(info.bytes);add(info.count)}
     for(const row of rows){
       add(getField(row,'CODE','PART NUMBER','PART NO'));add(getField(row,'PRODUCT NAME','DESCRIPTION'));
       add(getField(row,'SEGMENT'));add(getField(row,'VEHICLE'));add(getField(row,'MODEL'));add(getField(row,'CATAGORIES','CATEGORIES','CATEGORY'));
-      add(getField(row,'UNIT'));add(getField(row,'GST'));add(getField(row,'HSN','HSN CODE'));add(getField(row,'STD PKG','PKG SIZE'));
+      add(getField(row,'UNIT'));add(getField(row,'GST'));add(getField(row,'HSN','HSN CODE'));add(getField(row,'STD PKG','PKG SIZE'));add(getField(row,'IMAGES','IMAGE','IMAGE FILE','IMAGE NAME','PRODUCT IMAGE'));
     }
     return h.toString(16).padStart(8,'0');
   }
@@ -775,13 +736,13 @@
     return {group,rows,viewFields,key};
   }
   function v124CacheRequest(key){
-    try{return new Request(new URL('?raj-catalog-cache-v134='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
+    try{return new Request(new URL('?raj-catalog-cache-v143='+encodeURIComponent(key),location.href).href,{method:'GET'})}catch(_e){return null}
   }
   async function v124PersistentGet(key){
     if(!('caches' in window))return null;
     try{
       const req=v124CacheRequest(key);if(!req)return null;
-      const cache=await caches.open('raj-catalog-pdf-v134');const hit=await cache.match(req);
+      const cache=await caches.open('raj-catalog-pdf-v143');const hit=await cache.match(req);
       if(!hit)return null;const blob=await hit.blob();return blob&&blob.size?blob:null;
     }catch(_e){return null}
   }
@@ -789,8 +750,8 @@
     if(!('caches' in window)||!blob?.size)return;
     try{
       const req=v124CacheRequest(key);if(!req)return;
-      const cache=await caches.open('raj-catalog-pdf-v134');
-      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'134'}}));
+      const cache=await caches.open('raj-catalog-pdf-v143');
+      await cache.put(req,new Response(blob,{headers:{'Content-Type':'application/pdf','X-RAJ-Catalog-Version':'143'}}));
     }catch(_e){}
   }
   async function v124PrepareCatalogue(group){
@@ -839,7 +800,7 @@
       else{
         const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
       }
-      toast(`Catalogue ready: ${prepared.rows.length.toLocaleString('en-IN')} products · ${(prepared.pagePlan.length+1)} pages · Price Book VIEW BY hierarchy`);
+      toast(`Catalogue ready: ${prepared.rows.length.toLocaleString('en-IN')} products · ${prepared.pagePlan.length} pages · Price Book VIEW BY hierarchy`);
     }catch(error){
       console.error('V132 catalogue PDF error:',error);toast('Catalogue PDF create nahi hua. Please try again.');
     }finally{
