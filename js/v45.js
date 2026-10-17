@@ -557,50 +557,112 @@ function v72CloseAdminLogin(){
 window.RAJ_OPEN_ADMIN_LOGIN=v72ShowAdminLogin;
 
 function v144LoaderPartsHtml(){
-  // V147: one transparent PNG product from every available product-image group.
-  // These are purpose-built loader cut-outs (no white card/background) so the
-  // Preparing screen stays rich, clean and lightweight.
-  const picked=[
+  // V148: brand-logo loader. All registered brand logos are available in
+  // assets/loader-images; a rotating subset is shown each load for speed.
+  const all=[
     ['assets/loader-images/aayub.png','AAYUB'],
-    ['assets/loader-images/alied.png','ALIED'],
+    ['assets/loader-images/allied.png','Allied'],
+    ['assets/loader-images/amp.png','AMP'],
+    ['assets/loader-images/anabond.png','ANABOND'],
+    ['assets/loader-images/aparstic.png','APARSTIC'],
+    ['assets/loader-images/appollo.png','APPOLLO'],
+    ['assets/loader-images/ashwamegh.png','ASHWAMEGH'],
     ['assets/loader-images/ask.png','ASK'],
-    ['assets/loader-images/bulldog.png','BULLDOG'],
+    ['assets/loader-images/atop.png','ATOP'],
+    ['assets/loader-images/bluebird.png','BLUEBIRD'],
+    ['assets/loader-images/bosch.png','BOSCH'],
+    ['assets/loader-images/bravo.png','BRAVO'],
+    ['assets/loader-images/bulldog.png','Bulldog'],
+    ['assets/loader-images/champion.png','CHAMPION'],
+    ['assets/loader-images/chander.png','CHANDER'],
+    ['assets/loader-images/chener.png','CHENER'],
+    ['assets/loader-images/ci.png','CI'],
+    ['assets/loader-images/crc.png','CRC'],
     ['assets/loader-images/dc.png','DC'],
-    ['assets/loader-images/emmbross.png','EMMBROSS'],
+    ['assets/loader-images/delux.png','DELUX'],
+    ['assets/loader-images/elofic.png','ELOFIC'],
+    ['assets/loader-images/emmbross.png','Emmbross'],
+    ['assets/loader-images/fenner.png','FENNER'],
+    ['assets/loader-images/gates.png','GATES'],
     ['assets/loader-images/gautam-bt.png','GAUTAM BT'],
+    ['assets/loader-images/gautam.png','GAUTAM'],
     ['assets/loader-images/gcl.png','GCL'],
     ['assets/loader-images/gcpa.png','GCPA'],
+    ['assets/loader-images/geekay.png','GEEKAY'],
     ['assets/loader-images/gf.png','GF'],
-    ['assets/loader-images/haldex.png','HALDEX'],
+    ['assets/loader-images/gmt.png','GMT'],
+    ['assets/loader-images/haldex.png','haldex'],
+    ['assets/loader-images/hfl.png','HFL'],
+    ['assets/loader-images/holdon.png','HOLDON'],
     ['assets/loader-images/iflex.png','IFLEX'],
+    ['assets/loader-images/jfl.png','JFL'],
     ['assets/loader-images/jhaveri.png','JHAVERI'],
+    ['assets/loader-images/kbx.png','KBX'],
     ['assets/loader-images/kd.png','KD'],
+    ['assets/loader-images/klipwel.png','KLIPWEL'],
+    ['assets/loader-images/lapox.png','LAPOX'],
+    ['assets/loader-images/lasco.png','LASCO'],
+    ['assets/loader-images/lgs.png','LGS'],
+    ['assets/loader-images/loctite.png','LOCTITE'],
+    ['assets/loader-images/luman.png','LUMAN'],
+    ['assets/loader-images/magma.png','MAGMA'],
+    ['assets/loader-images/mann.png','MANN'],
+    ['assets/loader-images/meko.png','MEKO'],
     ['assets/loader-images/mk-gold.png','MK GOLD'],
+    ['assets/loader-images/moeroe.png','MOEROE'],
+    ['assets/loader-images/neolight.png','Neolight'],
     ['assets/loader-images/ngk.png','NGK'],
-    ['assets/loader-images/oe-plus.png','OE PLUS'],
+    ['assets/loader-images/novex.png','NOVEX'],
+    ['assets/loader-images/oeplus.png','OEPLUS'],
     ['assets/loader-images/olma.png','OLMA'],
     ['assets/loader-images/osram.png','OSRAM'],
+    ['assets/loader-images/pionner.png','Pionner'],
+    ['assets/loader-images/piperoll.png','PIPEROLL'],
+    ['assets/loader-images/platiuam.png','PLATIUAM'],
+    ['assets/loader-images/polygrip.png','POLYGRIP'],
+    ['assets/loader-images/pooja.png','POOJA'],
+    ['assets/loader-images/prima.png','PRIMA'],
     ['assets/loader-images/qh.png','QH'],
     ['assets/loader-images/raicam.png','RAICAM'],
     ['assets/loader-images/rajnish.png','RAJNISH'],
+    ['assets/loader-images/ravi-jack.png','RAVI JACK'],
+    ['assets/loader-images/rds.png','RDS'],
+    ['assets/loader-images/remsons.png','REMSONS'],
+    ['assets/loader-images/reox.png','REOX'],
     ['assets/loader-images/rivit.png','RIVIT'],
+    ['assets/loader-images/rkd.png','RKD'],
+    ['assets/loader-images/rm.png','RM'],
+    ['assets/loader-images/rose.png','ROSE'],
+    ['assets/loader-images/sf.png','SF'],
     ['assets/loader-images/shanco.png','SHANCO'],
+    ['assets/loader-images/sorl.png','SORL'],
+    ['assets/loader-images/spicer.png','SPICER'],
+    ['assets/loader-images/st.png','ST'],
+    ['assets/loader-images/star-gold.png','STAR GOLD'],
+    ['assets/loader-images/stl.png','STL'],
+    ['assets/loader-images/superlac.png','SUPERLAC'],
+    ['assets/loader-images/svl.png','SVL'],
+    ['assets/loader-images/uval.png','UVAL'],
+    ['assets/loader-images/valeo.png','VALEO'],
+    ['assets/loader-images/veethree.png','VEETHREE'],
+    ['assets/loader-images/vigex.png','VIGEX'],
     ['assets/loader-images/wix.png','WIX']
   ].map(x=>({path:x[0],brand:x[1]}));
+  const maxVisible=Math.min(42,all.length);
+  const startAt=all.length?Math.floor(Date.now()/60000)%all.length:0;
+  const picked=[];
+  for(let j=0;j<maxVisible;j++) picked.push(all[(startAt+j*7)%all.length]);
   const esc=v=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return picked.map((item,i)=>{
-    // Spread vertically across the full screen and stagger speed/delay so the
-    // products never form obvious rows. Bigger sizes improve visibility.
-    const top=(2+((i*29)%89))+'%';
-    const dur=(13.5+((i*23)%61)/10).toFixed(1)+'s';
-    const delay=(-(1+((i*37)%223)/10)).toFixed(1)+'s';
-    const size=(108+((i*17)%63))+'px';
-    const opacity=(0.58+((i*7)%18)/100).toFixed(2);
-    const src=item.path+'?v=147-loader';
-    return '<img class="v132-part" src="'+esc(src)+'" alt="" aria-hidden="true" data-group="'+esc(item.brand)+'" loading="eager" decoding="async" onerror="this.remove()" style="--top:'+top+';--dur:'+dur+';--delay:'+delay+';--size:'+size+';padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;object-fit:contain;opacity:'+opacity+';filter:drop-shadow(0 10px 15px rgba(0,18,44,.28))">';
+    const top=(2+((i*23)%90))+'%';
+    const dur=(14+((i*19)%70)/10).toFixed(1)+'s';
+    const delay=(-(1+((i*31)%240)/10)).toFixed(1)+'s';
+    const size=(112+((i*13)%70))+'px';
+    const opacity=(0.52+((i*5)%24)/100).toFixed(2);
+    const src=item.path+'?v=148-brand-loader';
+    return '<img class="v132-part" src="'+esc(src)+'" alt="" aria-hidden="true" data-group="'+esc(item.brand)+'" loading="eager" decoding="async" onerror="this.remove()" style="--top:'+top+';--dur:'+dur+';--delay:'+delay+';--size:'+size+';padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;object-fit:contain;opacity:'+opacity+';filter:drop-shadow(0 9px 14px rgba(0,18,44,.25))">';
   }).join('');
 }
-
 function initAuthGate(){
   document.body.insertAdjacentHTML('beforeend',loginGateHtml());
   const actions=q('.header-actions');
