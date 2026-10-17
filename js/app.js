@@ -1775,7 +1775,7 @@ function v139ColumnNeededWidth(column,rows){
     data=Math.max(data,v139TextWidthPt(value,font,/^(RATE|MRP)$/i.test(key))+pad);
   }
   const minByKey={CODE:31,UNIT:23,GST:22,RATE:29,MRP:29,'STD PKG':29,NDB:30,EVEREST:34,'CLUTCH DIA':34,'NO. OF TEETH':38};
-  const maxByKey={CODE:92,UNIT:36,GST:31,RATE:44,MRP:44,'STD PKG':38,NDB:46,EVEREST:50,'CLUTCH DIA':46,'NO. OF TEETH':50};
+  const maxByKey={CODE:122,UNIT:36,GST:31,RATE:44,MRP:44,'STD PKG':38,NDB:46,EVEREST:50,'CLUTCH DIA':46,'NO. OF TEETH':50};
   const min=minByKey[key]||34,max=maxByKey[key]||68;
   return Math.max(min,Math.min(max,Math.max(header,data)));
 }
@@ -1800,10 +1800,8 @@ function adminPortraitColumnWidths(columns,rows,usable){
       const take=Math.min(excess,Math.max(0,fixed[i]-floor));
       fixed[i]-=take;excess-=take;
     }
-    if(excess>0){
-      const codeIndex=columns.findIndex(c=>keyOf(c)==='CODE');
-      if(codeIndex>=0){const take=Math.min(excess,Math.max(0,fixed[codeIndex]-34));fixed[codeIndex]-=take;excess-=take}
-    }
+    // V149: CODE must never be clipped. Do not steal width from the CODE column;
+    // long product descriptions can wrap to extra lines instead.
     fixedSum=fixed.reduce((a,b)=>a+(b||0),0);
   }
   fixed[productIndex]=Math.max(150,usable-fixedSum);
@@ -1862,6 +1860,34 @@ function v139WrapAllText(value,width,fontSize=7.1){
 
 const V86_INDEX_DETAILS={"AAYUB":"FLY WHEEL ASSY.","ALLIED":"BRAKE LINING & BRAKE PAD","APPOLO":"ALL TYPE OF PACKING","APRISTIC":"ALL TYPE OF PACKING","ASHWAMEGH":"GREASE, ULTRAPURE AND DISTILE WATER","ASK":"BRAKE LINING","ATOP":"SPRING WASHAR","BALOON":"SPRING BALOONG","BLUE BIRD":"DIESEL ENGINE OIL,4 STROKE OIL,TRANSMISSION OIL,INDUSTRIAL OIL","BRAVO":"SHOCK ABSORBER, GEAR LEVER, ENGINE MOUNTING, HOSE PIPE","BULLDOG":"GASKET TUBE, RTV & SILK BOTEL","C.I.":"ARM REST/ROOF HANDLES,B.OPENER,DB LOCK/ DOOR LOCK W/K","CHAMPION":"SPRAK PLUG, HEATER PLUG, WIPER BLADE","CHENER":"TIE ROD, DRAG LINK KIT,GEAR LEVER END,BALL JOINT","CRC":"POWER SPRAY","DC":"U.J.CROSS,GEAR JHAMELA,SLEEVE YOKE","DELUX":"KING PIN, CLUTCH & TAPPER BEARING & ALL BERING","ELOFIC":"ALL TYPE FILTER ,COOLANT","EMMBROSS":"REAR AXLE H.C.V. DIVISION","FENNER":"V-BELTS & POLY V-BELTS","GATES":"BELTS, METALS & KITS, TENSIONER","GAUTAM":"SYNCROMIZER RING, WASHER,TATA PARTS,BENJO BOLT, NUT-BOLT,SPRING BALOON,GAPE PLATE,KING PIN KIT,SHIMS,JACK TOMI","GAUTAM B-T":"BERTRY TERMINALS","GCL":"CLUTCH PLATES & PRESSURE PLATES,SPRING SET,LEVER FINGER KIT","GCPA":"CLUTCH PLATES & PRESSURE PLATES","GF":"RADIATOR FAN","GMT":"BOLT,PIN,NUT,WASHERS,NIPPLE,SPANNER","HALDEX":"SLACK ADJ. ASSY","HFL":"HEX BOLT AND FLANGE BOLT","HOLD ON":"HOSE PIPE CLIP","IFLEX":"FUEL LINE & DIESEL PIPE","JHAVERI":"RING PANA & FIX PANA & WHEEL SPANER","JM TOMI":"TOMI","KBX":"BRAKE OIL, BRAKE PARTS, BRAKE SHOE KIT","KBX HITACHI":"PIN HORN, TANK FUEL PUMP, SPEED SENSORS, ELE. REGULATORS","KD":"HOSE PIPE","KLIP-WEL":"HOSE PIPE CLIP","LAPOX":"LA-SEAL & EPOXY PUTTY","LASCO":"AIR FILTER","LGS":"FLY WHEEL RING","LOCTITE":"SUPERFLEX TUBE, RUST BUST SPRAY","LUMAN":"FILTER’S,AIR FILTER,COOLANT","MAGMA":"BRAKE PADS, BRAKE DISC ROTER","MANN-WIX":"FILTERS","MEKO":"WATER PUMP, REPAIR KIT & ROTTER SHAFT","MK GOLD":"WATER PUMP","MONROE":"STRUT KIT,COIL SPRING,TOP MOUNT,SHOCK ABSO.,ELEMENT","NEOLITE":"HEAD LAMP ASSY.","NGK":"SPARK PLUGS & HITER PLUGS","NOVEX":"RUBBER PARTS","OEPLUS":"WIPER BLADE,WIPER ARM","OLMA":"AUTOMOTIV COMPONENTS,TATA PARTS","OSRAM":"BULB","PIONNER":"OIL SEAL, WATER PUMP SEAL, HOSE PIPE","PIPE ROLL":"DIESEL & PETROL PIPE ROLL","PLATINUM":"SIDE GLASS","POLY GRIP":"FOAM FAST & GRIP FAST","POOJA":"UNC, UNF, BSW, BSF,BOLT,NUT,SPECIAL BOLT","PRIMA":"GREASE GUN, BERAL PUMP & OIL CUPPY. LOOSE PARTS","QH":"TIE ROD, SUSP. & JOINT PARTS","RAICAM":"CLUTCH SET","RAJNISH":"DIESEL FUEL INJECTION PUMP PARTS","RAVI JACK":"JACK & POPULAR SHAFT PIPE","RDS":"U.J.CROSS, PROPELLER SHAFTS,BEARING,TIE ROD END","REMSONS":"ACCELERATOR, SPEEDO, BONNET CABLE, DOOR OPENER","REOX":"SIDE MIRROR, SUB MIRROR","RIVIT":"BRACK LINER & CLUCH RIVIT","RKD":"CLUTCH PLATES & PRESSURE PLATES,SPRING SET,LEVER KIT","RM":"ALL TYPE BRAKE DISK & DRUM","RNF":"ADJUSTER, HYDROLIC JACK","ROSE":"SYNCROMIZER RING, WASHER,TATA PARTS,BENJO BOLT, NUT-BOLT,SPRING","SADHU FORGE":"GEAR PARTS & CROWN WHEEL PINION & SPIDER KIT","SHANCO":"WIRE & CABLE","SORL":"VALVE,ADJUSTER,PUMP,AIR COIL","SPICER":"UJ CROSS, SLEVE YOKE, CEN.FLANGE, CEN. BEARING","STAR GOLD":"COOLENT","STL":"UNC, UNF, BSW, BSF,BOLT,NUT,SPECIAL BOLT","SUPER-LAC":"OIL SEAL & FOUNDATION, RUBBER PARTS","SUPER-TIGHT":"CENTER BOLT","SVL":"UJ CROSS, SLEVE YOKE, CEN.FLANGE, CEN. BEARING","UVAL":"BULB","VALEO":"CLUTCH PLATES & PRESSURE PLATES","VEETHREE":"METER, SPEEDO CABLE, TANKE UNIT, DISEL GAJE"};
 const V86_INDEX_ALIASES={MANN:'MANNWIX',WIX:'MANNWIX',PIONEER:'PIONNER'};
+// V149: Group-number master from uploaded MAIN INDEX workbook (17-10-2026).
+// Downloaded PDFs/Indexes use this business order; on-screen grid remains A-Z.
+const V149_GROUP_NUMBERS={"AAYUB":"27_1","ALLIED":"31","APPOLO":"28","APRISTIC":"28_1","ASHWAMEGH":"1_1","ASK":"31_1","ATOP":"5","BALOON":"4_2","BLUEBIRD":"1","BRAVO":"56","BULLDOG":"40_1","CI":"51","CHAMPION":"59","CHENER":"47","CRC":"41","DC":"16_1","DELUX":"23","ELOFIC":"24","EMMBROSS":"34","FENNER":"35","GATES":"61","GAUTAM":"4","GAUTAMBT":"4_1","GCL":"27_2","GCPA":"27","GF":"4_7","GMT":"4_6","HALDEX":"36","HFL":"13_3","HOLDON":"11_2","IFLEX":"9","JHAVERI":"15","JMTOMI":"33","KBX":"32","KBXHITACHI":"32_1","KD":"11","KLIPWEL":"11_1","LAPOX":"42","LASCO":"24_1","LGS":"37","LOCTITE":"60","LUMAN":"24_2","MAGMA":"63","MANNWIX":"0","MEKO":"2","MKGOLD":"3","MONROE":"32_2","NEOLITE":"20","NGK":"22","NOVEX":"29_1","OEPLUS":"44","OLMA":"6","OSRAM":"18_1","PIONNER":"30_1","PIPEROLL":"10","PLATINUM":"7","POLYGRIP":"42","POOJA":"13","PRIMA":"12","QH":"43","RAICAM":"58","RAJNISH":"8","RAVIJACK":"33","RDS":"16","REMSONS":"45","REOX":"7_1","RIVIT":"4_4","RKD":"27_4","RM":"38","RNF":"37_1","ROSE":"4_3","SADHUFORGE":"39","SHANCO":"19","SORL":"48","SPICER":"54","STARGOLD":"4_5","STL":"13_1","SUPERLAC":"30","SUPERTIGHT":"13_2","SVL":"55","UVAL":"18_2","VALEO":"27_3","VEETHREE":"21"};
+function v149GroupNumber(group){
+  const raw=indexGroupKey(group);
+  const key=V86_INDEX_ALIASES[raw]||raw;
+  return V149_GROUP_NUMBERS[key]||V149_GROUP_NUMBERS[raw]||'';
+}
+function v149GroupOrderParts(group){
+  const no=v149GroupNumber(group);
+  const m=String(no).match(/^(\d+)(?:_(\d+))?$/);
+  return m?[Number(m[1]),Number(m[2]||0),0]:[Number.MAX_SAFE_INTEGER,Number.MAX_SAFE_INTEGER,1];
+}
+function v149CompareGroups(a,b){
+  const pa=v149GroupOrderParts(a),pb=v149GroupOrderParts(b);
+  if(pa[0]!==pb[0])return pa[0]-pb[0];
+  if(pa[1]!==pb[1])return pa[1]-pb[1];
+  if(pa[2]!==pb[2])return pa[2]-pb[2];
+  return natural(clean(a),clean(b));
+}
+function v149CodeFitFont(text,width,maxSize=7.5,minSize=1.9){
+  const s=pdfAscii(text).replace(/\s+/g,' ').trim();
+  if(!s)return maxSize;
+  const unit=Math.max(.1,v141TokenWidthPt(s,1,false));
+  const fit=Math.max(2,width-4)/unit;
+  return Math.max(minSize,Math.min(maxSize,fit));
+}
+
 function indexGroupKey(value){return clean(value).toUpperCase().replace(/[^A-Z0-9]/g,'')}
 function groupIndexDetails(group){
   const wanted=V86_INDEX_ALIASES[indexGroupKey(group)]||indexGroupKey(group);
@@ -1905,8 +1931,9 @@ function buildGroupIndexPages(productPages){
   const margin=portrait?18:22,baseRowH=portrait?18.5:16.5,wrapRowH=portrait?29:26,heroH=64,headerH=21,top=24,bottom=20;
   const rgb=(r,g,b)=>`${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;
   const usable=W-margin*2;
-  // V104: SR NO. / GROUP / DETAILS only. PAGE NO. removed from every index PDF.
-  const base=portrait?[34,160,365]:[40,195,563];
+  // V149: Index shows master GROUP NO. from the uploaded MAIN INDEX workbook.
+  // PAGE NO. remains hidden; group/logo stays clickable.
+  const base=portrait?[30,48,150,331]:[34,55,185,524];
   const scale=usable/base.reduce((a,b)=>a+b,0),widths=base.map(v=>v*scale);
 
   // Build page ranges first, then create index rows from the filtered group map.
@@ -1921,10 +1948,10 @@ function buildGroupIndexPages(productPages){
   const entries=[...indexScopeGroups.entries()]
     .map(([key,display])=>{const range=pageRanges.get(key);return range?{key,group:display,first:range.first,last:range.last}:null})
     .filter(Boolean)
-    .sort((a,b)=>natural(a.group,b.group));
+    .sort((a,b)=>v149CompareGroups(a.group,b.group));
 
   // Normal descriptions remain shrink-to-fit. Only exceptionally long descriptions wrap to 2 lines.
-  const detailsWidth=widths[2];
+  const detailsWidth=widths[3];
   entries.forEach(e=>{
     e.details=groupIndexDetails(e.group);
     const fit=pdfIndexFitFont(e.details,detailsWidth,8.1,4.2);
@@ -1962,7 +1989,7 @@ function buildGroupIndexPages(productPages){
     cmd.push(`BT /F2 8.2 Tf 1 0.76 0.08 rg ${printBoxX+18} ${H-y-44} Td (${pdfAscii(printDate)}) Tj ET`);
     y+=heroH;
     cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${usable} ${headerH} re f`);
-    let x=margin;const heads=['SR NO.','GROUP','DETAILS'];
+    let x=margin;const heads=['SR NO.','GROUP NO.','GROUP','DETAILS'];
     heads.forEach((h,i)=>{const size=pdfIndexFitFont(h,widths[i],8.3,5.8);cmd.push(`BT /F2 ${size.toFixed(2)} Tf 1 1 1 rg ${x+3} ${H-y-13.2} Td (${pdfAscii(h)}) Tj ET`);x+=widths[i]});y+=headerH;
 
     slice.forEach(e=>{
@@ -1970,20 +1997,20 @@ function buildGroupIndexPages(productPages){
       const a=e.first+pageCount;
       if(oi%2===1)cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${usable} ${rowH} re f`);
       cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${usable} ${rowH} re S`);x=margin;
-      const vals=[String(oi+1),String(e.group||'').toUpperCase(),v126IndexProperCase(e.details)];
+      const vals=[String(oi+1),v149GroupNumber(e.group)||'-',String(e.group||'').toUpperCase(),v126IndexProperCase(e.details)];
       for(let i=0;i<widths.length;i++){
         if(i>0)cmd.push(`0.82 0.85 0.89 RG ${x} ${H-y-rowH} m ${x} ${H-y} l S`);
         const val=vals[i];
-        if(i===1){
-          // V90: slightly larger group logo, vertically centered; group name remains left aligned.
+        if(i===2){
+          // V149: brand logo + group name; GROUP NO. has its own dedicated column.
           const logoB64=pdfEmbeddedLogoB64(e.group);
-          const logoBoxW=Math.min(39,widths[i]*.27),logoW=logoBoxW-5,logoH=Math.min(17,rowH-3),logoY=H-y-rowH+(rowH-logoH)/2;
+          const logoBoxW=Math.min(36,widths[i]*.25),logoW=logoBoxW-5,logoH=Math.min(17,rowH-3),logoY=H-y-rowH+(rowH-logoH)/2;
           cmd.push(`0.82 0.85 0.89 RG 1 1 1 rg ${x+2} ${H-y-rowH+2} ${logoBoxW} ${rowH-4} re B`);
           if(logoB64)indexLogos.push({b64:logoB64,x:x+4.5,y:logoY,w:logoW,h:logoH});
           const textX=x+logoBoxW+6,textW=widths[i]-logoBoxW-8;
           const size=pdfIndexFitFont(val,textW,8.4,5.2),textY=H-y-rowH/2-size*.34;
           cmd.push(`BT /F2 ${size.toFixed(2)} Tf 0.04 0.20 0.46 rg ${textX} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
-        }else if(i===2){
+        }else if(i===3){
           if(e.wrapDetails){
             const lines=pdfWrapText(val,widths[i]-2,6.4,2),lineGap=8.2;
             const firstY=H-y-rowH/2+(lines.length-1)*lineGap/2-2.2;
@@ -1996,14 +2023,14 @@ function buildGroupIndexPages(productPages){
             cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
           }
         }else{
-          const size=pdfIndexFitFont(val,widths[i],8.1,5.6),textY=H-y-rowH/2-size*.34;
+          const size=pdfIndexFitFont(val,widths[i],8.1,5.3),textY=H-y-rowH/2-size*.34;
           cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+3} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
         }
         x+=widths[i];
       }
-      const groupX=margin+widths[0];
+      const groupX=margin+widths[0]+widths[1];
       // Group name/logo remains clickable even though the visible PAGE NO. column is removed.
-      indexLinks.push({x:groupX,y:H-y-rowH,w:widths[1],h:rowH,targetPageNumber:a});
+      indexLinks.push({x:groupX,y:H-y-rowH,w:widths[2],h:rowH,targetPageNumber:a});
       y+=rowH;
     });
     pages.push({group:'INDEX',cols:heads,widths,cmd,brandLogoB64:'',indexLogos,indexLinks,W,H,adminPortrait:portrait,isIndex:true});
@@ -2027,7 +2054,7 @@ function fastPdfPages(){
     grouped.get(key).rows.push(r);
   });
   const selected=V102_PDF_CONTEXT?.forceAllGroupsIndex?'':clean($('#groupFilter').value),selectedKey=indexGroupKey(selected);
-  const baseGroups=selected?[[selected,(grouped.get(selectedKey)?.rows)||rows]]:[...grouped.values()].map(x=>[x.display,x.rows]).sort((x,y)=>natural(x[0],y[0]));
+  const baseGroups=selected?[[selected,(grouped.get(selectedKey)?.rows)||rows]]:[...grouped.values()].map(x=>[x.display,x.rows]).sort((x,y)=>v149CompareGroups(x[0],y[0]));
   const groups=[];
   baseGroups.forEach(([group,groupRows])=>{
     const regularRows=groupRows.filter(row=>!v137IsNetRateRow(row));
@@ -2180,7 +2207,8 @@ function fastPdfPages(){
             lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${(firstBase-lineIndex*lineGap).toFixed(2)} Td (${esc(line)}) Tj ET`));
           }else{
             const text=pdfAscii(val).replace(/\s+/g,' ').trim();
-            const size=pdfFitFont(text,widths[i],7.5,3.2);
+            // V149: CODE cells use a measured shrink-to-fit formula and are never truncated.
+            const size=key==='CODE'?v149CodeFitFont(text,widths[i],7.5,1.9):pdfFitFont(text,widths[i],7.5,3.2);
             page.cmd.push(`BT /${isPrice?'F2':'F1'} ${size.toFixed(2)} Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${rowBase} Td (${esc(text)}) Tj ET`);
           }
         }else{
@@ -2236,7 +2264,11 @@ async function buildFastPdfBlob(){
     const topY=H-9,titleX=portrait?Math.round(W*.43):365,pageX=portrait?W-58:795;
     let content=`BT /F1 4.7 Tf 0.20 0.20 0.20 rg 22 ${topY} Td (${pdfAscii(generated)}) Tj ET\n`;
     content+=`BT /F1 4.7 Tf 0.20 0.20 0.20 rg ${titleX} ${topY} Td (${pdfAscii(docTitle)}) Tj ET\n`;
-    content+=`BT /F2 ${p.isIndex?'7.4':'8.2'} Tf 0.055 0.200 0.494 rg ${pageX} ${topY} Td (${pageIndex+1}/${pages.length}) Tj ET\n`;
+    const groupNo=p.isIndex?'':v149GroupNumber(p.group);
+    const pageMark=p.isIndex?`${pageIndex+1}/${pages.length}`:`${groupNo?`G.NO ${groupNo} | `:''}${pageIndex+1}/${pages.length}`;
+    const pageMarkSize=p.isIndex?7.4:(pageMark.length>20?6.7:8.0);
+    const pageMarkX=p.isIndex?pageX:Math.max(W-126,pageX-68);
+    content+=`BT /F2 ${pageMarkSize} Tf 0.055 0.200 0.494 rg ${pageMarkX} ${topY} Td (${pdfAscii(pageMark)}) Tj ET\n`;
     content+=`BT /F1 4.5 Tf 0.25 0.25 0.25 rg 22 7 Td (${pdfAscii(location.href)}) Tj ET\n`;
 
     const brandId=brandObjects.get(p.brandLogoB64||'')||0;
@@ -2381,15 +2413,15 @@ function v142IndexCacheKey(tag,onlyIndex,rows){
 }
 function v142ClearIndexPdfCache(){V142_INDEX_PDF_CACHE.clear()}
 function v142OnlyIndexSeedPages(rows){
-  // ONLY INDEX does not print page numbers and its links are removed before serialization.
-  // Therefore generating tens of thousands of product rows just to discover group names is wasted work.
-  const seen=new Set(),pages=[];
+  // ONLY INDEX does not print product pages; collect unique groups only.
+  // V149: seed order follows the master GROUP NO. workbook, not screen A-Z order.
+  const seen=new Set(),groups=[];
   for(const row of (rows||[])){
     const display=clean(getField(row,'GROUP'))||'OTHER',key=indexGroupKey(display)||display.toUpperCase();
-    if(seen.has(key))continue;seen.add(key);
-    pages.push({group:display,W:595,H:842,adminPortrait:true});
+    if(seen.has(key))continue;seen.add(key);groups.push(display);
   }
-  return pages;
+  groups.sort(v149CompareGroups);
+  return groups.map(display=>({group:display,W:595,H:842,adminPortrait:true}));
 }
 function v141PdfCacheKey(){
   if(Array.isArray(V102_PDF_CONTEXT?.rows))return '';
