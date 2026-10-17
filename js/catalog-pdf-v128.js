@@ -1,4 +1,4 @@
-/* RAJ LIVE PRICE BOOK V143 — Excel IMAGES mapping + direct catalogue pages (no catalogue index).
+/* RAJ LIVE PRICE BOOK V146 — catalogue download runtime fix; V143 image mapping + no-index preserved.
    Keeps V123 catalogue design/image mapping exactly; only download preparation is accelerated.
    Keeps the approved V120 layout/content exactly, but removes click-time image decode/canvas work.
    Product thumbnails are fetched once as a compact per-group JPEG pack and embedded directly in PDF.
@@ -390,6 +390,49 @@
     }
     await Promise.all(Array.from({length:Math.min(V116_IMAGE_CONCURRENCY,Math.max(1,targets.length))},worker));
     return output;
+  }
+
+  function v116DetailColumns(rows){
+    let visible=[];
+    try{if(typeof visibleColumnsForRows==='function')visible=visibleColumnsForRows(rows)||[]}catch(_e){}
+    if(!visible.length){try{visible=dataColumns()||[]}catch(_e){}}
+    const priorities=['SEGMENT','VEHICLE','MODEL','UNIT','GST','HSN','HSN CODE','STD PKG','PKG SIZE','CLUTCH DIA','NO. OF TEETH','NUMBER OF TEETH','DIA','SIZE','SIZE MM','THICKNESS MM','WIDTH MM','BOX QTY','PACK'];
+    const all=[];
+    const add=col=>{if(col&&!all.some(x=>keyOf(x)===keyOf(col)))all.push(col)};
+    priorities.forEach(k=>{
+      const found=visible.find(c=>keyOf(c)===keyOf(k));if(found)add(found);
+      else{try{const foundAll=(dataColumns()||[]).find(c=>keyOf(c)===keyOf(k));if(foundAll)add(foundAll)}catch(_e){}}
+    });
+    visible.forEach(add);
+    const blocked=/^(GROUP|SUB GROUP|SUB-GROUP|SUBGROUP|CODE|PART NUMBER|PART NO|PRODUCT NAME|DESCRIPTION|IMAGE|IMAGE LINK|CATALOG|CATALOG LINK|CATALOG URL|INDEX|VISIBLE|VISIBILITY|RATE|MRP)$/i;
+    return all.filter(col=>!blocked.test(keyOf(col))).filter(col=>rows.some(row=>v116Clean(displayFieldValue(row,col))));
+  }
+  function v116Hierarchy(row){
+    const parts=[];
+    const defs=[['Sub Group',['SUB GROUP','SUB-GROUP','SUBGROUP']],['Category',['CATEGORY','CATEGORIES','CATAGORIES']],['Segment',['SEGMENT']],['Vehicle',['VEHICLE']],['Model',['MODEL']]];
+    defs.forEach(([label,keys])=>{
+      const value=v116Clean(getField(row,...keys));if(value&&!parts.some(x=>x.value===value))parts.push({label,value});
+    });
+    return parts;
+  }
+  function v116ProductDetails(row,columns){
+    const details=[],seen=new Set();
+    const push=(label,value)=>{
+      value=v116Clean(value);label=v116Clean(label).replace(/\s+/g,' ').trim();
+      const k=v116Key(label);
+      if(!value||!label||seen.has(k)||/^(RATE|MRP)$/.test(k))return;
+      if(/^https?:\/\//i.test(value))return;
+      seen.add(k);details.push({label,value});
+    };
+    push('SEGMENT',getField(row,'SEGMENT'));
+    push('VEHICLE',getField(row,'VEHICLE'));
+    push('MODEL',getField(row,'MODEL'));
+    columns.forEach(col=>{
+      const label=keyOf(col).replace(/\s+/g,' ').trim();
+      if(/^(RATE|MRP)$/i.test(label))return;
+      push(label,displayFieldValue(row,col));
+    });
+    return details.slice(0,10);
   }
 
   function v116BytesFromDataUrl(dataUrl){
