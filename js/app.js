@@ -1659,7 +1659,7 @@ function buildLightweightPrintHtml(){
     thead{display:table-header-group}
     tfoot{display:table-footer-group}
     tr{break-inside:avoid;page-break-inside:avoid}
-    th{background:#0e337e;color:#fff;border:1px solid #355a91;padding:var(--pdf-pad,3px);font-size:var(--pdf-font,8px);font-weight:800;white-space:normal;overflow-wrap:anywhere;line-height:1.08}
+    th{background:#0e337e;color:#fff;border:1px solid #fff;padding:var(--pdf-pad,3px);font-size:var(--pdf-font,8px);font-weight:800;white-space:normal;overflow-wrap:anywhere;line-height:1.08}
     td{border:1px solid #aeb9c7;padding:var(--pdf-pad,3px);line-height:1.15;background:rgba(255,255,255,.90);vertical-align:middle;overflow-wrap:anywhere;word-break:normal}
     tbody tr:nth-child(even) td{background:rgba(245,248,252,.92)}
     .serial{width:24px;text-align:center}
@@ -1683,7 +1683,7 @@ function buildLightweightPrintHtml(){
     .pdf-net-section-title{break-before:page;page-break-before:always;break-after:avoid;page-break-after:avoid}
     .pdf-net-section-title td{background:#fff0b8!important;color:#5a3b00!important;font-size:12px!important;font-weight:900!important;text-align:left!important;padding:6px 7px!important;border-color:#e3b73e!important}
     .pdf-net-column-header{break-after:avoid;page-break-after:avoid}
-    .pdf-net-column-header td{background:#0e337e!important;color:#fff!important;font-weight:900!important;font-size:var(--pdf-font,8px)!important;padding:var(--pdf-pad,3px)!important;border-color:#355a91!important;white-space:normal!important}
+    .pdf-net-column-header td{background:#0e337e!important;color:#fff!important;font-weight:900!important;font-size:var(--pdf-font,8px)!important;padding:var(--pdf-pad,3px)!important;border-color:#fff!important;white-space:normal!important}
     .pdf-net-column-header td.right,.pdf-net-column-header td.price{text-align:right!important}
     .pdf-net-column-header td.left{text-align:left!important}
     .footer-note{text-align:center;margin-top:4px;font-size:7.2px;color:#4a5568}
@@ -1899,9 +1899,15 @@ function v149CodeFitFont(text,width,maxSize=7.5,minSize=1.9){
 function v152UniversalFitFont(text,width,maxSize=7.5,minSize=1.15,bold=false){
   const s=pdfAscii(text).replace(/\s+/g,' ').trim();
   if(!s)return maxSize;
-  const measured=Math.max(.1,v141TokenWidthPt(s,1,bold));
-  const safeWidth=Math.max(1.5,width-5.5);
-  const fit=(safeWidth/measured)*0.92;
+  // V153: use BOTH the font-width estimator and a conservative character-width
+  // guard. Some condensed/long part numbers were visually crossing the right
+  // grid line even though the estimator said they fitted. The larger estimate
+  // wins, then an extra inner margin keeps the complete value inside its cell.
+  const metricWidth=Math.max(.1,v141TokenWidthPt(s,1,bold));
+  const charGuard=Math.max(.1,s.length*(bold?.64:.60));
+  const measured=Math.max(metricWidth,charGuard);
+  const safeWidth=Math.max(1.25,width-8.0);
+  const fit=(safeWidth/measured)*0.86;
   return Math.max(minSize,Math.min(maxSize,fit));
 }
 function v152HtmlFitFont(value,key){
@@ -1915,7 +1921,7 @@ function v152HtmlFitFont(value,key){
   else if(key==='RATE'||key==='MRP'||key==='STD PKG'){max=8;min=4.8}
   const soft=key==='CODE'?10:(key==='UNIT'||key==='GST'?5:8);
   if(s.length<=soft)return max.toFixed(2);
-  const size=Math.max(min,Math.min(max,max*soft/s.length));
+  const size=Math.max(min,Math.min(max,(max*soft/s.length)*0.90));
   return size.toFixed(2);
 }
 
@@ -2136,6 +2142,15 @@ function fastPdfPages(){
         }
         x+=widths[i];
       }
+      // V153: white column separators in the blue header, matching the data-grid
+      // column boundaries so CODE / PRODUCT NAME / UNIT / GST / RATE / MRP etc.
+      // are visually defined at a glance.
+      let hx=margin;
+      page.cmd.push(`1 1 1 RG ${margin} ${H-y-headerH} ${W-margin*2} ${headerH} re S`);
+      for(let i=0;i<widths.length-1;i++){
+        hx+=widths[i];
+        page.cmd.push(`1 1 1 RG ${hx} ${H-y-headerH} m ${hx} ${H-y} l S`);
+      }
       y+=headerH;
     };
 
@@ -2251,12 +2266,12 @@ function fastPdfPages(){
             const text=pdfAscii(val).replace(/\s+/g,' ').trim();
             // V152: every non-description cell uses the same conservative shrink-to-fit
             // rule, so CODE/UNIT/GST/RATE/MRP/packing/other details never cross a grid line.
-            const size=v152UniversalFitFont(text,widths[i],7.5,key==='CODE'?1.15:1.35,isPrice);
+            const size=v152UniversalFitFont(text,widths[i],7.5,key==='CODE'?0.90:1.05,isPrice);
             page.cmd.push(`BT /${isPrice?'F2':'F1'} ${size.toFixed(2)} Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${rowBase} Td (${esc(text)}) Tj ET`);
           }
         }else{
           const text=pdfAscii(val).replace(/\s+/g,' ').trim();
-          const size=v152UniversalFitFont(text,widths[i],4.9,1.05,isPrice);
+          const size=v152UniversalFitFont(text,widths[i],4.9,0.85,isPrice);
           page.cmd.push(`BT /${isPrice?'F2':'F1'} ${size.toFixed(2)} Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-6.7} Td (${esc(text)}) Tj ET`);
         }
         x+=widths[i];
@@ -2982,10 +2997,10 @@ function v137NetGridHeader(title){
   const cells=visibleColumns.map(column=>{
     const key=keyOf(column),label=key==='RATE'?'NET RATE':escapeHtml(column);
     const align=(key==='CODE'||key==='PRODUCT NAME')?'left':'right';
-    return `<th style="padding:7px 8px;border:1px solid #6f95c4;background:#0e337e;color:#fff;text-align:${align};font-size:11px;font-weight:900;white-space:nowrap">${label}</th>`;
+    return `<th style="padding:7px 8px;border:1px solid #fff;background:#0e337e;color:#fff;text-align:${align};font-size:11px;font-weight:900;white-space:nowrap">${label}</th>`;
   }).join('');
   return `<tr class="v137-net-section-title"><td colspan="${visibleColumns.length+2}" style="padding:8px 10px;background:#fff0b8;color:#5a3b00;border:1px solid #e3b73e;font-weight:900;font-size:14px">${escapeHtml(title)}</td></tr>`+
-    `<tr class="v137-net-column-header"><th style="padding:7px 6px;border:1px solid #6f95c4;background:#0e337e;color:#fff;text-align:center;font-size:11px">#</th>${cells}<th style="padding:7px 6px;border:1px solid #6f95c4;background:#0e337e;color:#fff;text-align:center;font-size:11px;white-space:nowrap">IMAGE / ORDER</th></tr>`;
+    `<tr class="v137-net-column-header"><th style="padding:7px 6px;border:1px solid #fff;background:#0e337e;color:#fff;text-align:center;font-size:11px">#</th>${cells}<th style="padding:7px 6px;border:1px solid #fff;background:#0e337e;color:#fff;text-align:center;font-size:11px;white-space:nowrap">IMAGE / ORDER</th></tr>`;
 }
 function miniGroupedBody(rows, startIndex=0, contextRows=rows){
   const fields=viewByFields(contextRows);
