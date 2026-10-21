@@ -1858,11 +1858,11 @@ function v139WrapAllText(value,width,fontSize=7.1){
   return lines.length?lines:[''];
 }
 
-const V86_INDEX_DETAILS={"AAYUB":"FLY WHEEL ASSY.","ALLIED":"BRAKE LINING & BRAKE PAD","APPOLO":"ALL TYPE OF PACKING","APRISTIC":"ALL TYPE OF PACKING","ASHWAMEGH":"GREASE, ULTRAPURE AND DISTILE WATER","ASK":"BRAKE LINING","ATOP":"SPRING WASHAR","BALOON":"SPRING BALOONG","BLUE BIRD":"DIESEL ENGINE OIL,4 STROKE OIL,TRANSMISSION OIL,INDUSTRIAL OIL","BRAVO":"SHOCK ABSORBER, GEAR LEVER, ENGINE MOUNTING, HOSE PIPE","BULLDOG":"GASKET TUBE, RTV & SILK BOTEL","C.I.":"ARM REST/ROOF HANDLES,B.OPENER,DB LOCK/ DOOR LOCK W/K","CHAMPION":"SPRAK PLUG, HEATER PLUG, WIPER BLADE","CHENER":"TIE ROD, DRAG LINK KIT,GEAR LEVER END,BALL JOINT","CRC":"POWER SPRAY","DC":"U.J.CROSS,GEAR JHAMELA,SLEEVE YOKE","DELUX":"KING PIN, CLUTCH & TAPPER BEARING & ALL BERING","ELOFIC":"ALL TYPE FILTER ,COOLANT","EMMBROSS":"REAR AXLE H.C.V. DIVISION","FENNER":"V-BELTS & POLY V-BELTS","GATES":"BELTS, METALS & KITS, TENSIONER","GAUTAM":"SYNCROMIZER RING, WASHER,TATA PARTS,BENJO BOLT, NUT-BOLT,SPRING BALOON,GAPE PLATE,KING PIN KIT,SHIMS,JACK TOMI","GAUTAM B-T":"BERTRY TERMINALS","GCL":"CLUTCH PLATES & PRESSURE PLATES,SPRING SET,LEVER FINGER KIT","GCPA":"CLUTCH PLATES & PRESSURE PLATES","GF":"RADIATOR FAN","GMT":"BOLT,PIN,NUT,WASHERS,NIPPLE,SPANNER","HALDEX":"SLACK ADJ. ASSY","HFL":"HEX BOLT AND FLANGE BOLT","HOLD ON":"HOSE PIPE CLIP","IFLEX":"FUEL LINE & DIESEL PIPE","JHAVERI":"RING PANA & FIX PANA & WHEEL SPANER","JM TOMI":"TOMI","KBX":"BRAKE OIL, BRAKE PARTS, BRAKE SHOE KIT","KBX HITACHI":"PIN HORN, TANK FUEL PUMP, SPEED SENSORS, ELE. REGULATORS","KD":"HOSE PIPE","KLIP-WEL":"HOSE PIPE CLIP","LAPOX":"LA-SEAL & EPOXY PUTTY","LASCO":"AIR FILTER","LGS":"FLY WHEEL RING","LOCTITE":"SUPERFLEX TUBE, RUST BUST SPRAY","LUMAN":"FILTER’S,AIR FILTER,COOLANT","MAGMA":"BRAKE PADS, BRAKE DISC ROTER","MANN-WIX":"FILTERS","MEKO":"WATER PUMP, REPAIR KIT & ROTTER SHAFT","MK GOLD":"WATER PUMP","MONROE":"STRUT KIT,COIL SPRING,TOP MOUNT,SHOCK ABSO.,ELEMENT","NEOLITE":"HEAD LAMP ASSY.","NGK":"SPARK PLUGS & HITER PLUGS","NOVEX":"RUBBER PARTS","OEPLUS":"WIPER BLADE,WIPER ARM","OLMA":"AUTOMOTIV COMPONENTS,TATA PARTS","OSRAM":"BULB","PIONNER":"OIL SEAL, WATER PUMP SEAL, HOSE PIPE","PIPE ROLL":"DIESEL & PETROL PIPE ROLL","PLATINUM":"SIDE GLASS","POLY GRIP":"FOAM FAST & GRIP FAST","POOJA":"UNC, UNF, BSW, BSF,BOLT,NUT,SPECIAL BOLT","PRIMA":"GREASE GUN, BERAL PUMP & OIL CUPPY. LOOSE PARTS","QH":"TIE ROD, SUSP. & JOINT PARTS","RAICAM":"CLUTCH SET","RAJNISH":"DIESEL FUEL INJECTION PUMP PARTS","RAVI JACK":"JACK & POPULAR SHAFT PIPE","RDS":"U.J.CROSS, PROPELLER SHAFTS,BEARING,TIE ROD END","REMSONS":"ACCELERATOR, SPEEDO, BONNET CABLE, DOOR OPENER","REOX":"SIDE MIRROR, SUB MIRROR","RIVIT":"BRACK LINER & CLUCH RIVIT","RKD":"CLUTCH PLATES & PRESSURE PLATES,SPRING SET,LEVER KIT","RM":"ALL TYPE BRAKE DISK & DRUM","RNF":"ADJUSTER, HYDROLIC JACK","ROSE":"SYNCROMIZER RING, WASHER,TATA PARTS,BENJO BOLT, NUT-BOLT,SPRING","SADHU FORGE":"GEAR PARTS & CROWN WHEEL PINION & SPIDER KIT","SHANCO":"WIRE & CABLE","SORL":"VALVE,ADJUSTER,PUMP,AIR COIL","SPICER":"UJ CROSS, SLEVE YOKE, CEN.FLANGE, CEN. BEARING","STAR GOLD":"COOLENT","STL":"UNC, UNF, BSW, BSF,BOLT,NUT,SPECIAL BOLT","SUPER-LAC":"OIL SEAL & FOUNDATION, RUBBER PARTS","SUPER-TIGHT":"CENTER BOLT","SVL":"UJ CROSS, SLEVE YOKE, CEN.FLANGE, CEN. BEARING","UVAL":"BULB","VALEO":"CLUTCH PLATES & PRESSURE PLATES","VEETHREE":"METER, SPEEDO CABLE, TANKE UNIT, DISEL GAJE"};
-const V86_INDEX_ALIASES={MANN:'MANNWIX',WIX:'MANNWIX',PIONEER:'PIONNER'};
-// V149: Group-number master from uploaded MAIN INDEX workbook (17-10-2026).
+const V86_INDEX_DETAILS={"AAYUB":"Fly Wheel Assy.","ALLIED":"Brake Lining & Brake Pad","APPOLO":"All Type Of Packing","APRISTIC":"All Type Of Packing","ASHWAMEGH":"Grease, Ultrapure And Distile Water","ASK":"Brake Lining","ATOP":"Spring Washar","BHARTI POWER":"Hydraulic Jack","BLUE BIRD":"Diesel Engine Oil, 4 Stroke Oil, Transmission Oil, Industrial Oil","BOSCH":"Suspension & Clutch, Braking, Clutch, Brake Oil","BRAVO":"Shock Absorber, Gear Lever, Engine Mounting, Hose Pipe","BULLDOG":"Gasket Tube, Rtv & Silk Botel","CHAMPION":"Sprak Plug, Heater Plug, Wiper Blade","CHANDER":"Shackle Assy  &  Jeep Parts","CHENER":"Tie Rod, Drag Link Kit, Gear Lever End, Ball Joint","CI":"Arm Rest/Roof Handles, B.Opener, Db Lock/ Door Lock W/K","COSMO":"Hyd. Filter, Diesel Filter","CRC":"Power Spray","DC":"U.J.Cross, Gear Jhamela, Sleeve Yoke","DELUX":"King Pin, Clutch & Tapper Bearing & All Bering","ELOFIC":"All Type Filter , Coolant","EMMBROSS":"Rear Axle H.C.V. Division","FENNER":"V-Belts & Poly V-Belts","GATES":"Belts, Metals & Kits, Tensioner","GAUTAM":"Syncromizer Ring, Washer, Tata Parts, Benjo Bolt, Nut-Bolt, Spring Baloon, Gape Plate, King Pin Kit, Shims, Jack Tomi","GAUTAM BT":"Bertry Terminals","GCL":"Clutch Plates & Pressure Plates, Spring Set, Lever Finger Kit","GCPA":"Clutch Plates & Pressure Plates","GEEKAY":"Unc, Unf, Bsw, Bsf, Bolt, Nut, Special Bolt","GF":"Radiator Fan","GMT":"Bolt, Pin, Nut, Washers, Nipple, Spanner","GOLD BOSS":"Jack Rod","HALDEX":"Slack Adj. Assy","HFL":"Hex Bolt And Flange Bolt","HOLDON":"Hose Pipe Clip","IFLEX":"Fuel Line & Diesel Pipe","JHAVERI":"Ring Pana & Fix Pana & Wheel Spaner","JM TOMI":"Tomi","KBX":"Brake Oil, Brake Parts, Brake Shoe Kit","KD":"Hose Pipe","KLIPWEL":"Hose Pipe Clip","LAPOX":"La-Seal & Epoxy Putty","LASCO":"Air Filter","LGS":"Fly Wheel Ring","LOCTITE":"Superflex Tube, Rust Bust Spray","LUMAN":"Filter S, Air Filter, Coolant","MANN":"Filters","MEKO":"Water Pump, Repair Kit & Rotter Shaft","MK GOLD":"Water Pump","MONROE":"Strut Kit, Coil Spring, Top Mount, Shock Abso., Element","NEOLITE":"Head Lamp Assy.","NGK":"Spark Plugs & Hiter Plugs","NOVEX":"Rubber Parts","OEPLUS":"Wiper Blade, Wiper Arm","OLMA":"Automotiv Components, Tata Parts","OSRAM":"Bulb","OXMO":"Brake Actuators","PIONEER":"Oil Seal, Water Pump Seal, Hose Pipe","PIPE ROLL":"Diesel & Petrol Pipe Roll","PLATINUM":"Side Glass","POLY GRIP":"Foam Fast & Grip Fast","POOJA":"Unc, Unf, Bsw, Bsf, Bolt, Nut, Special Bolt","PRIMA":"Grease Gun, Beral Pump & Oil Cuppy. Loose Parts","QH":"Tie Rod, Susp. & Joint Parts","RAICAM":"Clutch Set","RAJNISH":"Diesel Fuel Injection Pump Parts","RAVI JACK":"Jack & Popular Shaft Pipe","RDS":"U.J.Cross, Propeller Shafts, Bearing, Tie Rod End","REFEX":"Tetrafluroethane Gas Can","REMSONS":"Accelerator, Speedo, Bonnet Cable, Door Opener","REOX":"Side Mirror, Sub Mirror","RIVIT":"Brack Liner & Cluch Rivit","RM":"All Type Brake Disk & Drum","RNF":"Adjuster, Hydrolic Jack","ROSE":"Syncromizer Ring, Washer, Tata Parts, Benjo Bolt, Nut-Bolt, Spring","SF":"Gear Parts & Crown Wheel Pinion & Spider Kit","SHANCO":"Wire & Cable","SORL":"Valve, Adjuster, Pump, Air Coil","SPICER":"Uj Cross, Sleve Yoke, Cen.Flange, Cen. Bearing","ST":"Center Bolt","STAR GOLD":"Coolent","STL":"Unc, Unf, Bsw, Bsf, Bolt, Nut, Special Bolt","SUPERLAC":"Oil Seal & Foundation, Rubber Parts","SVL":"Uj Cross, Sleve Yoke, Cen.Flange, Cen. Bearing","TIMING GOLD":"Synth 4T Plus Oil","TVS":"210","UVAL":"Bulb","VALEO":"Clutch Plates & Pressure Plates","VEETHREE":"Meter, Speedo Cable, Tanke Unit, Disel Gaje","VIGEX":"Fuel Line & Diesel Pipe","WAGNER":"Condenser","WIX":"Filters"};
+const V86_INDEX_ALIASES={PIONNER:'PIONEER'};
+// V150: Group-number + description master from the latest uploaded MAIN INDEX workbook (21-10-2026).
 // Downloaded PDFs/Indexes use this business order; on-screen grid remains A-Z.
-const V149_GROUP_NUMBERS={"AAYUB":"27_1","ALLIED":"31","APPOLO":"28","APRISTIC":"28_1","ASHWAMEGH":"1_1","ASK":"31_1","ATOP":"5","BALOON":"4_2","BLUEBIRD":"1","BRAVO":"56","BULLDOG":"40_1","CI":"51","CHAMPION":"59","CHENER":"47","CRC":"41","DC":"16_1","DELUX":"23","ELOFIC":"24","EMMBROSS":"34","FENNER":"35","GATES":"61","GAUTAM":"4","GAUTAMBT":"4_1","GCL":"27_2","GCPA":"27","GF":"4_7","GMT":"4_6","HALDEX":"36","HFL":"13_3","HOLDON":"11_2","IFLEX":"9","JHAVERI":"15","JMTOMI":"33","KBX":"32","KBXHITACHI":"32_1","KD":"11","KLIPWEL":"11_1","LAPOX":"42","LASCO":"24_1","LGS":"37","LOCTITE":"60","LUMAN":"24_2","MAGMA":"63","MANNWIX":"0","MEKO":"2","MKGOLD":"3","MONROE":"32_2","NEOLITE":"20","NGK":"22","NOVEX":"29_1","OEPLUS":"44","OLMA":"6","OSRAM":"18_1","PIONNER":"30_1","PIPEROLL":"10","PLATINUM":"7","POLYGRIP":"42","POOJA":"13","PRIMA":"12","QH":"43","RAICAM":"58","RAJNISH":"8","RAVIJACK":"33","RDS":"16","REMSONS":"45","REOX":"7_1","RIVIT":"4_4","RKD":"27_4","RM":"38","RNF":"37_1","ROSE":"4_3","SADHUFORGE":"39","SHANCO":"19","SORL":"48","SPICER":"54","STARGOLD":"4_5","STL":"13_1","SUPERLAC":"30","SUPERTIGHT":"13_2","SVL":"55","UVAL":"18_2","VALEO":"27_3","VEETHREE":"21"};
+const V149_GROUP_NUMBERS={"AAYUB":"27_1","ALLIED":"31","APPOLO":"28","APRISTIC":"28_1","ASHWAMEGH":"1_1","ASK":"31_1","ATOP":"5","BHARTIPOWER":"33_2","BLUEBIRD":"1","BOSCH":"32_3","BRAVO":"56","BULLDOG":"40_1","CHAMPION":"59","CHANDER":"62","CHENER":"47","CI":"51","COSMO":"24_5","CRC":"41","DC":"16_1","DELUX":"23","ELOFIC":"24","EMMBROSS":"34","FENNER":"35","GATES":"61","GAUTAM":"4","GAUTAMBT":"4_1","GCL":"27_2","GCPA":"27","GEEKAY":"13_4","GF":"4_7","GMT":"4_6","GOLDBOSS":"33_3","HALDEX":"36","HFL":"13_3","HOLDON":"11_2","IFLEX":"9","JHAVERI":"15","JMTOMI":"33","KBX":"32","KD":"11","KLIPWEL":"11_1","LAPOX":"42","LASCO":"24_1","LGS":"37","LOCTITE":"60","LUMAN":"24_2","MANN":"24_3","MEKO":"2","MKGOLD":"3","MONROE":"32_2","NEOLITE":"20","NGK":"22","NOVEX":"29_1","OEPLUS":"44","OLMA":"6","OSRAM":"18_1","OXMO":"48_1","PIONEER":"30_1","PIPEROLL":"10","PLATINUM":"7","POLYGRIP":"42","POOJA":"13","PRIMA":"12","QH":"43","RAICAM":"58","RAJNISH":"8","RAVIJACK":"33","RDS":"16","REFEX":"63","REMSONS":"45","REOX":"7_1","RIVIT":"4_4","RM":"38","RNF":"37_1","ROSE":"4_3","SF":"39","SHANCO":"19","SORL":"48","SPICER":"54","ST":"4_8","STARGOLD":"4_5","STL":"13_1","SUPERLAC":"30","SVL":"55","TIMINGGOLD":"1_2","TVS":"64","UVAL":"18_2","VALEO":"27_3","VEETHREE":"21","VIGEX":"65","WAGNER":"32_3","WIX":"24_4","PIONNER":"30_1"};
 function v149GroupNumber(group){
   const raw=indexGroupKey(group);
   const key=V86_INDEX_ALIASES[raw]||raw;
@@ -1933,7 +1933,7 @@ function buildGroupIndexPages(productPages){
   const usable=W-margin*2;
   // V149: Index shows master GROUP NO. from the uploaded MAIN INDEX workbook.
   // PAGE NO. remains hidden; group/logo stays clickable.
-  const base=portrait?[30,48,150,331]:[34,55,185,524];
+  const base=portrait?[30,150,331,48]:[34,185,524,55];
   const scale=usable/base.reduce((a,b)=>a+b,0),widths=base.map(v=>v*scale);
 
   // Build page ranges first, then create index rows from the filtered group map.
@@ -1951,7 +1951,7 @@ function buildGroupIndexPages(productPages){
     .sort((a,b)=>v149CompareGroups(a.group,b.group));
 
   // Normal descriptions remain shrink-to-fit. Only exceptionally long descriptions wrap to 2 lines.
-  const detailsWidth=widths[3];
+  const detailsWidth=widths[2];
   entries.forEach(e=>{
     e.details=groupIndexDetails(e.group);
     const fit=pdfIndexFitFont(e.details,detailsWidth,8.1,4.2);
@@ -1989,7 +1989,7 @@ function buildGroupIndexPages(productPages){
     cmd.push(`BT /F2 8.2 Tf 1 0.76 0.08 rg ${printBoxX+18} ${H-y-44} Td (${pdfAscii(printDate)}) Tj ET`);
     y+=heroH;
     cmd.push(`${rgb(14,51,126)} rg ${margin} ${H-y-headerH} ${usable} ${headerH} re f`);
-    let x=margin;const heads=['SR NO.','GROUP NO.','GROUP','DETAILS'];
+    let x=margin;const heads=['SR NO.','GROUP','DETAILS','GROUP NO.'];
     heads.forEach((h,i)=>{const size=pdfIndexFitFont(h,widths[i],8.3,5.8);cmd.push(`BT /F2 ${size.toFixed(2)} Tf 1 1 1 rg ${x+3} ${H-y-13.2} Td (${pdfAscii(h)}) Tj ET`);x+=widths[i]});y+=headerH;
 
     slice.forEach(e=>{
@@ -1997,12 +1997,12 @@ function buildGroupIndexPages(productPages){
       const a=e.first+pageCount;
       if(oi%2===1)cmd.push(`0.970 0.980 0.990 rg ${margin} ${H-y-rowH} ${usable} ${rowH} re f`);
       cmd.push(`0.72 0.76 0.82 RG ${margin} ${H-y-rowH} ${usable} ${rowH} re S`);x=margin;
-      const vals=[String(oi+1),v149GroupNumber(e.group)||'-',String(e.group||'').toUpperCase(),v126IndexProperCase(e.details)];
+      const vals=[String(oi+1),String(e.group||'').toUpperCase(),v126IndexProperCase(e.details),v149GroupNumber(e.group)||'-'];
       for(let i=0;i<widths.length;i++){
         if(i>0)cmd.push(`0.82 0.85 0.89 RG ${x} ${H-y-rowH} m ${x} ${H-y} l S`);
         const val=vals[i];
-        if(i===2){
-          // V149: brand logo + group name; GROUP NO. has its own dedicated column.
+        if(i===1){
+          // V150: brand logo + group name; GROUP NO. is the clickable last column.
           const logoB64=pdfEmbeddedLogoB64(e.group);
           const logoBoxW=Math.min(36,widths[i]*.25),logoW=logoBoxW-5,logoH=Math.min(17,rowH-3),logoY=H-y-rowH+(rowH-logoH)/2;
           cmd.push(`0.82 0.85 0.89 RG 1 1 1 rg ${x+2} ${H-y-rowH+2} ${logoBoxW} ${rowH-4} re B`);
@@ -2010,7 +2010,7 @@ function buildGroupIndexPages(productPages){
           const textX=x+logoBoxW+6,textW=widths[i]-logoBoxW-8;
           const size=pdfIndexFitFont(val,textW,8.4,5.2),textY=H-y-rowH/2-size*.34;
           cmd.push(`BT /F2 ${size.toFixed(2)} Tf 0.04 0.20 0.46 rg ${textX} ${textY.toFixed(2)} Td (${pdfAscii(val)}) Tj ET`);
-        }else if(i===3){
+        }else if(i===2){
           if(e.wrapDetails){
             const lines=pdfWrapText(val,widths[i]-2,6.4,2),lineGap=8.2;
             const firstY=H-y-rowH/2+(lines.length-1)*lineGap/2-2.2;
@@ -2028,9 +2028,11 @@ function buildGroupIndexPages(productPages){
         }
         x+=widths[i];
       }
-      const groupX=margin+widths[0]+widths[1];
-      // Group name/logo remains clickable even though the visible PAGE NO. column is removed.
-      indexLinks.push({x:groupX,y:H-y-rowH,w:widths[2],h:rowH,targetPageNumber:a});
+      const groupX=margin+widths[0];
+      const groupNoX=margin+widths[0]+widths[1]+widths[2];
+      // V150: both GROUP and GROUP NO. jump to the same first product page.
+      indexLinks.push({x:groupX,y:H-y-rowH,w:widths[1],h:rowH,targetPageNumber:a});
+      indexLinks.push({x:groupNoX,y:H-y-rowH,w:widths[3],h:rowH,targetPageNumber:a});
       y+=rowH;
     });
     pages.push({group:'INDEX',cols:heads,widths,cmd,brandLogoB64:'',indexLogos,indexLinks,W,H,adminPortrait:portrait,isIndex:true});
@@ -2265,7 +2267,7 @@ async function buildFastPdfBlob(){
     let content=`BT /F1 4.7 Tf 0.20 0.20 0.20 rg 22 ${topY} Td (${pdfAscii(generated)}) Tj ET\n`;
     content+=`BT /F1 4.7 Tf 0.20 0.20 0.20 rg ${titleX} ${topY} Td (${pdfAscii(docTitle)}) Tj ET\n`;
     const groupNo=p.isIndex?'':v149GroupNumber(p.group);
-    const pageMark=p.isIndex?`${pageIndex+1}/${pages.length}`:`${groupNo?`G.NO ${groupNo} | `:''}${pageIndex+1}/${pages.length}`;
+    const pageMark=p.isIndex?`${pageIndex+1}/${pages.length}`:`${groupNo?`G.NO ${groupNo} | `:''}PAGE ${pageIndex+1}/${pages.length}`;
     const pageMarkSize=p.isIndex?7.4:(pageMark.length>20?6.7:8.0);
     const pageMarkX=p.isIndex?pageX:Math.max(W-126,pageX-68);
     content+=`BT /F2 ${pageMarkSize} Tf 0.055 0.200 0.494 rg ${pageMarkX} ${topY} Td (${pdfAscii(pageMark)}) Tj ET\n`;
@@ -2414,7 +2416,7 @@ function v142IndexCacheKey(tag,onlyIndex,rows){
 function v142ClearIndexPdfCache(){V142_INDEX_PDF_CACHE.clear()}
 function v142OnlyIndexSeedPages(rows){
   // ONLY INDEX does not print product pages; collect unique groups only.
-  // V149: seed order follows the master GROUP NO. workbook, not screen A-Z order.
+  // V150: seed order follows the latest master GROUP NO. workbook, not screen A-Z order.
   const seen=new Set(),groups=[];
   for(const row of (rows||[])){
     const display=clean(getField(row,'GROUP'))||'OTHER',key=indexGroupKey(display)||display.toUpperCase();
