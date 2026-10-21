@@ -1538,7 +1538,9 @@ function printColumnWeights(columns,rows=[]){
 function printProductRow(row,columns,serial){
   return `<tr><td class="serial">${serial}</td>${columns.map(column=>{
     const value=displayFieldValue(row,column),key=keyOf(column);
-    return `<td class="${printCellClass(column)}${key==='PRODUCT NAME'?' product-name-cell':''}">${key==='PRODUCT NAME'?v134ProductNameCellHtml(row,value,true):escapeHtml(value)}</td>`;
+    if(key==='PRODUCT NAME')return `<td class="${printCellClass(column)} product-name-cell">${v134ProductNameCellHtml(row,value,true)}</td>`;
+    const size=v152HtmlFitFont(value,key);
+    return `<td class="${printCellClass(column)} v152-fit-cell"><span class="v152-fit-text"${size?` style="font-size:${size}px"`:''}>${escapeHtml(value)}</span></td>`;
   }).join('')}</tr>`;
 }
 function hierarchyVisual(level,mode='grid'){
@@ -1663,10 +1665,12 @@ function buildLightweightPrintHtml(){
     .serial{width:24px;text-align:center}
     th.left{text-align:left}th.right,th.price{text-align:right;color:#fff!important}
     td.left{text-align:left}td.right{text-align:right;white-space:nowrap}td.price{text-align:right;color:#0757b8;font-weight:800;white-space:nowrap}
+    td.v152-fit-cell{overflow:hidden!important;white-space:nowrap!important}
+    .v152-fit-text{display:block;max-width:100%;white-space:nowrap;overflow:hidden;line-height:1.05}
     td.product-name-cell{white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;word-break:normal!important;line-height:1.18!important}
     .product-name-text{vertical-align:middle}.net-rate-mark{display:inline-block;margin-left:5px;color:#d40000!important;font-weight:900;font-size:.82em;white-space:nowrap;vertical-align:middle}
     .pdf-group-heading{break-after:avoid;page-break-after:avoid}
-    .pdf-group-heading td{font-weight:800;text-align:left!important;white-space:normal!important;border-color:#7a9bc4!important}
+    .pdf-group-heading td{font-weight:800;text-align:left!important;white-space:normal!important;border-color:#7a9bc4!important;border-bottom:1px solid #fff!important;overflow:hidden!important}
     .pdf-level-1 td{background:#dceeff!important;color:#0e337e;font-size:9.4px;padding:4.6px 5px}
     .pdf-level-2 td{background:#fff3bd!important;color:#5a3b00;font-size:8.7px;padding:4px 5px 4px 12px}
     .pdf-level-3 td{background:#edf3fb!important;color:#27364a;font-size:8.2px;padding:3.7px 5px 3.7px 20px}
@@ -1674,7 +1678,7 @@ function buildLightweightPrintHtml(){
     .pdf-level-deep td{background:#fafbfc!important;color:#27364a;font-size:7.6px;border-color:#d3d9e1!important}
     .pdf-group-heading[data-group-level] td{padding-left:var(--view-indent,5px)!important}
     .pdf-group-label{display:inline-block;margin-right:6px;padding:1px 4px;border:1px solid currentColor;border-radius:3px;font-size:.82em;letter-spacing:.05em}
-    .pdf-group-title{font-weight:900}
+    .pdf-group-title{font-weight:900;display:inline-block;max-width:calc(100% - 92px);white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:middle}
     .pdf-group-count{float:right;font-size:.85em;font-weight:800}
     .pdf-net-section-title{break-before:page;page-break-before:always;break-after:avoid;page-break-after:avoid}
     .pdf-net-section-title td{background:#fff0b8!important;color:#5a3b00!important;font-size:12px!important;font-weight:900!important;text-align:left!important;padding:6px 7px!important;border-color:#e3b73e!important}
@@ -1860,6 +1864,7 @@ function v139WrapAllText(value,width,fontSize=7.1){
 
 const V86_INDEX_DETAILS={"AAYUB":"Fly Wheel Assy.","ALLIED":"Brake Lining & Brake Pad","APPOLO":"All Type Of Packing","APRISTIC":"All Type Of Packing","ASHWAMEGH":"Grease, Ultrapure And Distile Water","ASK":"Brake Lining","ATOP":"Spring Washar","BHARTI POWER":"Hydraulic Jack","BLUE BIRD":"Diesel Engine Oil, 4 Stroke Oil, Transmission Oil, Industrial Oil","BOSCH":"Suspension & Clutch, Braking, Clutch, Brake Oil","BRAVO":"Shock Absorber, Gear Lever, Engine Mounting, Hose Pipe","BULLDOG":"Gasket Tube, Rtv & Silk Botel","CHAMPION":"Sprak Plug, Heater Plug, Wiper Blade","CHANDER":"Shackle Assy  &  Jeep Parts","CHENER":"Tie Rod, Drag Link Kit, Gear Lever End, Ball Joint","CI":"Arm Rest/Roof Handles, B.Opener, Db Lock/ Door Lock W/K","COSMO":"Hyd. Filter, Diesel Filter","CRC":"Power Spray","DC":"U.J.Cross, Gear Jhamela, Sleeve Yoke","DELUX":"King Pin, Clutch & Tapper Bearing & All Bering","ELOFIC":"All Type Filter , Coolant","EMMBROSS":"Rear Axle H.C.V. Division","FENNER":"V-Belts & Poly V-Belts","GATES":"Belts, Metals & Kits, Tensioner","GAUTAM":"Syncromizer Ring, Washer, Tata Parts, Benjo Bolt, Nut-Bolt, Spring Baloon, Gape Plate, King Pin Kit, Shims, Jack Tomi","GAUTAM BT":"Bertry Terminals","GCL":"Clutch Plates & Pressure Plates, Spring Set, Lever Finger Kit","GCPA":"Clutch Plates & Pressure Plates","GEEKAY":"Unc, Unf, Bsw, Bsf, Bolt, Nut, Special Bolt","GF":"Radiator Fan","GMT":"Bolt, Pin, Nut, Washers, Nipple, Spanner","GOLD BOSS":"Jack Rod","HALDEX":"Slack Adj. Assy","HFL":"Hex Bolt And Flange Bolt","HOLDON":"Hose Pipe Clip","IFLEX":"Fuel Line & Diesel Pipe","JHAVERI":"Ring Pana & Fix Pana & Wheel Spaner","JM TOMI":"Tomi","KBX":"Brake Oil, Brake Parts, Brake Shoe Kit","KD":"Hose Pipe","KLIPWEL":"Hose Pipe Clip","LAPOX":"La-Seal & Epoxy Putty","LASCO":"Air Filter","LGS":"Fly Wheel Ring","LOCTITE":"Superflex Tube, Rust Bust Spray","LUMAN":"Filter S, Air Filter, Coolant","MANN":"Filters","MEKO":"Water Pump, Repair Kit & Rotter Shaft","MK GOLD":"Water Pump","MONROE":"Strut Kit, Coil Spring, Top Mount, Shock Abso., Element","NEOLITE":"Head Lamp Assy.","NGK":"Spark Plugs & Hiter Plugs","NOVEX":"Rubber Parts","OEPLUS":"Wiper Blade, Wiper Arm","OLMA":"Automotiv Components, Tata Parts","OSRAM":"Bulb","OXMO":"Brake Actuators","PIONEER":"Oil Seal, Water Pump Seal, Hose Pipe","PIPE ROLL":"Diesel & Petrol Pipe Roll","PLATINUM":"Side Glass","POLY GRIP":"Foam Fast & Grip Fast","POOJA":"Unc, Unf, Bsw, Bsf, Bolt, Nut, Special Bolt","PRIMA":"Grease Gun, Beral Pump & Oil Cuppy. Loose Parts","QH":"Tie Rod, Susp. & Joint Parts","RAICAM":"Clutch Set","RAJNISH":"Diesel Fuel Injection Pump Parts","RAVI JACK":"Jack & Popular Shaft Pipe","RDS":"U.J.Cross, Propeller Shafts, Bearing, Tie Rod End","REFEX":"Tetrafluroethane Gas Can","REMSONS":"Accelerator, Speedo, Bonnet Cable, Door Opener","REOX":"Side Mirror, Sub Mirror","RIVIT":"Brack Liner & Cluch Rivit","RM":"All Type Brake Disk & Drum","RNF":"Adjuster, Hydrolic Jack","ROSE":"Syncromizer Ring, Washer, Tata Parts, Benjo Bolt, Nut-Bolt, Spring","SF":"Gear Parts & Crown Wheel Pinion & Spider Kit","SHANCO":"Wire & Cable","SORL":"Valve, Adjuster, Pump, Air Coil","SPICER":"Uj Cross, Sleve Yoke, Cen.Flange, Cen. Bearing","ST":"Center Bolt","STAR GOLD":"Coolent","STL":"Unc, Unf, Bsw, Bsf, Bolt, Nut, Special Bolt","SUPERLAC":"Oil Seal & Foundation, Rubber Parts","SVL":"Uj Cross, Sleve Yoke, Cen.Flange, Cen. Bearing","TIMING GOLD":"Synth 4T Plus Oil","TVS":"","UVAL":"Bulb","VALEO":"Clutch Plates & Pressure Plates","VEETHREE":"Meter, Speedo Cable, Tanke Unit, Disel Gaje","VIGEX":"Fuel Line & Diesel Pipe","WAGNER":"Condenser","WIX":"Filters"};
 const V86_INDEX_ALIASES={PIONNER:'PIONEER'};
+// V152: universal shrink/wrap safety added; Group No. master remains V151 latest.
 // V151: Latest Group No. + description master from the updated MAIN INDEX workbook (21-10-2026).
 // Product pages use Group No. business order; every PDF INDEX stays alphabetical A-Z.
 const V149_GROUP_NUMBERS={"AAYUB":"27_1","ALLIED":"31","APPOLO":"28","APRISTIC":"28_1","ASHWAMEGH":"1_1","ASK":"31_1","ATOP":"5","BHARTIPOWER":"33_2","BLUEBIRD":"1","BOSCH":"32_3","BRAVO":"30_2","BULLDOG":"40_1","CHAMPION":"22_1","CHANDER":"50","CHENER":"47","CI":"49","COSMO":"24_5","CRC":"41","DC":"16_1","DELUX":"23","ELOFIC":"24","EMMBROSS":"34","FENNER":"35","GATES":"35_1","GAUTAM":"4","GAUTAMBT":"4_1","GCL":"27_2","GCPA":"27","GEEKAY":"13_4","GF":"4_7","GMT":"4_6","GOLDBOSS":"33_3","HALDEX":"36","HFL":"13_3","HOLDON":"11_2","IFLEX":"9","JHAVERI":"15","JMTOMI":"33","KBX":"32","KD":"11","KLIPWEL":"11_1","LAPOX":"42","LASCO":"24_1","LGS":"37","LOCTITE":"14","LUMAN":"24_2","MANN":"24_3","MEKO":"2","MKGOLD":"3","MONROE":"32_2","NEOLITE":"20","NGK":"22","NOVEX":"29_1","OEPLUS":"44","OLMA":"6","OSRAM":"18_1","OXMO":"48_1","PIONEER":"30_1","PIPEROLL":"10","PLATINUM":"7","POLYGRIP":"42","POOJA":"13","PRIMA":"12","QH":"43","RAICAM":"27_4","RAJNISH":"8","RAVIJACK":"33","RDS":"16","REFEX":"51","REMSONS":"45","REOX":"7_1","RIVIT":"4_4","RM":"38","RNF":"37_1","ROSE":"4_3","SF":"39","SHANCO":"19","SORL":"48","SPICER":"54","ST":"4_8","STARGOLD":"4_5","STL":"13_1","SUPERLAC":"30","SVL":"55","TIMINGGOLD":"1_2","TVS":"52","UVAL":"18_2","VALEO":"27_3","VEETHREE":"21","VIGEX":"53","WAGNER":"32_3","WIX":"24_4","PIONNER":"30_1"};
@@ -1886,6 +1891,32 @@ function v149CodeFitFont(text,width,maxSize=7.5,minSize=1.9){
   const unit=Math.max(.1,v141TokenWidthPt(s,1,false));
   const fit=Math.max(2,width-4)/unit;
   return Math.max(minSize,Math.min(maxSize,fit));
+}
+
+// V152: one conservative shrink-to-fit formula for every printed cell.
+// It deliberately leaves a little inner safety margin so CODE / UNIT / MODEL-like
+// values can never cross the vertical grid line into the next column.
+function v152UniversalFitFont(text,width,maxSize=7.5,minSize=1.15,bold=false){
+  const s=pdfAscii(text).replace(/\s+/g,' ').trim();
+  if(!s)return maxSize;
+  const measured=Math.max(.1,v141TokenWidthPt(s,1,bold));
+  const safeWidth=Math.max(1.5,width-5.5);
+  const fit=(safeWidth/measured)*0.92;
+  return Math.max(minSize,Math.min(maxSize,fit));
+}
+function v152HtmlFitFont(value,key){
+  const s=clean(value).replace(/\s+/g,' ').trim();
+  if(!s)return '';
+  // Browser-print fallback: long identity/business values shrink before they can
+  // visually enter the adjacent cell. PRODUCT NAME remains wrapped separately.
+  let max=8.2,min=4.0;
+  if(key==='CODE'){max=8.1;min=4.15}
+  else if(key==='UNIT'||key==='GST'){max=8;min=5.0}
+  else if(key==='RATE'||key==='MRP'||key==='STD PKG'){max=8;min=4.8}
+  const soft=key==='CODE'?10:(key==='UNIT'||key==='GST'?5:8);
+  if(s.length<=soft)return max.toFixed(2);
+  const size=Math.max(min,Math.min(max,max*soft/s.length));
+  return size.toFixed(2);
 }
 
 function indexGroupKey(value){return clean(value).toUpperCase().replace(/[^A-Z0-9]/g,'')}
@@ -2138,10 +2169,17 @@ function fastPdfPages(){
       const idx=Math.min(level,3),f=fills[idx],tc=texts[idx];
       const indent=4+level*(adminPortrait?6:8),textW=Math.max(40,W-margin*2-indent-6);
       const maxFont=adminPortrait?9:(level===0?6.2:5.7);
-      // V137: hierarchy/model titles stay on one line and shrink to the frame width.
-      // This prevents long SVL/model headings from running outside the blue/yellow band.
-      const font=pdfIndexFitFont(String(value),textW,maxFont,2.2);
-      const lines=[String(value)],actualH=bandH;
+      // V152: hierarchy titles (SEGMENT / VEHICLE / MODEL / CATEGORY etc.) must
+      // remain inside their frame. Prefer a readable 1-2 line wrap; if a single
+      // token is still long, shrink that line conservatively.
+      let font=maxFont;
+      let lines=v139WrapAllText(String(value),textW,font).slice(0,2);
+      if(lines.length>1)font=Math.max(adminPortrait?5.2:4.2,maxFont*.78);
+      lines=v139WrapAllText(String(value),textW,font).slice(0,2);
+      if(lines.length===1)font=v152UniversalFitFont(lines[0],textW,maxFont,adminPortrait?4.2:3.1,true);
+      else font=Math.min(font,...lines.map(line=>v152UniversalFitFont(line,textW,font,adminPortrait?4.2:3.1,true)));
+      const lineGap=font*1.22;
+      const actualH=Math.max(bandH,bandH+(lines.length-1)*lineGap);
       return {f,tc,indent,font,lines,actualH};
     };
 
@@ -2153,6 +2191,8 @@ function fastPdfPages(){
       if(y+actualH>H-24)newPage();
       page.cmd.push(`${rgb(...f)} rg ${margin} ${H-y-actualH} ${W-margin*2} ${actualH} re f`);
       page.cmd.push(`${rgb(122,155,196)} RG ${margin} ${H-y-actualH} ${W-margin*2} ${actualH} re S`);
+      // V152: subtle white divider defines each hierarchy/title band cleanly.
+      page.cmd.push(`1 1 1 RG ${margin} ${H-y-actualH+.55} m ${W-margin} ${H-y-actualH+.55} l S`);
       const x=margin+indent,lineGap=font*1.28;
       const blockH=(lines.length-1)*lineGap;
       const firstBase=H-y-(actualH/2)+blockH/2-font*.32;
@@ -2209,13 +2249,15 @@ function fastPdfPages(){
             lines.forEach((line,lineIndex)=>page.cmd.push(`BT /F1 ${size.toFixed(2)} Tf 0 0 0 rg ${x+2} ${(firstBase-lineIndex*lineGap).toFixed(2)} Td (${esc(line)}) Tj ET`));
           }else{
             const text=pdfAscii(val).replace(/\s+/g,' ').trim();
-            // V149: CODE cells use a measured shrink-to-fit formula and are never truncated.
-            const size=key==='CODE'?v149CodeFitFont(text,widths[i],7.5,1.9):pdfFitFont(text,widths[i],7.5,3.2);
+            // V152: every non-description cell uses the same conservative shrink-to-fit
+            // rule, so CODE/UNIT/GST/RATE/MRP/packing/other details never cross a grid line.
+            const size=v152UniversalFitFont(text,widths[i],7.5,key==='CODE'?1.15:1.35,isPrice);
             page.cmd.push(`BT /${isPrice?'F2':'F1'} ${size.toFixed(2)} Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${rowBase} Td (${esc(text)}) Tj ET`);
           }
         }else{
-          const max=Math.max(3,Math.floor(widths[i]/2.8));
-          page.cmd.push(`BT /${isPrice?'F2':'F1'} 4.9 Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-6.7} Td (${esc(truncText(val,max))}) Tj ET`);
+          const text=pdfAscii(val).replace(/\s+/g,' ').trim();
+          const size=v152UniversalFitFont(text,widths[i],4.9,1.05,isPrice);
+          page.cmd.push(`BT /${isPrice?'F2':'F1'} ${size.toFixed(2)} Tf ${isPrice?'0.02 0.34 0.72':'0 0 0'} rg ${x+2} ${H-y-6.7} Td (${esc(text)}) Tj ET`);
         }
         x+=widths[i];
       }
