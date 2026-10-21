@@ -1507,31 +1507,70 @@ function v134ProductNameCellHtml(row,value,forPrint=false){
   const style=forPrint?' style="font-size:7.35px"':'';
   return `<span class="product-name-text"${style}>${escapeHtml(value)}</span>`;
 }
-function printColumnWeights(columns,rows=[]){
-  // V140: customer/browser Price Book uses the same group-wise dynamic idea as Admin PDF.
-  // CODE/UNIT/GST/RATE/MRP/STD PKG only take the width their longest visible value needs;
-  // every saved point is donated to PRODUCT NAME.
-  const virtualUsable=780,serialPt=25;
-  const productIndex=columns.findIndex(c=>keyOf(c)==='PRODUCT NAME');
-  const pts=columns.map(c=>keyOf(c)==='PRODUCT NAME'?0:v139ColumnNeededWidth(c,rows));
-  let fixed=pts.reduce((a,b)=>a+b,0),minProduct=360;
-  if(productIndex>=0 && fixed>virtualUsable-serialPt-minProduct){
-    let excess=fixed-(virtualUsable-serialPt-minProduct);
-    const order=columns.map((c,i)=>({i,key:keyOf(c)})).filter(x=>x.i!==productIndex&&x.key!=='CODE').map(x=>x.i);
-    for(const i of order){
-      if(excess<=0)break;
-      const key=keyOf(columns[i]);
-      const floor=key==='GST'?22:(key==='UNIT'?23:(key==='RATE'||key==='MRP'?29:27));
-      const take=Math.min(excess,Math.max(0,pts[i]-floor));
-      pts[i]-=take;excess-=take;
-    }
-    if(excess>0){
-      const ci=columns.findIndex(c=>keyOf(c)==='CODE');
-      if(ci>=0){const take=Math.min(excess,Math.max(0,pts[ci]-31));pts[ci]-=take;excess-=take;}
-    }
-    fixed=pts.reduce((a,b)=>a+b,0);
+function v154ProductNameDesiredWidth(rows,cap=330,min=120,font=7.35){
+  let longest=v139TextWidthPt('PRODUCT NAME',font,true)+8;
+  for(const row of (rows||[])){
+    const value=displayFieldValue(row,'PRODUCT NAME');
+    if(!clean(value))continue;
+    longest=Math.max(longest,v139TextWidthPt(value,font,false)+8);
   }
-  if(productIndex>=0)pts[productIndex]=Math.max(250,virtualUsable-serialPt-fixed);
+  // Description should use only what THIS brand actually needs. Very long descriptions
+  // still wrap, but short-description brands donate the saved width to API GRADE/RANGE/etc.
+  return Math.max(min,Math.min(cap,longest));
+}
+function v154ColumnFloor(column,desired){
+  const key=keyOf(column),label=key.replace(/\s+/g,' ');
+  const header=Math.max(...v139HeaderTokens(key,label).map(x=>v139TextWidthPt(x,7.5,true)),0)+5;
+  const hard={CODE:31,UNIT:23,GST:22,RATE:29,MRP:29,'STD PKG':29};
+  // Custom business columns (API GRADE, RANGE, RANGE (HRI), etc.) must remain readable.
+  return Math.max(hard[key]||34,Math.min(desired,Math.max(header,desired*.68)));
+}
+function v154BalancedWidths(columns,rows,usable,productMin=120,productCap=330){
+  const productIndex=columns.findIndex(c=>keyOf(c)==='PRODUCT NAME');
+  const desired=columns.map(c=>keyOf(c)==='PRODUCT NAME'
+    ?v154ProductNameDesiredWidth(rows,productCap,productMin)
+    :v139ColumnNeededWidth(c,rows));
+  if(productIndex<0){
+    const total=desired.reduce((a,b)=>a+b,0)||1;
+    return desired.map(v=>v*usable/total);
+  }
+  let sum=desired.reduce((a,b)=>a+b,0);
+  if(sum<usable){
+    // Keep columns content-driven. Extra printable width goes mainly to PRODUCT NAME,
+    // while wider custom columns get a small readability bonus.
+    let extra=usable-sum;
+    const productRoom=Math.max(0,productCap-desired[productIndex]);
+    const giveProduct=Math.min(extra,productRoom);
+    desired[productIndex]+=giveProduct;extra-=giveProduct;
+    const custom=columns.map((c,i)=>({i,key:keyOf(c)})).filter(x=>x.i!==productIndex&&!['CODE','UNIT','GST','RATE','MRP','STD PKG'].includes(x.key));
+    if(extra>0&&custom.length){const each=extra/custom.length;custom.forEach(x=>desired[x.i]+=each);extra=0;}
+    if(extra>0)desired[productIndex]+=extra;
+    return desired;
+  }
+  // Need compression: first reduce PRODUCT NAME (it can wrap), then trim only surplus
+  // from other columns down to a readable floor. This prevents API GRADE from becoming tiny.
+  let excess=sum-usable;
+  const productFloor=Math.min(desired[productIndex],productMin);
+  let take=Math.min(excess,Math.max(0,desired[productIndex]-productFloor));
+  desired[productIndex]-=take;excess-=take;
+  const shrinkOrder=columns.map((c,i)=>({i,key:keyOf(c),floor:v154ColumnFloor(c,desired[i])}))
+    .filter(x=>x.i!==productIndex).sort((a,b)=>(desired[b.i]-b.floor)-(desired[a.i]-a.floor));
+  for(const item of shrinkOrder){
+    if(excess<=0)break;
+    const room=Math.max(0,desired[item.i]-item.floor);
+    const cut=Math.min(excess,room);desired[item.i]-=cut;excess-=cut;
+  }
+  if(excess>0){
+    // Last resort: proportional scale, but keep all cells inside the frame.
+    const total=desired.reduce((a,b)=>a+b,0)||1;
+    const scale=usable/total;
+    return desired.map(v=>v*scale);
+  }
+  return desired;
+}
+function printColumnWeights(columns,rows=[]){
+  const virtualUsable=780,serialPt=25;
+  const pts=v154BalancedWidths(columns,rows,virtualUsable-serialPt,150,360);
   const total=serialPt+pts.reduce((a,b)=>a+b,0)||1;
   return {serial:(serialPt*100/total).toFixed(3),columns:pts.map(v=>(v*100/total).toFixed(3))};
 }
@@ -1784,34 +1823,10 @@ function v139ColumnNeededWidth(column,rows){
   return Math.max(min,Math.min(max,Math.max(header,data)));
 }
 function adminPortraitColumnWidths(columns,rows,usable){
-  // V139: every non-description column hugs the longest visible heading/value for THIS group.
-  // All saved width is donated to PRODUCT NAME, so MANN/SVL/etc. can use the full printable area.
-  const fixed=columns.map(column=>keyOf(column)==='PRODUCT NAME'?null:v139ColumnNeededWidth(column,rows));
-  const productIndex=columns.findIndex(c=>keyOf(c)==='PRODUCT NAME');
-  if(productIndex<0){
-    const sum=fixed.reduce((a,b)=>a+(b||0),0)||1;
-    return fixed.map(v=>(v||0)*usable/sum);
-  }
-  let fixedSum=fixed.reduce((a,b)=>a+(b||0),0);
-  const minProduct=Math.max(215,usable*.48);
-  if(fixedSum>usable-minProduct){
-    // Preserve CODE first, then squeeze the other utility columns only as much as needed.
-    const squeezeIndexes=columns.map((c,i)=>({i,key:keyOf(c)})).filter(x=>x.i!==productIndex&&x.key!=='CODE').map(x=>x.i);
-    let excess=fixedSum-(usable-minProduct);
-    for(const i of squeezeIndexes){
-      if(excess<=0)break;
-      const floor=keyOf(columns[i])==='GST'?25:28;
-      const take=Math.min(excess,Math.max(0,fixed[i]-floor));
-      fixed[i]-=take;excess-=take;
-    }
-    // V149: CODE must never be clipped. Do not steal width from the CODE column;
-    // long product descriptions can wrap to extra lines instead.
-    fixedSum=fixed.reduce((a,b)=>a+(b||0),0);
-  }
-  fixed[productIndex]=Math.max(150,usable-fixedSum);
-  const sum=fixed.reduce((a,b)=>a+(b||0),0);
-  if(Math.abs(sum-usable)>.1)fixed[productIndex]+=usable-sum;
-  return fixed;
+  // V154: true brand-wise adaptive layout. PRODUCT NAME gets only the width demanded
+  // by the longest description for this brand (with wrapping for exceptional values),
+  // and saved space is used by API GRADE/RANGE/custom columns so their text stays readable.
+  return v154BalancedWidths(columns,rows,usable,120,305);
 }
 
 function adminPdfHeaderLines(column,width){
