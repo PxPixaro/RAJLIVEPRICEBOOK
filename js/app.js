@@ -1057,32 +1057,63 @@ async function refreshHostedFilterMaster(){
 
 function safePathPart(v){return clean(v).replace(/[<>:"/\\|?*]/g,'_').trim()}
 function productImageCandidates(row){
-  // V143: Excel BG/IMAGES is now the ONLY image-mapping source.
-  // Blank IMAGES means no product image should be auto-matched by CODE.
+  // V155: Excel BG/IMAGES remains the switch for image mapping.
+  // Blank IMAGES still means: do not auto-map any image by CODE.
   const explicitRaw=clean(getField(row,'IMAGES','IMAGE','IMAGE FILE','IMAGE NAME','PRODUCT IMAGE'));
   if(!explicitRaw)return [];
 
-  // Allow a full hosted URL/path too, but the normal use is an exact filename such as AA3006.webp.
+  // Allow a full hosted URL/path too.
   if(/^https?:\/\//i.test(explicitRaw)||/^assets\//i.test(explicitRaw))return [explicitRaw];
 
   const rawGroup=safePathPart(getField(row,'GROUP'));
   const groupBase=rawGroup.replace(/\s*-\s*OK$/i,'').trim();
-  const folders=[rawGroup,groupBase,groupBase.toUpperCase(),`${groupBase.toUpperCase()} - OK`,`${groupBase} - OK`]
-    .filter((v,i,a)=>v && a.indexOf(v)===i);
-  const filename=explicitRaw.replace(/^.*[\\/]/,'').trim();
+  const folders=[
+    rawGroup,groupBase,
+    rawGroup.toUpperCase(),groupBase.toUpperCase(),
+    rawGroup.toLowerCase(),groupBase.toLowerCase(),
+    `${groupBase.toUpperCase()} - OK`,`${groupBase} - OK`
+  ].filter((v,i,a)=>v && a.indexOf(v)===i);
+
+  // Remove hidden Excel spaces/NBSP around the filename and keep only the leaf name.
+  const filename=explicitRaw.replace(/\u00a0/g,' ').replace(/^.*[\\/]/,'').trim();
   const dot=filename.lastIndexOf('.');
   const base=dot>0?filename.slice(0,dot):filename;
   const ext=dot>0?filename.slice(dot+1):'';
+  const code=clean(getField(row,'CODE','PART NUMBER','PART NO')).replace(/\u00a0/g,' ').trim();
   const names=[];
   const addName=n=>{if(n&&!names.includes(n))names.push(n)};
+
+  // 1) Exact Excel filename always has first priority.
   addName(filename);
-  // Friendly fallback for existing files that use the historic _1 suffix.
-  if(base&&!/_1$/i.test(base))addName(`${base}_1${ext?'.'+ext:''}`);
+  // 2) Case variants protect Linux hosting from Excel/file-name case differences.
+  if(base&&ext){
+    addName(`${base.toUpperCase()}.${ext.toLowerCase()}`);
+    addName(`${base.toLowerCase()}.${ext.toLowerCase()}`);
+    addName(`${base.toUpperCase()}.${ext.toUpperCase()}`);
+  }
+  // 3) Historic _1 naming remains supported.
+  if(base&&!/_1$/i.test(base)){
+    addName(`${base}_1${ext?'.'+ext:''}`);
+    if(ext)addName(`${base.toUpperCase()}_1.${ext.toLowerCase()}`);
+  }
+  // 4) If the Images cell is present but contains an old/mismatched filename,
+  //    safely try this row's CODE too. This does NOT run when IMAGES is blank.
+  if(code){
+    ['webp','png','jpg','jpeg','WEBP','PNG','JPG','JPEG'].forEach(e=>{
+      addName(`${code}.${e}`);addName(`${code}_1.${e}`);
+      addName(`${code.toUpperCase()}.${e}`);addName(`${code.toUpperCase()}_1.${e}`);
+    });
+  }
   if(!ext){
     ['webp','png','jpg','jpeg','WEBP','PNG','JPG','JPEG'].forEach(e=>{addName(`${base}.${e}`);addName(`${base}_1.${e}`)});
   }
+
   const candidates=[];
-  folders.forEach(folder=>names.forEach(name=>candidates.push(`assets/Products Images/${encodeURIComponent(folder)}/${encodeURIComponent(name)}`)));
+  const seen=new Set();
+  folders.forEach(folder=>names.forEach(name=>{
+    const path=`assets/Products Images/${encodeURIComponent(folder)}/${encodeURIComponent(name)}`;
+    if(!seen.has(path)){seen.add(path);candidates.push(path)}
+  }));
   return candidates;
 }
 
@@ -2341,8 +2372,11 @@ async function buildFastPdfBlob(){
     const groupNo=p.isIndex?'':v149GroupNumber(p.group);
     const pageMark=p.isIndex?`${pageIndex+1}/${pages.length}`:`${groupNo?`G.NO ${groupNo} | `:''}PAGE ${pageIndex+1}/${pages.length}`;
     const pageMarkSize=p.isIndex?7.4:(pageMark.length>20?6.7:8.0);
-    const pageMarkX=p.isIndex?pageX:Math.max(W-126,pageX-68);
-    content+=`BT /F2 ${pageMarkSize} Tf 0.055 0.200 0.494 rg ${pageMarkX} ${topY} Td (${pdfAscii(pageMark)}) Tj ET\n`;
+    // V155: keep G.NO / PAGE safely inside the physical printer's printable area.
+    // PDF viewers can show edge text that many printers clip at 100% scale.
+    const pageMarkX=p.isIndex?pageX:Math.max(W-150,pageX-92);
+    const pageMarkY=p.isIndex?topY:H-18;
+    content+=`BT /F2 ${pageMarkSize} Tf 0.055 0.200 0.494 rg ${pageMarkX} ${pageMarkY} Td (${pdfAscii(pageMark)}) Tj ET\n`;
     content+=`BT /F1 4.5 Tf 0.25 0.25 0.25 rg 22 7 Td (${pdfAscii(location.href)}) Tj ET\n`;
 
     const brandId=brandObjects.get(p.brandLogoB64||'')||0;
